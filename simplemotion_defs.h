@@ -230,9 +230,9 @@
 //#define CFG_INPUT_FILTER_LEN 30
 #define SMP_CONTROL_MODE 559
 	//control mode choices:
-	#define CM_TORQUE 2
-	#define CM_VELOCITY 1
-	#define CM_POSITION 0
+	#define CM_TORQUE 3
+	#define CM_VELOCITY 2
+	#define CM_POSITION 1
 #define SMP_INPUT_MULTIPLIER 560
 #define SMP_INPUT_DIVIDER 561
 #define SMP_INPUT_REFERENCE_MODE 562
