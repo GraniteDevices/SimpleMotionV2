@@ -206,21 +206,12 @@
 #define SMP_VEL_FERROR_TRIP 556
 #define SMP_POS_ERROR_RECOVERY_SPEED 557
 #define SMP_MOTOR_MODE 558
-	//choices:
-	#define MOTOR_NONE 0
-	//ac servo
-	#define MOTOR_AC_VECTOR 1
-	//trapezoidal ac
-	#define MOTOR_BLDC 2
-	//with regen resistor
-	#define MOTOR_DC 3
-	//without regen, parallel out
-	#define MOTOR_PARALLEL_DC 4
-	//open loop AC=stepper, no feedback
-	#define MOTOR_STEPPER 5
-	#define MOTOR_STEPPER_W_ENCODER 6
-	#define MOTOR_STEPPER_SERVO 7
-	#define _MOTOR_LAST 7
+#define MOTOR_NONE 0
+    //ac servo
+    #define MOTOR_DC 1
+    #define MOTOR_AC_VECTOR_2PHA 2  /*2 phase ac or bldc */
+    #define MOTOR_AC_VECTOR 3 /*3 phase ac or bldc */
+    #define _MOTOR_LAST 7
 
 
 
@@ -428,10 +419,10 @@
 	//choices:
 	#define TRIG_NONE 0
 	#define TRIG_INSTANT 1
-	#define TRIG_TARGETCHANGE 2
-	#define TRIG_TARGETCHANGE_POS 3
-	#define TRIG_SERIALCMD 4
-	#define TRIG_FAULT 6
+	#define TRIG_FAULT 2
+	#define TRIG_TARGETCHANGE 3
+	#define TRIG_TARGETCHANGE_POS 4
+	#define TRIG_SERIALCMD 5
 
 #define SMP_CAPTURE_SAMPLERATE 5012
 //rdonly
