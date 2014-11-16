@@ -142,7 +142,6 @@
 // continue to .. 200
 
 
-
 /*
  * List of motor control parameters.
  *
@@ -150,8 +149,13 @@
  * for details. If unknown, ask Granite Devices.
  */
 
-#define SMP_INCREMENTAL_POS_TARGET 550
-#define SMP_ABSOLUTE_POS_TARGET 551
+ //control setpoint values (pos, vel or torq depending on control mode):
+#define SMP_INCREMENTAL_SETPOINT 550
+#define SMP_ABSOLUTE_SETPOINT 551
+//old names for backwards compatibility:
+#define SMP_INCREMENTAL_POS_TARGET SMP_INCREMENTAL_SETPOINT
+#define SMP_ABSOLUTE_POS_TARGET SMP_ABSOLUTE_SETPOINT
+
 #define SMP_FAULTS 552
 	//bitfield bits:
 	#define FLT_FOLLOWERROR	BV(1)
@@ -195,28 +199,37 @@
 	#define STAT_PERMANENT_STOP BV(15)//outputs disabled until reset
 
 #define SMP_SYSTEM_CONTROL 554 //writing 1 initiates settings save to flash, writing 2=device restart, 4=abort buffered motion
-	//choices:
+	//possible values listed
+	//save active settings  to flash:
 	#define SMP_SYSTEM_CONTROL_SAVECFG 1
+	//restart drive:
 	#define SMP_SYSTEM_CONTROL_RESTART 2
+	//abort buffered commands (discard rest of buffer)
 	#define SMP_SYSTEM_CONTROL_ABORTBUFFERED 4
+	//next 3 for factory use only:
     #define SMP_SYSTEM_SAMPLE_TEST_VARIABLES 8 //production testing function
     #define SMP_SYSTEM_START_PRODUCTION_TEST 16 //production testing function
     #define SMP_SYSTEM_STOP_PRODUCTION_TEST 32 //production testing function
+
+	//follow error tolerance for position control:
 #define SMP_POS_FERROR_TRIP 555
-#define SMP_VEL_FERROR_TRIP 556
-#define SMP_POS_ERROR_RECOVERY_SPEED 557
-#define SMP_MOTOR_MODE 558
-#define MOTOR_NONE 0
-    //ac servo
-    #define MOTOR_DC 1
-    #define MOTOR_AC_VECTOR_2PHA 2  /*2 phase ac or bldc */
-    #define MOTOR_AC_VECTOR 3 /*3 phase ac or bldc */
-    #define _MOTOR_LAST 7
-
-
-
-//position follow error trip point
 //velocity follow error trip point. units: velocity command (counts per PIDcycle * divider)
+#define SMP_VEL_FERROR_TRIP 556
+//recovery velocity from disabled/fault state. same scale as other velocity limits
+#define SMP_POS_ERROR_RECOVERY_SPEED 557
+
+//motor type:
+#define SMP_MOTOR_MODE 558
+	//factory state, no choice:
+	#define MOTOR_NONE 0
+    //DC servo:
+    #define MOTOR_DC 1
+	//2 phase AC motor
+    #define MOTOR_AC_VECTOR_2PHA 2  /*2 phase ac or bldc */
+	//3 phase AC motor
+    #define MOTOR_AC_VECTOR 3 /*3 phase ac or bldc */
+	//for drive internal use only:
+	#define _MOTOR_LAST 7
 
 //#define CFG_INPUT_FILTER_LEN 30
 #define SMP_CONTROL_MODE 559
@@ -226,6 +239,7 @@
 	#define CM_POSITION 1
 #define SMP_INPUT_MULTIPLIER 560
 #define SMP_INPUT_DIVIDER 561
+//setpoint source
 #define SMP_INPUT_REFERENCE_MODE 562
 	//choices:
 	#define SMP_INPUT_REFERENCE_MODE_SERIALONLY 0
@@ -237,9 +251,14 @@
 	#define SMP_INPUT_REFERENCE_MODE_RESERVED2 6
 	#define SMP_INPUT_REFERENCE_MODE_LAST_ 6
 
+//setpoint source offset when absolute setpoint is used (pwm/analog)
 #define SMP_ABS_IN_OFFSET 563
+//scaler, not used after VSD-E
 #define SMP_ABS_IN_SCALER 564
+
+//FB1 device resolution, pulses per rev
 #define SMP_ENCODER_PPR 565
+//motor polepairs, not used with DC motor
 #define SMP_MOTOR_POLEPAIRS 566
 
 
@@ -279,20 +298,30 @@
 //NOT IMPLEMENTED YET
 
 //current loop related 400-499
+//direct torque gains, not used after VSD-E
 #define SMP_TORQ_P 401
 #define SMP_TORQ_I 402
+//motor inductance and resistance
 #define SMP_MOTOR_RES 405
 #define SMP_MOTOR_IND 406
 
+//continuous current limit mA
 #define SMP_TORQUELIMIT_CONT 410
+//peak current limit mA
 #define SMP_TORQUELIMIT_PEAK 411
+//homing current limit mA
 #define SMP_TORQUELIMIT_HOMING 415
+//next 2 set fault sensitivity
 #define SMP_TORQUEFAULT_MARGIN 420
 #define SMP_TORQUEFAULT_OC_TOLERANCE 421
 
+//motor thermal time constant in seconds:
 #define SMP_MOTOR_THERMAL_TIMECONSTANT 430
+//how fast to ramp up voltage during phase search:
 #define SMP_PHASESEARCH_VOLTAGE_SLOPE 480
+//by default this is calculated from other motor params:
 #define SMP_PHASESEARCH_CURRENT 481
+//selector value 0-9 = 100 - 3300Hz (see Granity):
 #define SMP_TORQUE_LPF_BANDWIDTH 490
 
 //motor rev to rotary/linear unit scale. like 5mm/rev or 0.1rev/rev. 30bit parameter & scale 100000=1.0
@@ -357,6 +386,7 @@
 	#define HOMING_ENABLED BV(7) /*if 0, homing cant be started */
 	#define _HOMING_CFG_MAX_VALUE 0x00ff
 
+//starting and stopping homing:
 #define SMP_HOMING_CONTROL 7532
 
 
@@ -442,6 +472,7 @@
 #define SMP_PID_FREQUENCY 6055
 
 //affects only in MC_VECTOR & MC_BLDC mode
+//used in drive development only, do not use if unsure
 #define SMP_OVERRIDE_COMMUTATION_ANGLE 8000
 #define SMP_TORQUE_CMD_OVERRIDE 8001
 #define SMP_OVERRIDE_COMMUTATION_FREQ 8003
@@ -459,8 +490,8 @@
 #define SMP_DEBUGPARAM4 8103
 #define SMP_DEBUGPARAM5 8104
 #define SMP_DEBUGPARAM6 8105
-#define SMP_FAULT_LOCATION1  8110 //this is for GC side
-#define SMP_FAULT_LOCATION2  8111 //this is for STM side
+#define SMP_FAULT_LOCATION1  8110 //this is for GraniteCore side
+#define SMP_FAULT_LOCATION2  8111 //this is for Argon IO side
 #define SMP_OVERRIDE_PARAM_ADDR_1 8120
 #define SMP_OVERRIDE_PARAM_ADDR_2 8121
 #define SMP_OVERRIDE_PARAM_ADDR_3 8122
@@ -486,7 +517,7 @@
 #define SMP_BOOTLOADER_STAT 193
         #define BOOTLOADER_STAT_FLASH_VERIFIED_OK BV(0)
 
-/*DFU Bootloader parameters end:*/
+/*DFU Bootloader parameters end*/
 
 
 
