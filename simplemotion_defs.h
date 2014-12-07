@@ -265,23 +265,30 @@
 //flag bits & general
 #define SMP_DRIVE_FLAGS 567
 	//bitfield bits:
-	#define FLAG_DISABLED_AT_STARTUP BV(0)
-	#define FLAG_NO_DCBUS_FAULT BV(1)
-	#define FLAG_INVERT_ENCODER BV(3)
-	#define FLAG_INVERT_MOTOR_DIRECTION BV(4) /*invert positive direction*/
-	#define FLAG_DISABLE_DEADTIMECORR_LO_SPEED BV(5)
-	#define FLAG_USE_PULSE_IN_ACCEL_LIMIT BV(7)
-	#define FLAG_2PHASE_AC_MOTOR BV(9)
-	#define FLAG_ALLOW_VOLTAGE_CLIPPING BV(10)
-	#define FLAG_USE_INPUT_LP_FILTER BV(11)
-	#define FLAG_USE_PID_CONTROLLER BV(12)//PIV is the default if bit is 0
-	#define FLAG_INVERTED_HALLS BV(13)
-	#define FLAG_USE_HALLS BV(14)
+    #define FLAG_DISABLED_AT_STARTUP BV(0)
+    #define FLAG_NO_DCBUS_FAULT BV(1)/*obsolete?*/
+    #define FLAG_ENABLE_DIR_INPUT_ON_ABS_SETPOINT BV(2) /*if 1, then use direction input signal for analog and PWM setpoint mode*/
+    #define FLAG_INVERT_ENCODER BV(3)
+    #define FLAG_INVERT_MOTOR_DIRECTION BV(4) /*invert positive direction*/
+    #define FLAG_ENABLE_REQUIRES_PULSING BV(5) /*enable signal must be fed 50hz-1khz toggling signal to validate enable status*/
+    #define FLAG_USE_PULSE_IN_ACCEL_LIMIT BV(7)/*obsolete*/
+    #define FLAG_2PHASE_AC_MOTOR BV(9)/*obsolete*/
+    #define FLAG_ALLOW_VOLTAGE_CLIPPING BV(10)
+    #define FLAG_USE_INPUT_LP_FILTER BV(11)
+    #define FLAG_USE_PID_CONTROLLER BV(12)//PIV is the default if bit is 0/*obsolete*/
+    #define FLAG_INVERTED_HALLS BV(13)
+    #define FLAG_USE_HALLS BV(14)
     #define FLAG_MECH_BRAKE_DURING_PHASING BV(15)
 #define SMP_MOTION_FAULT_THRESHOLD 568
 #define SMP_HV_VOLTAGE_HI_LIMIT 569
 #define SMP_HV_VOLTAGE_LOW_LIMIT 570
 #define SMP_MOTOR_MAX_SPEED 572
+
+//in Ioni only
+#define SMP_ELECTRICAL_MODE 573
+    #define EL_MODE_STANDARD 0
+    #define EL_MODE_IONICUBE 1
+    #define EL_MODE_IONIZER 2
 
 
 //primary feedback loop 200-299
