@@ -98,6 +98,8 @@
 #define SMP_RETURN_PARAM_LEN 10
 #define SMP_TIMEOUT 12
 #define SMP_CUMULATIVE_STATUS 13 //error bits are set here if any, (SMP_CMD_STATUS_... bits). clear by writing 0
+#define SMP_ADDRESS_OFFSET 14 /*used to set or offset device address along physical method, i.e. DIP SW + offset to allow greater range of addresses than switch allows. */
+
 
 //bit mask
 #define SM_BUFCMD_STAT_IDLE 1
@@ -140,6 +142,7 @@
 #define SMP_ANALOG_OUT_VALUE_4 187
 #define SMP_ANALOG_OUT_VALUE_5 188
 // continue to .. 200
+
 
 
 /*
@@ -231,15 +234,21 @@
 	//for drive internal use only:
 	#define _MOTOR_LAST 7
 
+
+
+
+//position follow error trip point
+//velocity follow error trip point. units: velocity command (counts per PIDcycle * divider)
+
 //#define CFG_INPUT_FILTER_LEN 30
 #define SMP_CONTROL_MODE 559
 	//control mode choices:
 	#define CM_TORQUE 3
 	#define CM_VELOCITY 2
 	#define CM_POSITION 1
+	#define CM_NONE 0
 #define SMP_INPUT_MULTIPLIER 560
 #define SMP_INPUT_DIVIDER 561
-//setpoint source
 #define SMP_INPUT_REFERENCE_MODE 562
 	//choices:
 	#define SMP_INPUT_REFERENCE_MODE_SERIALONLY 0
@@ -414,8 +423,9 @@
 #define SMP_SCOPE_CHANNEL_SELECT 905
 
 #define SMP_MECH_BRAKE_RELEASE_DELAY 910
-#define SMP_BRAKE_STOP_ENGAGE_DELAY 911
+#define SMP_MECH_BRAKE_ENGAGE_DELAY 911
 #define SMP_DYNAMIC_BRAKING_SPEED 912
+#define SMP_BRAKE_STOP_ENGAGE_DELAY SMP_MECH_BRAKE_ENGAGE_DELAY /* SMP_BRAKE_STOP_ENGAGE_DELAY is old name, kept for compatibility*/
 
 
 //////////////////////////////////////////////////////////////////////////////////RUNTIME PARAMS 5000-9999
