@@ -504,6 +504,12 @@
 #define SMP_OVERRIDE_REGENRES_DUTY 8004
 #define SMP_DEVICE_TEMPERATURE 8007//reported in 0.01 celsius steps
 #define SMP_CURRENT_LIMITED_TO_MA 8008//actual current limit (based on user settings, device temperature, voltage etc)
+#define SMP_CURRENT_LIMIT_REASON 8009 //last reason why current was clampled
+	#define CURR_LIMIT_REASON_NONE 0
+	#define CURR_LIMIT_REASON_VOLTAGE_SATURATION 1
+	#define CURR_LIMIT_REASON_SETTINGS 2
+	#define CURR_LIMIT_REASON_I2T 3
+	#define CURR_LIMIT_REASON_DRIVE_TEMPERATURE 4
 
 /*IO side CPU sends encoder counter at index every time index is encountered. homing uses this info */
 #define SMP_INDEX_PULSE_LOCATION 8005
