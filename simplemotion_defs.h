@@ -496,6 +496,7 @@
 #define SMP_TORQUE_CMD_OVERRIDE 8001
 #define SMP_OVERRIDE_COMMUTATION_FREQ 8003
 #define SMP_OVERRIDE_REGENRES_DUTY 8004
+#define SMP_DEVICE_TEMPERATURE 8007//reported in 0.01 celsius steps
 
 /*IO side CPU sends encoder counter at index every time index is encountered. homing uses this info */
 #define SMP_INDEX_PULSE_LOCATION 8005
