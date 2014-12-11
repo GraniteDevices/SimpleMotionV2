@@ -88,6 +88,11 @@
 #define SMP_NULL 0
 #define SMP_NODE_ADDRSS 1
 #define SMP_BUS_MODE 2
+//possible values:
+	#define SMP_BUS_MODE_DFU 0
+	#define SMP_BUS_MODE_NORMAL 1
+	#define _SMP_BUS_MODE_LAST 1
+
 #define SMP_SM_VERSION 3
 #define SMP_SM_VERSION_COMPAT 4
 #define SMP_BUS_SPEED 5
@@ -480,6 +485,7 @@
 
 //#define RUNTIME_FEATURES1 6000
 #define SMP_SERIAL_NR 6002
+#define SMP_UID_NR 6003
 #define SMP_DRIVE_CAPABILITIES 6006
 #define SMP_FIRMWARE_VERSION 6010
 #define SMP_FIRMWARE_BACKWARDS_COMP_VERSION 6011
@@ -536,6 +542,8 @@
 //bootloaded status
 #define SMP_BOOTLOADER_STAT 193
         #define BOOTLOADER_STAT_FLASH_VERIFIED_OK BV(0)
+#define SMP_BOOTLOADER_WRITE_OTP 194
+
 
 /*DFU Bootloader parameters end*/
 
