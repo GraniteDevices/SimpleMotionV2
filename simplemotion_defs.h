@@ -101,9 +101,21 @@
 #define SMP_BUFFERED_CMD_PERIOD 8
 #define SMP_RETURN_PARAM_ADDR 9
 #define SMP_RETURN_PARAM_LEN 10
+/*SMP_TIMOUT defines how long device waits for one packet to transmit before discarding it. unit 0.1 milliseconds*/
 #define SMP_TIMEOUT 12
 #define SMP_CUMULATIVE_STATUS 13 //error bits are set here if any, (SMP_CMD_STATUS_... bits). clear by writing 0
 #define SMP_ADDRESS_OFFSET 14 /*used to set or offset device address along physical method, i.e. DIP SW + offset to allow greater range of addresses than switch allows. */
+/* SMP_FAULT_BEHAVIOR defines maximum amount of time between to valid received SM packets to device and other SM
+ * fault behavior that affect drive operation.
+ *
+ * If comm is broken longer than watchdog time, drive will go fault stop state.
+ * Can be used for additional safety stop when drives are controlled only onver SM bus.
+ *
+ * -default value 0 means infinite time and also SM comm errors will not cause device faultstop
+ * -value 1 means that drive will have watchdog disabeld but will faultstop on any SM command error
+ * -values 2-99 reserved for future use
+ * -value >100 defines watchdog, it means drive fault stop on any SM command error or if no valid commands arrive within number of 0.1*millisconds.  */
+#define SMP_FAULT_BEHAVIOR 15
 
 
 //bit mask
