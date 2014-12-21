@@ -32,14 +32,7 @@
 #endif
 
 
-//SMP command types
-#define SMPCMD_SETPARAMADDR 2
-#define SMPCMD_24B 1
-#define SMPCMD_32B 0
-#define SMPRET_OTHER 3
-#define SMPRET_16B 2
-#define SMPRET_24B 1
-#define SMPRET_32B 0
+
 
 
 /*
@@ -59,15 +52,69 @@
 //mask for addresses
 #define SMP_ADDRESS_BITS_MASK  0x1FFF //E=1110
 
+/*
+ * SM payload command types and return value types.
+ */
 
 //SMP packet header bits (2 bits). These determine content length and type
-#define SMPCMD_SET_PARAM_ADDR 2
-#define SMPCMD_24B 1
-#define SMPCMD_32B 0
-#define SMPRET_CMD_STATUS 3
-#define SMPRET_16B 2
-#define SMPRET_24B 1
-#define SMPRET_32B 0
+#define SMPCMD_SETPARAMADDR 2 //Deprecated name, dont use these. Use new names seen below
+#define SMPCMD_SET_PARAM_ADDR 2 //Deprecated name, dont use these. Use new names seen below
+#define SMPCMD_24B 1 //Deprecated name, dont use these. Use new names seen below
+#define SMPCMD_32B 0 //Deprecated name, dont use these. Use new names seen below
+#define SMPRET_CMD_STATUS 3 //Deprecated name, dont use these. Use new names seen below
+#define SMPRET_OTHER 3 //Deprecated name, dont use these. Use new names seen below
+#define SMPRET_16B 2 //Deprecated name, dont use these. Use new names seen below
+#define SMPRET_24B 1 //Deprecated name, dont use these. Use new names seen below
+#define SMPRET_32B 0 //Deprecated name, dont use these. Use new names seen below
+
+//
+//new naming for the above values (more clear meanings):
+//
+
+//OUTBOUND SM COMMAND PAYLOAD SUBPACKET TYPES
+//each SMCMD_INSTANT_CMD and SMCMD_BUFFERED_CMD payload is filled with subpackets of following types
+	//sets param address (one of SMP_ defines) where next written value goes to.
+	//consumes 2 bytes from payload buffer.
+	#define SM_SET_WRITE_ADDRESS 2
+	//writes value to previously defined address. consumes 3 bytes (24 bits) from payload buffer.
+	//can hold value size up to 22 bits. bits above 22 are clipped (transmitted as 0s)
+	#define SM_WRITE_VALUE_24B 1
+	//writes value to previously defined address. consumes 4 bytes (32 bits) from payload buffer.
+	//can hold value size up to 30 bits. bits above 30 are clipped (transmitted as 0s)
+	#define SM_WRITE_VALUE_32B 0
+
+//INBOUND SM COMMAND PAYLOAD SUBPACKET TYPES
+//each outbound subpacket will return one of these. the type and address what is being returned
+//is defined by parameters SMP_RETURN_PARAM_ADDR and SMP_RETURN_PARAM_LEN
+	//return value contains SM bus status bits (possible faults etc).
+	//consumes 1 byte from payload buffer
+	#define SM_RETURN_STATUS 3
+	//return value contains a read value from address defined by SMP_RETURN_PARAM_ADDR
+	//consumes 2 byte from payload buffer. can contain value up to 14 bits. value greater than 14 bits is clipped (padded with 0s)
+	#define SM_RETURN_VALUE_16B 2
+	//return value contains a read value from address defined by SMP_RETURN_PARAM_ADDR
+	//consumes 3 byte from payload buffer. can contain value up to 14 bits. value greater than 22 bits is clipped (padded with 0s)
+	#define SM_RETURN_VALUE_24B 1
+	//return value contains a read value from address defined by SMP_RETURN_PARAM_ADDR
+	//consumes 4 byte from payload buffer. can contain value up to 30 bits. value greater than 14 bits is clipped (padded with 0s)
+	#define SM_RETURN_VALUE_32B 0
+
+/* subpacket format
+ *
+ * header:
+ * 2 bits packet type which defines also lenght of subpacket
+ * data:
+ * rest of subpacket contains the transmitted value
+ *
+ * example:
+ * SM_WRITE_VALUE_32B packet looks like this
+ *
+ * -2 first bits are 00
+ * -next 30 bits carry the value
+ *
+ * SMV2 library takes care of forming subpackets so user only needs to care about using the macros above
+ *
+ */
 
 //if command is to set param addr to this -> NOP
 #define SMP_ADDR_NOP 0x3fff
