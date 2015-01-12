@@ -370,6 +370,7 @@
 #define SMP_VEL_P 202
 #define SMP_VEL_FF 220
 #define SMP_ACC_FF 221
+#define SMP_POS_FF 222
 
 //anti dither limits
 #define SMP_ANTIDITHER_MODE 230
