@@ -295,6 +295,8 @@
     #define MOTOR_AC_VECTOR_2PHA 2  /*2 phase ac or bldc */
 	//3 phase AC motor
     #define MOTOR_AC_VECTOR 3 /*3 phase ac or bldc */
+	//2 phase stepper
+	#define MOTOR_STEPPER_2PHA 4 /*2 phase stepper */
 	//for drive internal use only:
 	#define _MOTOR_LAST 7
 
