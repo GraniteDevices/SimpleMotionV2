@@ -17,6 +17,51 @@
  * 8191 NOP command. if SM command SMPCMD_SET_PARAM_ADDR with SMP_ADDR_NOP as parameter is sent, no actions are taken in nodes. it's NOP (no operation) command.
  */
 
+/* SMV2 protocol change log:
+ * Version 20:
+ *   -V20 was introduced with Argon FW 1.0.0 and present at least until 1.4.0
+ * Version 21 (is backwards compatible in syntax but not in setpoint behavior, see details below):
+ *   -V25 was introduced with IONI
+ *   -setpoint calculation is different:
+ *     now there is only one common setpoint and all ABS and INC commands (buffered & instant)
+ *     change the same variable. In V20 there was separate setpoint variables for each stream
+ *     (instant & buffered) and for INC and ABS separately and finally all setpoints were summed together.
+ *     Formula for total setpoint is = SMV2setpoint+OptionalPhysicalSetpoint (step/dir, analog etc)
+ *   -in buffered stream, only setpoint commands execute on timed pace. all others execute as fast as possible.
+ *    this makes it possible to insert any parameter read/write commands in middle of buffered motion.
+ *   -implemented watchdog functionality in new param SMP_FAULT_BEHAVIOR
+ *   -added param SMP_ADDRESS_OFFSET
+ */
+
+/* Important when using SMV2 protocol:
+ *
+ * SMP_SM_VERSION_COMPAT defines the oldest SM bus version in which the current version is
+ * fully backwards compatible. If you write app that supports SM bus versions between N and M (i.e. N=20 M=25),
+ * then check that connected device complies with the test (pseudo code):
+ *
+ *
+	smuint32 NEWEST_SUPPORTED_SMV2_VERSION=M;
+	smuint32 OLDEST_SUPPORTED_SMV2_VERSION=N;
+	smuint32 smv2version=getParam(SMP_SM_VERSION);
+	smuint32 smv2compatversion=getParam(SMP_SM_COMPAT_VERSION);
+
+	if(smv2version>NEWEST_SUPPORTED_SMV2_VERSION && smv2compatversion>NEWEST_SUPPORTED_SMV2_VERSION)
+	{
+		error("SimpleMotion protocol version too new, not supported by this software version. Check for upgrades. Connected SMV2 Version: " + smv2version);
+		return false;
+	}
+	if(smv2version<OLDEST_SUPPORTED_SMV2_VERSION && smv2compatversion < OLDEST_SUPPORTED_SMV2_VERSION)
+	{
+		error("SimpleMotion protocol version too old, not supported by this software version. Try older versions. Connected SMV2 Version: " + smv2version);
+		return false;
+	}
+ *
+ * If test fails, then connected device may not be compatible with your app.
+ *
+ * Its strongly recommended to read these paramers and verify compatibility before any other actions
+ * and do same kind of test also with SMP_FIRMWARE_VERSION and SMP_FIRMWARE_BACKWARDS_COMP_VERSION.
+ */
+
 
 #ifndef SIMPLEMOTION_DEFS_H_
 #define SIMPLEMOTION_DEFS_H_
@@ -140,7 +185,10 @@
 	#define SMP_BUS_MODE_NORMAL 1
 	#define _SMP_BUS_MODE_LAST 1
 
+/* SMP_SM_VERSION returns current SM protocol version */
 #define SMP_SM_VERSION 3
+/* SMP_SM_VERSION_COMPAT defines the oldest SM bus version in which the current version is
+ * fully backwards compatible. */
 #define SMP_SM_VERSION_COMPAT 4
 #define SMP_BUS_SPEED 5
 #define SMP_BUFFER_FREE_BYTES 6
@@ -158,10 +206,12 @@
  * If comm is broken longer than watchdog time, drive will go fault stop state.
  * Can be used for additional safety stop when drives are controlled only onver SM bus.
  *
- * -default value 0 means infinite time and also SM comm errors will not cause device faultstop
- * -value 1 means that drive will have watchdog disabeld but will faultstop on any SM command error
- * -values 2-99 reserved for future use
- * -value >100 defines watchdog, it means drive fault stop on any SM command error or if no valid commands arrive within number of 0.1*millisconds.  */
+ * Parameter is bit field:
+ * bit 0 (LSB): enable device fault stop on any SM comm error (CRC, invalid value etc)
+ * bits 1-7: reserved, always 0
+ * bits 8-17: watchdog timeout value. nonzero enables watchdog. scale: 1 count=10ms, so allows 0.01-10.230 s delay.
+ * bits 18-32: reserved, always 0
+ */
 #define SMP_FAULT_BEHAVIOR 15
 
 
@@ -250,7 +300,7 @@
 #define SMP_FIRST_FAULT 8115
 #define SMP_STATUS 553
 	//bitfield bits:
-	#define STAT_POWER_ON BV(0)
+	#define STAT_RESERVED_ BV(0)
 	#define STAT_TARGET_REACHED BV(1)//this is 1 when trajectory planner target reached
 	#define STAT_FERROR_RECOVERY BV(2)
 	#define STAT_RUN BV(3)//run is true only if motor is being actually driven. run=0 clears integrators etc
