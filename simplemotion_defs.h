@@ -329,6 +329,8 @@
     #define SMP_SYSTEM_STOP_PRODUCTION_TEST 32 //production testing function
 	//restart device into DFU mode
 	#define SMP_SYSTEM_CONTROL_RESTART_TO_DFU_MODE 64
+	//read miscellaneous device specific flag bits
+	#define SMP_SYSTEM_CONTROL_GET_FLAGS 128
 
 	//follow error tolerance for position control:
 #define SMP_POS_FERROR_TRIP 555
