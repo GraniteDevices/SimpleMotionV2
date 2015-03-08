@@ -487,21 +487,23 @@
 	//bitfiled values:
 	//CB1 & CB2 enables must be 1 to have drive enabled
 	//Control bits 1 are controlled by host software
-	#define SMP_CB1_ENABLE BV(0)
+	#define SMP_CB1_ENABLE BV(0)//software enable
 	#define SMP_CB1_CLEARFAULTS BV(1)
-	#define SMP_CB1_QUICKSTOP BV(2)
-	#define SMP_CB1_USE_TRAJPLANNER BV(3)
+	#define SMP_CB1_QUICKSTOP BV(2)//not implemented at the moment
+	#define SMP_CB1_USE_TRAJPLANNER BV(3)//not implemented at the moment
+	#define SMP_CB1_START_HOMING BV(4)//write 1 here to start homing //not implemented at the moment
 	#define SMP_STATIC_CBS1 (SMP_CB1_ENABLE|SMP_CB1_USE_TRAJPLANNER)
 
 #define SMP_CONTROL_BITS2 2534
 	//bitfiled values:
 	//both enables must be 1 to have drive enabled
-	//Control bits 2 are controlled by physical inputs
-	#define SMP_CB2_ENABLE BV(0)
+	//Control bits 2 are controlled by physical inputs, dont try to write on these thu SMV2. reading is ok
+	#define SMP_CB2_ENABLE BV(0)//hadrware enable pin
 	#define SMP_CB2_ENA_POS_FEED BV(1)
 	#define SMP_CB2_ENA_NEG_FEED BV(2)
 	#define SMP_CB2_HOMESW_ON BV(3)
     #define SMP_CB2_CLEARFAULTS BV(4)
+    #define SMP_CB2_START_HOMING BV(5)
 
 //trajectory planner
 #define SMP_TRAJ_PLANNER_ACCEL 800
