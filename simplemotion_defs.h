@@ -331,6 +331,17 @@
 	#define SMP_SYSTEM_CONTROL_RESTART_TO_DFU_MODE 64
 	//read miscellaneous device specific flag bits
 	#define SMP_SYSTEM_CONTROL_GET_FLAGS 128
+	/*start measure motor RL function.
+	 * poll debug param 5 for state
+	 * -100 fail
+	 * 700 busy
+	 * 800 success -new RL values inserted in drive params
+	 *
+	 * SMP_STATUS must obey:
+	 * requiredStats=STAT_INITIALIZED|STAT_RUN|STAT_ENABLED|STAT_VOLTAGES_OK;
+       deniedStats=STAT_FERROR_RECOVERY|STAT_PERMANENT_STOP|STAT_STO_ACTIVE|STAT_FAULTSTOP|STAT_HOMING;
+	 */
+	#define SMP_SYSTEM_CONTROL_MEASURE_MOTOR_RL 256
 
 	//follow error tolerance for position control:
 #define SMP_POS_FERROR_TRIP 555
