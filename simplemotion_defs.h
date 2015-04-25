@@ -478,7 +478,17 @@
 #define SMP_AXIS_UNITS 492
 //0=none 1=qei1 2=qei2 3=resolver 4=ssi 5=biss
 #define SMP_FB1_DEVICE_SELECTION 493
+	#define SMP_FBD_NONE 0
+	#define SMP_FBD_INCR1 1
+	#define SMP_FBD_INCR2 2
+	#define SMP_FBD_RESOLVER 3
+	#define SMP_FBD_SSI 4
+	#define SMP_FBD_BISS 5
+	#define SMP_FBD_SINCOS16X 6
+	#define SMP_FBD_SINCOS64X 7
+	#define SMP_FBD_SINCOS256X 8
 #define SMP_FB2_DEVICE_SELECTION 494
+
 //in 1/2500 seconds.
 #define SMP_GOAL_FAULT_FILTER_TIME 495
 //in speed scale
