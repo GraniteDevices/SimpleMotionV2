@@ -571,6 +571,25 @@
 #define SMP_DYNAMIC_BRAKING_SPEED 912
 #define SMP_BRAKE_STOP_ENGAGE_DELAY SMP_MECH_BRAKE_ENGAGE_DELAY /* SMP_BRAKE_STOP_ENGAGE_DELAY is old name, kept for compatibility*/
 
+/*Racing simulator wheel torque control specific settings, currently IONI only. Values:
+ * 0 = disabled, standard drive operation
+ * nonzero = calculate value by:
+ *    round(allowed_rotation_in_counts/100)*100 + mode
+ *
+ *    where mode:
+ *    	0=only rotation limit on
+ *    	1=rotation limit and analog trimpot torque scaling on. Analog input 0-5V sets torque scale to 10-100%
+ *
+ *   example 1: we want rotation limit of 8192 encoder counts (for each direction) and no scaling input, we
+ *   use value 8200.
+ *
+ *   example 2: we want rotation limit of 8192 encoder counts (for each direction) and torque
+ *   command scaling input, we use value 8201
+ *
+ *   Tip: use Granity Ctrl+P (Shortcut) dialog to set value:
+ *   http://granitedevices.com/wiki/Reading_and_writing_an_arbitrary_parameter_with_Granity
+ */
+#define SMP_SIMWHEEL_MODE 920
 
 //////////////////////////////////////////////////////////////////////////////////RUNTIME PARAMS 5000-9999
 
