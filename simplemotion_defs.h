@@ -463,6 +463,34 @@
 #define SMP_TORQUEFAULT_MARGIN 420
 #define SMP_TORQUEFAULT_OC_TOLERANCE 421
 
+/* next four parameters allow compensation of motor detent torque and torque ripple (cogging torque).
+ * xxx_TORQUE_FUNCTION and xxx_TORQUE_AMPLITUDE sets function, value range is 0-25 and used like:
+ *
+ * if((function%1)==0) xxx_torque_modifier=sin(electrical_angle*(function/2))*amplitude;
+ * else xxx_torque_modifier=cos(electrical_angle*(function/2))*amplitude;
+ *
+ * i.e. functions go like:
+ * 0=no effect (sin(0a))
+ * 1=constant (cos(0a))
+ * 2=sin(1a)
+ * 3=cos(1a)
+ * 4=sin(2a)
+ * 5=cos(a2)
+ * 6=sin(3a)
+ * 7=cos(3a)
+ *
+ *
+ * Detent torque compensation value (static_torque modifier) is added to the original torque setpoint.
+ * Ripple torque compensation value (dynamic_torque modifier) will modulate the original torque setpoint.
+ * Overall formula how these affect to troque output is:
+ *
+ * torqueSetpoint=torqueSetpoint*(dynamic_torque_modifier+1) +static_torque_modifier;
+ */
+#define SMP_MOTOR_STATIC_TORQUE_FUNCTION 424
+#define SMP_MOTOR_STATIC_TORQUE_AMPLITUDE 425
+#define SMP_MOTOR_DYNAMIC_TORQUE_FUNCTION 426
+#define SMP_MOTOR_DYNAMIC_TORQUE_AMPLITUDE 427
+
 //motor thermal time constant in seconds:
 #define SMP_MOTOR_THERMAL_TIMECONSTANT 430
 //how fast to ramp up voltage during phase search:
