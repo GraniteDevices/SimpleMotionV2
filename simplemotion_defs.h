@@ -342,6 +342,8 @@
        deniedStats=STAT_FERROR_RECOVERY|STAT_PERMANENT_STOP|STAT_STO_ACTIVE|STAT_FAULTSTOP|STAT_HOMING;
 	 */
 	#define SMP_SYSTEM_CONTROL_MEASURE_MOTOR_RL 256
+	//resets position mode FB and setpoint values to 0, and also resets homing status. useful after using in vel or torq mode.
+	#define SMP_SYSTEM_CONTROL_RESET_FB_AND_SETPOINT 512
 
 	//follow error tolerance for position control:
 #define SMP_POS_FERROR_TRIP 555
