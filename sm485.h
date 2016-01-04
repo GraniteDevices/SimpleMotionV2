@@ -52,6 +52,14 @@
 #define SMCMD_GET_CLOCK SMCMD_ID(10,SMCMD_MASK_0_PARAMS)
 #define SMCMD_GET_CLOCK_RET SMCMD_ID(10,SMCMD_MASK_2_PARAMS|SMCMD_MASK_RETURN)
 
+// SMCMD_FAST_UPDATE_CYCLE is a high priority command for fast realtime cyclic operation. content and lenght of
+// payload data may be application specific and may be controlled by other variables
+// cmd u8 ID, u8 toaddr, u32 data u16 crc
+// ret u8 ID, u8 fromaddr, u32 data, u16 crc
+#define SMCMD_FAST_UPDATE_CYCLE SMCMD_ID(2,SMCMD_MASK_0_PARAMS)
+#define SMCMD_FAST_UPDATE_CYCLE_RET SMCMD_ID(2,SMCMD_MASK_0_PARAMS|SMCMD_MASK_RETURN)
+
+
 #ifdef PROCESS_IMAGE_SUPPORT
 
 //PROCESS_IMAGE communication not supported by SM V2.0.0. placeholders here
