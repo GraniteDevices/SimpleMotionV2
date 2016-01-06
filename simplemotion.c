@@ -376,7 +376,7 @@ SM_STATUS smFastUpdateCycle( smbus handle, smuint8 nodeAddress, smuint16 write1,
     }
 
     //parse
-    if( cmd[5]==calcCRC8Buf(cmd,4,0x52) || cmd[0]!=SMCMD_FAST_UPDATE_CYCLE_RET )
+    if( cmd[5]!=calcCRC8Buf(cmd,5,0x52) || cmd[0]!=SMCMD_FAST_UPDATE_CYCLE_RET )
     {
         return recordStatus(handle,SM_ERR_COMMUNICATION);//packet error
     }
