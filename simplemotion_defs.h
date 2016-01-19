@@ -703,6 +703,7 @@
 	#define CURR_LIMIT_REASON_SETTINGS 2
 	#define CURR_LIMIT_REASON_I2T 3
 	#define CURR_LIMIT_REASON_DRIVE_TEMPERATURE 4
+	#define CURR_LIMIT_REASON_POWER_CAP 5
 
 /*IO side CPU sends encoder counter at index every time index is encountered. homing uses this info */
 #define SMP_INDEX_PULSE_LOCATION 8005
