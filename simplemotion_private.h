@@ -38,6 +38,7 @@
 
 extern const smuint8 table_crc16_hi[];
 extern const smuint8 table_crc16_lo[];
+extern const smuint8 table_crc8[];
 extern FILE *smDebugOut; //such as stderr or file handle. if NULL, debug info disbled
 extern smuint16 readTimeoutMs;
 

@@ -94,7 +94,6 @@ void smDebug( smbus handle, smVerbosityLevel verbositylevel, char *format, ...)
         va_end(fmtargs);
         fprintf(smDebugOut,"%s: %s",smBus[handle].busDeviceName, buffer);
     }
-
 }
 #else
 #define smDebug(...)
@@ -141,6 +140,19 @@ smuint16 calcCRC16Buf(const char *buffer, smuint16 buffer_length)
     }
 
     return (crc_hi << 8 | crc_lo);
+}
+
+smuint8 calcCRC8Buf( smuint8 *buf, int len, int crcinit )
+{
+    int i;
+    smuint8 crc=crcinit;
+
+    for(i=0;i<len;i++)
+    {
+            crc=table_crc8[crc^buf[i]];
+    }
+
+    return crc;
 }
 
 SM_STATUS smSetTimeout( smuint16 millsecs )
@@ -222,7 +234,7 @@ LIB SM_STATUS smCloseBus( const smbus bushandle )
 
     if( smBDClose(smBus[bushandle].bdHandle) == smfalse ) return recordStatus(bushandle,SM_ERR_BUS);
 
-    return recordStatus(bushandle,SM_OK);
+    return SM_OK;
 }
 
 char *cmdidToStr(smuint8 cmdid )
@@ -242,6 +254,8 @@ char *cmdidToStr(smuint8 cmdid )
 #endif
     case SMCMD_GET_CLOCK: str="SMCMD_GET_CLOCK";break;
     case SMCMD_GET_CLOCK_RET :str="SMCMD_GET_CLOCK_RET";break;
+    case SMCMD_FAST_UPDATE_CYCLE:str="SMCMD_FAST_UPDATE_CYCLE";break;
+    case SMCMD_FAST_UPDATE_CYCLE_RET:str="SMCMD_FAST_UPDATE_CYCLE_RET";break;
     default: str="unknown cmdid";break;
     }
     //puts(str);
@@ -322,6 +336,62 @@ SM_STATUS smSendSMCMD( smbus handle, smuint8 cmdid, smuint8 addr, smuint8 datale
     return recordStatus(handle,SM_OK);
 }
 
+
+SM_STATUS smFastUpdateCycle( smbus handle, smuint8 nodeAddress, smuint16 write1, smuint16 write2, smuint16 *read1, smuint16 *read2)
+{
+    //check if bus handle is valid & opened
+    if(smIsHandleOpen(handle)==smfalse) return SM_ERR_NODEVICE;
+
+    smDebug(handle, Mid, "> %s (addr=%d, w1=%d, w2=%d)\n",cmdidToStr(SMCMD_FAST_UPDATE_CYCLE),
+            nodeAddress,
+            write1,write2);
+
+
+    //form the tx packet
+    smuint8 cmd[8];
+    int i;
+    cmd[0]=SMCMD_FAST_UPDATE_CYCLE;
+    cmd[1]=nodeAddress;
+    bufput16bit(cmd,2,write1);
+    bufput16bit(cmd,4,write2);
+    cmd[6]=calcCRC8Buf(cmd,6,0x52);
+
+    //send
+    for(i=0;i<7;i++)
+    {
+        if( smWriteByte(handle,cmd[i], NULL) != smtrue )
+            return recordStatus(handle,SM_ERR_BUS);
+    }
+    smTransmitBuffer(handle);//this sends the bytes entered with smWriteByte
+
+    smDebug(handle, High, "  Reading reply packet\n");
+    for(i=0;i<6;i++)
+    {
+        smbool success;
+        smuint8 rx;
+        success=smBDRead(smBus[handle].bdHandle,&rx);
+        cmd[i]=rx;
+        if(success!=smtrue)
+            return recordStatus(handle,SM_ERR_BUS|SM_ERR_LENGTH);//no enough data received
+    }
+
+    //parse
+    if( cmd[5]!=calcCRC8Buf(cmd,5,0x52) || cmd[0]!=SMCMD_FAST_UPDATE_CYCLE_RET )
+    {
+        return recordStatus(handle,SM_ERR_COMMUNICATION);//packet error
+    }
+    if(read1!=NULL)
+        *read1=bufget16bit(cmd,1);
+    if(read2!=NULL)
+        *read2=bufget16bit(cmd,3);
+
+    //return data read complete
+    smDebug(handle,Mid, "< %s (id=%d, r1=%d, r2=%d)\n",
+            cmdidToStr( cmd[0] ),
+            cmd[0],*read1,*read2);
+
+    return recordStatus(handle,SM_OK);
+}
 
 
 

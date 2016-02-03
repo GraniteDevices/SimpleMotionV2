@@ -134,6 +134,10 @@ LIB SM_STATUS smSetParameter( const smbus handle, const smaddr nodeAddress, cons
 
 LIB SM_STATUS smGetBufferClock( const smbus handle, const smaddr targetaddr, smuint16 *clock );
 
+/** smFastUpdateCycle uses special SimpleMotion command to perform fast turaround communication. May be used with cyclic real time control. Parameter & return data
+ *content are application specific and defined . */
+LIB SM_STATUS smFastUpdateCycle( smbus handle, smuint8 nodeAddress, smuint16 write1, smuint16 write2, smuint16 *read1, smuint16 *read2);
+
 #ifdef __cplusplus
 }
 #endif
