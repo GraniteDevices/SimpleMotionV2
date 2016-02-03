@@ -234,7 +234,7 @@ LIB SM_STATUS smCloseBus( const smbus bushandle )
 
     if( smBDClose(smBus[bushandle].bdHandle) == smfalse ) return recordStatus(bushandle,SM_ERR_BUS);
 
-    return recordStatus(bushandle,SM_OK);
+    return SM_OK;
 }
 
 char *cmdidToStr(smuint8 cmdid )
