@@ -46,6 +46,13 @@ void smDebug( smbus handle, smVerbosityLevel verbositylevel, char *format, ...);
 
 SM_STATUS smRawCmd( const char *axisname, smuint8 cmd, smuint16 val, smuint32 *retdata );
 
+/*Workaround to have packed structs that compile on GCC and MSVC*/
+#ifdef __GNUC__
+#define PACKED __attribute__ ((__packed__))
+#else/*Assuming MSVC*/
+#define PACKED
+#pragma pack(push,1)
+#endif
 
 typedef struct {
         /* ID=0 param size 30 bits (cmd total 4 bytes)
@@ -55,7 +62,7 @@ typedef struct {
          */
         long param :30; //LSB 30 bits
         long ID:2; //MSB 2 bits. when serailzied to bytestream byte4 must be transmitted first to contain ID
-} __attribute__ ((packed)) SMPayloadCommand32;
+} PACKED SMPayloadCommand32;
 
 typedef struct {
         /* ID=0 param size 30 bits (cmd total 4 bytes)
@@ -65,7 +72,7 @@ typedef struct {
          */
         long param :14; //LSB 30 bits
         long ID:2; //MSB 2 bits. when serailzied to bytestream byte4 must be transmitted first to contain ID
-} __attribute__ ((packed)) SMPayloadCommand16;
+} PACKED SMPayloadCommand16;
 
 typedef struct {
         /* ID=0 param size 30 bits (cmd total 4 bytes)
@@ -75,7 +82,7 @@ typedef struct {
          */
         long param :22; //MSB 30 bits
         long ID:2; //MSB 2 bits. when serailzied to bytestream byte4 must be transmitted first to contain ID
-} __attribute__ ((packed)) SMPayloadCommand24;
+} PACKED SMPayloadCommand24;
 
 //SM payload command return data structure
 typedef struct {
@@ -86,7 +93,8 @@ typedef struct {
          */
         long retData: 30; //LSB 30 bits
         long ID:2; //MSB 2 bits. when serailzied to bytestream byte4 must be transmitted first to contain ID
-} __attribute__ ((packed)) SMPayloadCommandRet32;
+} PACKED SMPayloadCommandRet32;
+
 //SM payload command return data structure
 typedef struct {
         /* ID=0 ret data 30 bits (tot 4 bytes)
@@ -96,7 +104,8 @@ typedef struct {
          */
         long retData: 22; //LSB 30 bits
         long ID:2; //MSB 2 bits. when serailzied to bytestream byte4 must be transmitted first to contain ID
-} __attribute__ ((packed)) SMPayloadCommandRet24;
+} PACKED SMPayloadCommandRet24;
+
 //SM payload command return data structure
 typedef struct {
         /* ID=0 ret data 30 bits (tot 4 bytes)
@@ -106,7 +115,8 @@ typedef struct {
          */
         long retData: 14; //LSB 30 bits
         long ID:2; //MSB 2 bits. when serailzied to bytestream byte4 must be transmitted first to contain ID
-} __attribute__ ((packed)) SMPayloadCommandRet16;
+} PACKED SMPayloadCommandRet16;
+
 //SM payload command return data structure
 typedef struct {
         /* ID=0 ret data 30 bits (tot 4 bytes)
@@ -116,6 +126,14 @@ typedef struct {
          */
         long retData: 6; //LSB 30 bits
         long ID:2; //MSB 2 bits. when serailzied to bytestream byte4 must be transmitted first to contain ID
-} __attribute__ ((packed)) SMPayloadCommandRet8;
+} PACKED SMPayloadCommandRet8;
+
+/*Workaround to have packed structs that compile on GCC and MSVC*/
+#ifdef __GNUC__
+#else/*Assuming MSVC*/
+#pragma pack(pop)
+#undef PACKED
+#endif
+
 
 #endif // SIMPLEMOTION_PRIVATE_H
