@@ -43,6 +43,8 @@ extern FILE *smDebugOut; //such as stderr or file handle. if NULL, debug info di
 extern smuint16 readTimeoutMs;
 
 void smDebug( smbus handle, smVerbosityLevel verbositylevel, char *format, ...);
+//accumulates status to internal variable by ORing the bits. returns same value that is fed as paramter
+SM_STATUS recordStatus( const smbus handle, const SM_STATUS stat );
 
 SM_STATUS smRawCmd( const char *axisname, smuint8 cmd, smuint16 val, smuint32 *retdata );
 
