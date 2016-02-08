@@ -1,6 +1,9 @@
 #ifndef BUFFEREDMOTION_H
 #define BUFFEREDMOTION_H
 
+#ifdef __cplusplus
+extern "C"{
+#endif
 
 #include "simplemotion.h"
 
@@ -47,9 +50,18 @@ LIB SM_STATUS smBufferedDeinit( BufferedMotionAxis *axis );
 
 /* this also starts buffered motion when it's not running*/
 LIB SM_STATUS smBufferedRunAndSyncClocks( BufferedMotionAxis *axis );
-LIB SM_STATUS smBufferedGetFree(BufferedMotionAxis *axis, smint32 *numPoints );
-LIB SM_STATUS smBufferedFillAndReceive( BufferedMotionAxis *axis, smint32 numFillPoints, smint32 *fillPoints, smint32 *numReceivedPoints, smint32 *receivedPoints );
-/** this will stop executing buffered motion immediately and discard rest of already filled buffer on a given axis. May cause drive fault state such as tracking error if done at high speed because stop happens without deceleration.*/
+LIB SM_STATUS smBufferedGetFree(BufferedMotionAxis *axis, smint32 *numBytesFree );
+LIB smint32 smBufferedGetMaxFillSize(BufferedMotionAxis *axis, smint32 numBytesFree );
+LIB smint32 smBufferedGetBytesConsumed(BufferedMotionAxis *axis, smint32 numFillPoints );
+LIB SM_STATUS smBufferedFillAndReceive( BufferedMotionAxis *axis, smint32 numFillPoints, smint32 *fillPoints, smint32 *numReceivedPoints, smint32 *receivedPoints, smint32 *bytesFilled );
+/** This will stop executing buffered motion immediately and discard rest of already filled buffer on a given axis. May cause drive fault state such as tracking error if done at high speed because stop happens without deceleration.
+Note: this will not stop motion, but just stop executing the sent buffered commands. The last executed motion point will be still followed by drive. So this is bad function
+for quick stopping stopping, for stop to the actual place consider using disable drive instead (prefferably phsyical input disable).
+*/
 LIB SM_STATUS smBufferedAbort(BufferedMotionAxis *axis);
 
+
+#ifdef __cplusplus
+}
+#endif
 #endif // BUFFEREDMOTION_H

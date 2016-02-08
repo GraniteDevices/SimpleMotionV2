@@ -1,9 +1,10 @@
 #include "simplemotion.h"
 #include "simplemotion_private.h"
 #include "bufferedmotion.h"
+#include "sm485.h"
 
 /** initialize buffered motion for one axis with address and samplerate (Hz) */
-LIB SM_STATUS smBufferedInit(BufferedMotionAxis *newAxis, smbus handle, smaddr deviceAddress, smint32 sampleRate, smint16 readParamAddr, smuint8 readDataLength )
+SM_STATUS smBufferedInit(BufferedMotionAxis *newAxis, smbus handle, smaddr deviceAddress, smint32 sampleRate, smint16 readParamAddr, smuint8 readDataLength )
 {
     //value out of range
     if(sampleRate<1 || sampleRate>2500)
@@ -55,7 +56,7 @@ LIB SM_STATUS smBufferedInit(BufferedMotionAxis *newAxis, smbus handle, smaddr d
 }
 
 /** uninitialize axis from buffered motion, recommended to call this before closing bus so drive's adjusted parameters are restored to originals*/
-LIB SM_STATUS smBufferedDeinit( BufferedMotionAxis *axis )
+SM_STATUS smBufferedDeinit( BufferedMotionAxis *axis )
 {
     smBufferedAbort(axis);
 
@@ -79,32 +80,52 @@ SM_STATUS smBufferedRunAndSyncClocks(BufferedMotionAxis *axis)
     return smGetBufferClock( axis->bushandle, axis->deviceAddress, &axis->driveClock );
 }
 
-SM_STATUS smBufferedGetFree(BufferedMotionAxis *axis, smint32 *numPoints )
+SM_STATUS smBufferedGetFree(BufferedMotionAxis *axis, smint32 *numBytesFree )
 {
     smint32 freebytes;
 
     if(smRead1Parameter(axis->bushandle,axis->deviceAddress,SMP_BUFFER_FREE_BYTES,&freebytes)!=SM_OK)
     {
-        *numPoints=0;//read has failed, assume 0
+        *numBytesFree=0;//read has failed, assume 0
         return getCumulativeStatus(axis->bushandle);
     }
 
     axis->bufferFreeBytes=freebytes;
-    axis->bufferFill=100*freebytes/axis->bufferLength;//calc buffer fill 0-100%
+    axis->bufferFill=100*(axis->bufferLength-freebytes)/axis->bufferLength;//calc buffer fill 0-100%
 
-    //calculate number of points that can be uploaded to buffer (max size 120 bytes and fill consumption is 2+4+2+3*(n-1) bytes)
-    if(axis->readParamInitialized==smtrue)
-        //*numPoints=(freebytes-2-4-2)/3+1;
-        *numPoints=(freebytes-2-4-2)/4+1;
-    else
-        //*numPoints=(freebytes-2-4-2 -2-2-2-2)/3+1;//if read data uninitialized, it takes extra 8 bytes to init on next fill, so reduce it here
-        *numPoints=(freebytes-2-4-2 -2-2-2-2)/4+1;//if read data uninitialized, it takes extra 8 bytes to init on next fill, so reduce it here
+    *numBytesFree=freebytes;
 
     return getCumulativeStatus(axis->bushandle);
 }
 
-SM_STATUS smBufferedFillAndReceive(BufferedMotionAxis *axis, smint32 numFillPoints, smint32 *fillPoints, smint32 *numReceivedPoints, smint32 *receivedPoints )
+smint32 smBufferedGetMaxFillSize(BufferedMotionAxis *axis, smint32 numBytesFree )
 {
+    //even if we have lots of free space in buffer, we can only send up to SM485_MAX_PAYLOAD_BYTES bytes at once in one SM transmission
+    if(numBytesFree>SM485_MAX_PAYLOAD_BYTES)
+        numBytesFree=SM485_MAX_PAYLOAD_BYTES;
+
+    //calculate number of points that can be uploaded to buffer (max size SM485_MAX_PAYLOAD_BYTES bytes and fill consumption is 2+4+2+3*(n-1) bytes)
+    if(axis->readParamInitialized==smtrue)
+        //*numPoints=(freebytes-2-4-2)/3+1;
+        return numBytesFree/4;
+    else
+        //*numPoints=(freebytes-2-4-2 -2-2-2-2)/3+1;//if read data uninitialized, it takes extra 8 bytes to init on next fill, so reduce it here
+        return (numBytesFree-2-3-2-3-2)/4;//if read data uninitialized, it takes extra n bytes to init on next fill, so reduce it here
+}
+
+smint32 smBufferedGetBytesConsumed(BufferedMotionAxis *axis, smint32 numFillPoints )
+{
+    //calculate number of bytes that the number of fill points will consume from buffer
+    if(axis->readParamInitialized==smtrue)
+        return numFillPoints*4;
+    else
+        return numFillPoints*4 +2+3+2+3+2;//if read data uninitialized, it takes extra n bytes to init on next fill, so reduce it here
+}
+
+
+SM_STATUS smBufferedFillAndReceive(BufferedMotionAxis *axis, smint32 numFillPoints, smint32 *fillPoints, smint32 *numReceivedPoints, smint32 *receivedPoints, smint32 *bytesFilled )
+{
+    smint32 bytesUsed=0;
 
     //if(freeBytesInDeviceBuffer>=cmdBufferSizeBytes)
 //        emit message(Warning,"Buffer underrun on axis "+QString::number(ax));
@@ -118,39 +139,43 @@ SM_STATUS smBufferedFillAndReceive(BufferedMotionAxis *axis, smint32 numFillPoin
     {
         //set acceleration to "infinite" to avoid modification of user supplied trajectory inside drive
         smAppendSMCommandToQueue(axis->bushandle,SMPCMD_SETPARAMADDR,SMP_RETURN_PARAM_ADDR);
-        smAppendSMCommandToQueue(axis->bushandle,SM_WRITE_VALUE_32B,axis->readParamAddr);
+        smAppendSMCommandToQueue(axis->bushandle,SM_WRITE_VALUE_24B,axis->readParamAddr);
         smAppendSMCommandToQueue(axis->bushandle,SMPCMD_SETPARAMADDR,SMP_RETURN_PARAM_LEN);
-        smAppendSMCommandToQueue(axis->bushandle,SM_WRITE_VALUE_32B,axis->readParamLength);
+        smAppendSMCommandToQueue(axis->bushandle,SM_WRITE_VALUE_24B,axis->readParamLength);
+        smAppendSMCommandToQueue(axis->bushandle,SMPCMD_SETPARAMADDR,SMP_ABSOLUTE_SETPOINT);
+        bytesUsed+=2+3+2+3+2;
 
         //next time we read return data, we discard first 4 return packets to avoid unexpected read data to user
-        axis->numberOfDiscardableReturnDataPackets+=4;
+        axis->numberOfDiscardableReturnDataPackets+=5;
         axis->readParamInitialized=smtrue;
     }
 
     if(numFillPoints>=1)//send first fill data
     {
-        smAppendSMCommandToQueue(axis->bushandle,SMPCMD_SETPARAMADDR,SMP_ABSOLUTE_SETPOINT);
         smAppendSMCommandToQueue(axis->bushandle,SM_WRITE_VALUE_32B,fillPoints[0]);
-        axis->numberOfPendingReadPackets++;
+        bytesUsed+=4;
+        axis->numberOfPendingReadPackets+=1;
     }
 
     //send rest of data as increments
     if(numFillPoints>=2)
     {
         int i;
-        smAppendSMCommandToQueue(axis->bushandle,SMPCMD_SETPARAMADDR,SMP_INCREMENTAL_SETPOINT);
+        //smAppendSMCommandToQueue(axis->bushandle,SMPCMD_SETPARAMADDR,SMP_ABSOLUTE_SETPOINT);
+        //smAppendSMCommandToQueue(axis->bushandle,SMPCMD_SETPARAMADDR,SMP_INCREMENTAL_SETPOINT);
+        //axis->numberOfPendingReadPackets++;//FIXME ei toimi ihan oikein tää koska skippaa äskeisen writevaluen
 
         for(i=1;i<numFillPoints;i++)
         {
-            smAppendSMCommandToQueue(axis->bushandle,SMPCMD_SETPARAMADDR,SMP_INCREMENTAL_SETPOINT);
-            smAppendSMCommandToQueue(axis->bushandle,SM_WRITE_VALUE_24B, fillPoints[i]-fillPoints[i-1] );
+            //smAppendSMCommandToQueue(axis->bushandle,SM_WRITE_VALUE_24B, fillPoints[i]-fillPoints[i-1] );
+            smAppendSMCommandToQueue(axis->bushandle,SM_WRITE_VALUE_32B,fillPoints[i]);
+            bytesUsed+=4;
             axis->numberOfPendingReadPackets++;
         }
     }
 
     //send the commands that were added with smAppendSMCommandToQueue. this also reads all return packets that are available (executed already)
     smUploadCommandQueueToDeviceBuffer(axis->bushandle,axis->deviceAddress);
-
 
     //read all available return data from stream (commands that have been axecuted in drive so far)
     //return data works like FIFO for all sent commands (each sent stream command will produce return data packet that we fetch here)
@@ -175,11 +200,13 @@ SM_STATUS smBufferedFillAndReceive(BufferedMotionAxis *axis, smint32 numFillPoin
             {
                 receivedPoints[n]=readval;
                 n++;
+                axis->numberOfPendingReadPackets--;
             }
         }
         *numReceivedPoints=n;
     }
 
+    *bytesFilled=bytesUsed;
     return getCumulativeStatus(axis->bushandle);
 }
 
