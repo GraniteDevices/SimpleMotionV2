@@ -446,6 +446,25 @@
 //anti dither limits
 #define SMP_ANTIDITHER_MODE 230
 
+//torque modifiers & effects
+/*SMP_TORQUE_NOTCH_FILTER contains 3 values in different bit positions:
+ * 0-7 (lowest byte), attenuation in 0.1dB steps and value V=1-255 means attenuation of (-V-255)/10 dB gain.  if V set 0, use notch filter instead of peaking with "infinite" attenuation. value 255 disables notch filter.
+ * 8-15, Q factor in 0.1 steps
+ * 16-30, center frequency in 0.2Hz steps so range is 0-1638.3 Hz. value 0 disables the filter.
+ *
+ *Example, peaking filter with gain -12.5dB, center freq 1000Hz and Q=5.5 value is: 0x01F43782 (0x01f4=1000/2, 0x37=5.5*10, 0x82=255-12.5*10)
+ *Example, peaking filter with gain -11.5dB, center freq 20Hz and Q=3.5 value is: 0x00648c23 = dec 6589475
+ *
+ *Notch filter works in all control modes
+ */
+#define SMP_TORQUE_NOTCH_FILTER 240
+//define damping effect gain in torque control mode, torque added to setpoint equals -speed*gain with
+#define SMP_TORQUE_EFFECT_DAMPING 241
+//define friction effect gain in torque control mode
+#define SMP_TORQUE_EFFECT_FRICTION 242
+//define inertia effect gain in torque control mode, torque added to setpoint equals -acceleration*gain
+#define SMP_TORQUE_EFFECT_INERTIA 243
+
 //secondary feedback loop 300-399
 //NOT IMPLEMENTED YET
 
