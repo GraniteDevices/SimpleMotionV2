@@ -432,8 +432,8 @@
 #define SMP_ELECTRICAL_MODE 573
     #define EL_MODE_STANDARD 0
     #define EL_MODE_IONICUBE 1
-    #define EL_MODE_IONIZER 2
-	#define EL_MODE_SIMUCUBE 3
+	#define EL_MODE_SIMUCUBE 2
+    #define EL_MODE_IONIZER 3
 
 
 //primary feedback loop 200-299
