@@ -435,6 +435,13 @@
 	#define EL_MODE_SIMUCUBE 2
     #define EL_MODE_IONIZER 3
 
+/*for BiSS encoder
+ * bits defined as:
+ * lowest 8 bits: single turn bits, value range 4-24
+ * next 8 bits: multi turn bits, value range 0-16
+ * rest: reserved for future use (always 0)
+ */
+#define SMP_SERIAL_ENC_BITS 574
 
 //primary feedback loop 200-299
 #define SMP_VEL_I 200
