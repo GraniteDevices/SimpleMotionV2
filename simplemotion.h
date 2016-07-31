@@ -43,6 +43,7 @@ extern "C"{
 #define SM_ERR_COMMUNICATION 8
 #define SM_ERR_PARAMETER 16
 #define SM_ERR_LENGTH 32
+#define SM_ERR_MODE 64
 
 ///////////////////////////////////////////////////////////////////////////////////////
 //TYPES & VALUES //////////////////////////////////////////////////////////////////////
@@ -130,6 +131,9 @@ LIB SM_STATUS smRead1Parameter( const smbus handle, const smaddr nodeAddress, co
 LIB SM_STATUS smRead2Parameters( const smbus handle, const smaddr nodeAddress, const smint16 paramId1, smint32 *paramVal1,const smint16 paramId2, smint32 *paramVal2 );
 LIB SM_STATUS smRead3Parameters( const smbus handle, const smaddr nodeAddress, const smint16 paramId1, smint32 *paramVal1,const smint16 paramId2, smint32 *paramVal2 ,const smint16 paramId3, smint32 *paramVal3 );
 LIB SM_STATUS smSetParameter( const smbus handle, const smaddr nodeAddress, const smint16 paramId, smint32 paramVal );
+
+//fast method for buffered motion stream, this provides limited return data and feeds all drives simultaneously
+LIB SM_STATUS smTransmitAndReceiveFastBufferedCommand( const smbus handle, const smaddr nodeAddress, smint16 &clockOut, smint16 &bufferfreeOut );
 
 
 LIB SM_STATUS smGetBufferClock( const smbus handle, const smaddr targetaddr, smuint16 *clock );

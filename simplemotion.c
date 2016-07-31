@@ -256,6 +256,9 @@ char *cmdidToStr(smuint8 cmdid )
     case SMCMD_GET_CLOCK_RET :str="SMCMD_GET_CLOCK_RET";break;
     case SMCMD_FAST_UPDATE_CYCLE:str="SMCMD_FAST_UPDATE_CYCLE";break;
     case SMCMD_FAST_UPDATE_CYCLE_RET:str="SMCMD_FAST_UPDATE_CYCLE_RET";break;
+    case SMCMD_FAST_BUFFERED_CMD:str="SMCMD_FAST_BUFFERED_CMD";break;
+    case SMCMD_FAST_BUFFERED_CMD_RET:str="SMCMD_FAST_BUFFERED_CMD_RET";break;
+    case SMCMD_FAST_BUFFERED_CMD_RET_SHORT:str="SMCMD_FAST_BUFFERED_CMD_RET_SHORT";break;
     default: str="unknown cmdid";break;
     }
     //puts(str);
@@ -418,7 +421,6 @@ SM_STATUS smReceiveErrorHandler( smbus handle, smbool flushrx )
 
 SM_STATUS smAppendSMCommandToQueue( smbus handle, int smpCmdType,smint32 paramvalue  )
 {
-    smuint8 txbyte;
     int cmdlength;
 
     //check if bus handle is valid & opened
@@ -452,12 +454,6 @@ SM_STATUS smAppendSMCommandToQueue( smbus handle, int smpCmdType,smint32 paramva
         SMPayloadCommand16 newcmd;
         newcmd.ID=SMPCMD_SETPARAMADDR;
         newcmd.param=paramvalue;
-
-        //          bufput8bit( smBus[handle].recv_rsbuf, smBus[handle].cmd_send_queue_bytes, 5);
-        //            bufput8bit( smBus[handle].recv_rsbuf, smBus[handle].cmd_send_queue_bytes, 6);
-        /*
-FIXME
-            ei toimi, menee vaa nollaa*/
         bufput8bit( smBus[handle].recv_rsbuf, smBus[handle].cmd_send_queue_bytes++, ((unsigned char*)&newcmd)[1]);
         bufput8bit( smBus[handle].recv_rsbuf, smBus[handle].cmd_send_queue_bytes++, ((unsigned char*)&newcmd)[0]);
     }
@@ -943,5 +939,13 @@ void resetCumulativeStatus( const smbus handle )
     if(smIsHandleOpen(handle)==smfalse) return SM_ERR_NODEVICE;
 
     smBus[handle].cumulativeSmStatus=0;
+}
+
+//fast method for buffered motion stream, this provides limited return data and feeds all drives simultaneously
+SM_STATUS smTransmitAndReceiveFastBufferedCommand( const smbus handle, const smaddr nodeAddress, smint16 &clockOut, smint16 &bufferfreeOut )
+{
+
+
+
 }
 

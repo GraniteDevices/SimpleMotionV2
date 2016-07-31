@@ -10,6 +10,7 @@ SM_STATUS smBufferedInit(BufferedMotionAxis *newAxis, smbus handle, smaddr devic
     if(sampleRate<1 || sampleRate>2500)
         return recordStatus(handle,SM_ERR_PARAMETER);
 
+    newAxis->mode=Standard;
     newAxis->initialized=smfalse;
     newAxis->bushandle=handle;
     newAxis->samplerate=sampleRate;
@@ -21,6 +22,7 @@ SM_STATUS smBufferedInit(BufferedMotionAxis *newAxis, smbus handle, smaddr devic
     newAxis->driveClock=0;
     newAxis->bufferFill=0;
     newAxis->numberOfPendingReadPackets=0;
+    newAxis->maxSingleFillSizeInBytes=SM485_MAX_PAYLOAD_BYTES;
 
     //discard any existing data in buffer, and to get correct reading of device buffer size
     smSetParameter( newAxis->bushandle, newAxis->deviceAddress, SMP_SYSTEM_CONTROL,SMP_SYSTEM_CONTROL_ABORTBUFFERED);
@@ -55,6 +57,51 @@ SM_STATUS smBufferedInit(BufferedMotionAxis *newAxis, smbus handle, smaddr devic
     return getCumulativeStatus(handle);
 }
 
+/*if other than Standard mode is used, then call this right after smBufferedInit to set the mode.
+Do not change mode on the fly.*/
+LIB SM_STATUS smBufferedSetMode( BufferedMotionAxis *newAxis, smBufferedMode mode, smaddr masterDeviceAddress, smint32 numOfBufferedAxis )
+{
+    smbus handle=newAxis->bushandle;
+    newAxis->mode=mode;
+    newAxis->masterDeviceAddress=masterDeviceAddress;//master device address (must be the lowest number of buffered devices, i.e. if buffered axis are 4, 5, 6, 7 then 4 must be set master)
+    newAxis->numOfBufferedAxis=numOfBufferedAxis;//total number of axis used in buffered mode
+
+    if(mode==Standard)
+    {
+        newAxis->maxSingleFillSizeInBytes=SM485_MAX_PAYLOAD_BYTES;
+    }
+    else if (mode==Fast)
+    {
+        newAxis->maxSingleFillSizeInBytes=(SM485_MAX_PAYLOAD_BYTES-4)/numOfBufferedAxis;
+
+        //INIT INSTANT COMMAND
+        //setup return data. this sets what will be returned from smBufferedFillAndReceiveFast
+        smAppendSMCommandToQueue( handle, SMPCMD_SETPARAMADDR, SMP_RETURN_PARAM_LEN ); //2b
+        smAppendSMCommandToQueue( handle, SMPCMD_24B, newAxis->readParamLength );//3b
+        smAppendSMCommandToQueue( handle, SMPCMD_SETPARAMADDR, SMP_RETURN_PARAM_ADDR );//2b
+        smAppendSMCommandToQueue( handle, SMPCMD_24B, newAxis->readParamAddr );//3b
+
+        //INIT BUFFERED COMMAND
+        //set acceleration to "infinite" to avoid modification of user supplied trajectory inside drive
+        smAppendSMCommandToQueue( handle,SMPCMD_SETPARAMADDR,SMP_RETURN_PARAM_ADDR);
+        smAppendSMCommandToQueue( handle,SM_WRITE_VALUE_24B,newAxis->readParamAddr);
+        smAppendSMCommandToQueue( handle,SMPCMD_SETPARAMADDR,SMP_RETURN_PARAM_LEN);
+        smAppendSMCommandToQueue( handle,SM_WRITE_VALUE_24B,newAxis->readParamLength);
+        smAppendSMCommandToQueue( handle,SMPCMD_SETPARAMADDR,SMP_ABSOLUTE_SETPOINT);
+        newAxis->readParamInitialized=smtrue;
+        //send the commands that were added with smAppendSMCommandToQueue. this also reads all return packets that are available (executed already)
+        smUploadCommandQueueToDeviceBuffer(newAxis->bushandle,newAxis->deviceAddress);
+        //don't care to handle any return data as it's just non important return values of previous commands
+    }
+    else//unkown mode
+    {
+        recordStatus( newAxis->bushandle, SM_ERR_MODE );
+    }
+
+    return getCumulativeStatus(newAxis->bushandle);
+}
+
+
 /** uninitialize axis from buffered motion, recommended to call this before closing bus so drive's adjusted parameters are restored to originals*/
 SM_STATUS smBufferedDeinit( BufferedMotionAxis *axis )
 {
@@ -78,31 +125,42 @@ SM_STATUS smBufferedDeinit( BufferedMotionAxis *axis )
 SM_STATUS smBufferedRunAndSyncClocks(BufferedMotionAxis *axis)
 {
     return smGetBufferClock( axis->bushandle, axis->deviceAddress, &axis->driveClock );
+    //TODO fast mode does not need this called repeatedly
 }
 
+/*Ooperation depeonds on mode. In normal mode, it sends question to actual device to read available memory, but in fast mode it just returns value that has been received during the last smBufferedFillAndReceive*/
 SM_STATUS smBufferedGetFree(BufferedMotionAxis *axis, smint32 *numBytesFree )
 {
     smint32 freebytes;
 
-    if(smRead1Parameter(axis->bushandle,axis->deviceAddress,SMP_BUFFER_FREE_BYTES,&freebytes)!=SM_OK)
+    if(axis->mode==Standard)
     {
-        *numBytesFree=0;//read has failed, assume 0
+        if(smRead1Parameter(axis->bushandle,axis->deviceAddress,SMP_BUFFER_FREE_BYTES,&freebytes)!=SM_OK)
+        {
+            *numBytesFree=0;//read has failed, assume 0
+            return getCumulativeStatus(axis->bushandle);
+        }
+
+        axis->bufferFreeBytes=freebytes;
+        axis->bufferFill=100*(axis->bufferLength-freebytes)/axis->bufferLength;//calc buffer fill 0-100%
+
+        *numBytesFree=freebytes;
+
         return getCumulativeStatus(axis->bushandle);
     }
-
-    axis->bufferFreeBytes=freebytes;
-    axis->bufferFill=100*(axis->bufferLength-freebytes)/axis->bufferLength;//calc buffer fill 0-100%
-
-    *numBytesFree=freebytes;
-
-    return getCumulativeStatus(axis->bushandle);
+    else if(axis->mode==Fast)
+    {
+        //in fast mode, just return last value that was obtained from SM fast buffered command
+        *numBytesFree=axis->bufferFreeBytes;
+        axis->bufferFill=100*(axis->bufferLength-axis->bufferFreeBytes)/axis->bufferLength;//calc buffer fill 0-100%
+    }
 }
 
 smint32 smBufferedGetMaxFillSize(BufferedMotionAxis *axis, smint32 numBytesFree )
 {
-    //even if we have lots of free space in buffer, we can only send up to SM485_MAX_PAYLOAD_BYTES bytes at once in one SM transmission
-    if(numBytesFree>SM485_MAX_PAYLOAD_BYTES)
-        numBytesFree=SM485_MAX_PAYLOAD_BYTES;
+    //even if we have lots of free space in buffer, we can only send up to limited amount of bytes at once in one SM transmission
+    if(numBytesFree > axis->maxSingleFillSizeInBytes)
+        numBytesFree=axis->maxSingleFillSizeInBytes;
 
     //calculate number of points that can be uploaded to buffer (max size SM485_MAX_PAYLOAD_BYTES bytes and fill consumption is 2+4+2+3*(n-1) bytes)
     if(axis->readParamInitialized==smtrue)
@@ -126,6 +184,12 @@ smint32 smBufferedGetBytesConsumed(BufferedMotionAxis *axis, smint32 numFillPoin
 SM_STATUS smBufferedFillAndReceive(BufferedMotionAxis *axis, smint32 numFillPoints, smint32 *fillPoints, smint32 *numReceivedPoints, smint32 *receivedPoints, smint32 *bytesFilled )
 {
     smint32 bytesUsed=0;
+
+    if(axis->mode!=Standard)
+    {
+        recordStatus( axis->bushandle, SM_ERR_MODE );
+        return getCumulativeStatus(axis->bushandle);
+    }
 
     //if(freeBytesInDeviceBuffer>=cmdBufferSizeBytes)
 //        emit message(Warning,"Buffer underrun on axis "+QString::number(ax));
@@ -157,7 +221,7 @@ SM_STATUS smBufferedFillAndReceive(BufferedMotionAxis *axis, smint32 numFillPoin
         axis->numberOfPendingReadPackets+=1;
     }
 
-    //send rest of data as increments
+    //send rest of data as increments. actually not in this code, we just send more 32 bit absolute setpoints to during development
     if(numFillPoints>=2)
     {
         int i;
@@ -209,6 +273,49 @@ SM_STATUS smBufferedFillAndReceive(BufferedMotionAxis *axis, smint32 numFillPoin
     *bytesFilled=bytesUsed;
     return getCumulativeStatus(axis->bushandle);
 }
+
+/*this uploads setpoints of multimple axes at single call. drive that that this command is targetter must be cycled between ann devices if one
+ *wishes to read any data from it (because this call will send command to one device address and that address only is able to talk back. i.e. send return data to host)*/
+LIB SM_STATUS smBufferedFillAndReceiveFast( BufferedMotionAxis *masterAxis, BufferedMotionAxis *axis, smint32 numFillPointsPerAxis, smint32 **fillPoints, smint32 *numReceivedPoints, smint32 *receivedPoints, smint32 *bytesFilled )
+{
+    smint32 bytesUsed=0;
+
+    if(axis->mode!=Fast)
+    {
+        recordStatus( axis->bushandle, SM_ERR_MODE );
+        return getCumulativeStatus(axis->bushandle);
+    }
+
+    int i,a;
+    for(a=0;a<masterAxis->numOfBufferedAxis;a++)
+    {
+        for(i=0;i<numFillPointsPerAxis;i++)
+        {
+            smAppendSMCommandToQueue(axis->bushandle,SM_WRITE_VALUE_32B,fillPoints[i]);
+            bytesUsed+=4;
+            axis->numberOfPendingReadPackets++;
+        }
+    }
+
+    smuint16 clock, buffree;
+
+    //send the commands that were added with smAppendSMCommandToQueue. this also reads all return packets that are available (executed already)
+    smTransmitAndReceiveFastBufferedCommand(axis->bushandle,axis->deviceAddress, &clock, &buffree);
+
+    axis->bufferFreeBytes=buffree;
+    masterAxis->bufferFreeBytes=buffree;
+    axis->driveClock=clock;
+
+    //grab the return data from the previous SM command
+    smint32 readval;
+    smGetQueuedSMCommandReturnValue(axis->bushandle, &readval);
+    receivedPoints[0]=readval;
+    *numReceivedPoints=1;
+
+    *bytesFilled=bytesUsed;
+    return getCumulativeStatus(axis->bushandle);
+}
+
 
 /** this will stop executing buffered motion immediately and discard rest of already filled buffer on a given axis. May cause drive fault state such as tracking error if done at high speed because stop happens without deceleration.*/
 SM_STATUS smBufferedAbort(BufferedMotionAxis *axis)

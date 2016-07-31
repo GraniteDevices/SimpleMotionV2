@@ -6,11 +6,15 @@ extern "C"{
 #endif
 
 #include "simplemotion.h"
+#include "simplemotion_private.h"
 
 //typedef enum _smBufferedState {BufferedStop=0,BufferedRun=1} smBufferedState;
 
+typedef enum _smBufferedMode {Standard=0,Fast=1} smBufferedMode;
+
 typedef struct _BufferedMotionAxis {
-    smbool initialized;
+    smBufferedMode mode;
+    smbool initialized;    
     smbool readParamInitialized;
     smint32 numberOfDiscardableReturnDataPackets;
     smint32 numberOfPendingReadPackets;//number of read data packets that should be arriving from device (to read rest of pending data, use smBufferedFillAndReceive(numFillPoints=0) until this variable this goes to zero)
@@ -25,6 +29,10 @@ typedef struct _BufferedMotionAxis {
     smint32 bufferLength;//buffer lenght in bytes of the device. note this may be different in different devices types. so call smBufferedGetFree on the device that has the smallest buffer. however as of 2.2016 all GD drives have 2048 bytes buffers.
     smint32 bufferFreeBytes;//number of bytes free in buffer, updated at smBufferedGetFree
     smint32 bufferFill;//percentage of buffer fill, updated at smBufferedGetFree. this should stay above 50% to ensure gapless motion. if gaps occur, check SMV2USB adpater COM port latency setting (set to 1ms) or try lower samplerate.
+    smint32 maxSingleFillSizeInBytes;//depends on mode (how many bytes we can send to device at one cycle)
+    //params that are needed in Fast mode only
+    smint32 masterDeviceAddress;//master device address (must be the lowest number of buffered devices, i.e. if buffered axis are 4, 5, 6, 7 then 4 must be set master)
+    smint32 numOfBufferedAxis;//total number of axis used in buffered mode
 } BufferedMotionAxis;
 
 /** initialize buffered motion for one axis with address and samplerate (Hz) */
@@ -43,7 +51,11 @@ typedef struct _BufferedMotionAxis {
 Note return data per one FillAndReceive must not exceed 120 bytes. So max allowed numFillPoints will depend on returnDataLength.
 numFillPoints must be equal or below 30 for 32B, 40 for 24B and 60 for 16B.
 */
-LIB SM_STATUS smBufferedInit( BufferedMotionAxis *newAxis, smbus handle, smaddr deviceAddress, smint32 sampleRate, smint16 readParamAddr, smuint8 readDataLength  );
+LIB SM_STATUS smBufferedInit( BufferedMotionAxis *newAxis, smbus handle, smaddr deviceAddress, smint32 sampleRate, smint16 readParamAddr, smuint8 readDataLength );
+
+/*if other than Standard mode is used, then call this right after smBufferedInit to set the mode.
+Do not change mode on the fly.*/
+LIB SM_STATUS smBufferedSetMode( BufferedMotionAxis *newAxis, smBufferedMode mode, smaddr masterDeviceAddress, smint32 numOfBufferedAxis );
 
 /** uninitialize axis from buffered motion, recommended to call this before closing bus so drive's adjusted parameters are restored to originals*/
 LIB SM_STATUS smBufferedDeinit( BufferedMotionAxis *axis );
@@ -54,6 +66,11 @@ LIB SM_STATUS smBufferedGetFree(BufferedMotionAxis *axis, smint32 *numBytesFree 
 LIB smint32 smBufferedGetMaxFillSize(BufferedMotionAxis *axis, smint32 numBytesFree );
 LIB smint32 smBufferedGetBytesConsumed(BufferedMotionAxis *axis, smint32 numFillPoints );
 LIB SM_STATUS smBufferedFillAndReceive( BufferedMotionAxis *axis, smint32 numFillPoints, smint32 *fillPoints, smint32 *numReceivedPoints, smint32 *receivedPoints, smint32 *bytesFilled );
+
+/*this uploads setpoints of multimple axes at single call. drive that that this command is targetter must be cycled between ann devices if one
+ *wishes to read any data from it (because this call will send command to one device address and that address only is able to talk back. i.e. send return data to host)*/
+LIB SM_STATUS smBufferedFillAndReceiveFast( BufferedMotionAxis *masterAxis, BufferedMotionAxis *axis, smint32 numFillPointsPerAxis, smint32 **fillPoints, smint32 *numReceivedPoints, smint32 *receivedPoints, smint32 *bytesFilled );
+
 /** This will stop executing buffered motion immediately and discard rest of already filled buffer on a given axis. May cause drive fault state such as tracking error if done at high speed because stop happens without deceleration.
 Note: this will not stop motion, but just stop executing the sent buffered commands. The last executed motion point will be still followed by drive. So this is bad function
 for quick stopping stopping, for stop to the actual place consider using disable drive instead (prefferably phsyical input disable).
