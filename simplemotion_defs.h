@@ -432,8 +432,16 @@
 #define SMP_ELECTRICAL_MODE 573
     #define EL_MODE_STANDARD 0
     #define EL_MODE_IONICUBE 1
-    #define EL_MODE_IONIZER 2
+	#define EL_MODE_SIMUCUBE 2
+    #define EL_MODE_IONIZER 3
 
+/*for BiSS encoder
+ * bits defined as:
+ * lowest 8 bits: single turn bits, value range 4-24
+ * next 8 bits: multi turn bits, value range 0-16
+ * rest: reserved for future use (always 0)
+ */
+#define SMP_SERIAL_ENC_BITS 574
 
 //primary feedback loop 200-299
 #define SMP_VEL_I 200
@@ -445,6 +453,24 @@
 
 //anti dither limits
 #define SMP_ANTIDITHER_MODE 230
+
+//torque modifiers & effects
+/*SMP_TORQUE_NOTCH_FILTER contains 3 values in different bit positions:
+ * 0-7 (lowest byte), attenuation in 0.1dB steps and value V=1-255 means attenuation of (-V-255)/10 dB gain.  if V set 0, use notch filter instead of peaking with "infinite" attenuation. value 255 disables notch filter.
+ * 8-15, Q factor in 0.1 steps. Minimum is 0.1, below that filter is disabled.
+ * 16-29, center frequency in 0.1Hz steps, and 1.1Hz is minimum, so range is 1.1-409.5 Hz. value below or equal 1Hz disables the filter.
+ *
+ *Example, peaking filter with gain -11.5dB, center freq 20Hz and Q=3.5 value is: 0x00648c23 = dec 6589475
+ *
+ *Notch filter works in all control modes and is applied to torque controller setpoint
+ */
+#define SMP_TORQUE_NOTCH_FILTER 240
+//define damping effect gain in torque control mode, torque added to setpoint equals -speed*gain with
+#define SMP_TORQUE_EFFECT_DAMPING 241
+//define friction effect gain in torque control mode
+#define SMP_TORQUE_EFFECT_FRICTION 242
+//define inertia effect gain in torque control mode, torque added to setpoint equals -acceleration*gain
+#define SMP_TORQUE_EFFECT_INERTIA 243
 
 //secondary feedback loop 300-399
 //NOT IMPLEMENTED YET
