@@ -30,6 +30,7 @@
 #define BUSDEV_FTDI 2 /*not implemented yet: direct FTDI lib support*/
 
 #define SM_BUSDEVICENAME_LEN 64
+extern unsigned long SMBusBaudrate; //the next opened port (with smOpenBus) will be opened with the PBS defined here (default 460800 BPS)
 
 //default timeout in ms
 //Argon drive's worst case response time should be ~20ms with max length packets
