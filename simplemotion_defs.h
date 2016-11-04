@@ -20,7 +20,7 @@
 /* SMV2 protocol change log:
  * Version 20:
  *   -V20 was introduced with Argon FW 1.0.0 and present at least until 1.4.0
- * Version 21 (is backwards compatible in syntax but not in setpoint behavior, see details below):
+ * Version 25 (is backwards compatible in syntax but not in setpoint behavior, see details below):
  *   -V25 was introduced with IONI
  *   -setpoint calculation is different:
  *     now there is only one common setpoint and all ABS and INC commands (buffered & instant)
@@ -31,6 +31,10 @@
  *    this makes it possible to insert any parameter read/write commands in middle of buffered motion.
  *   -implemented watchdog functionality in new param SMP_FAULT_BEHAVIOR
  *   -added param SMP_ADDRESS_OFFSET
+ * Version 26:
+ *    - fast SM command added (actually is also present in late V25 too, but as unofficial feature)
+ *    - watchdog timout now resets bitrate to default and aborts buffered motion
+ *
  */
 
 /* Important when using SMV2 protocol:
@@ -344,6 +348,11 @@
 	#define SMP_SYSTEM_CONTROL_MEASURE_MOTOR_RL 256
 	//resets position mode FB and setpoint values to 0, and also resets homing status. useful after using in vel or torq mode.
 	#define SMP_SYSTEM_CONTROL_RESET_FB_AND_SETPOINT 512
+	//writes various FW version specific values into debug parameters
+	#define SMP_SYSTEM_CONTROL_GET_SPECIAL_DATA 1024
+	//write SM bus SM_CRCINIT constant modifier. special purposes only, don't use if unsure because
+	//it is one time programmable variable (irreversible operation, can't be ever reset to default by provided methods)
+	#define SMP_SYSTEM_CONTROL_MODIFY_CRCINIT 262144
 
 	//follow error tolerance for position control:
 #define SMP_POS_FERROR_TRIP 555
