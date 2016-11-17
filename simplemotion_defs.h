@@ -456,6 +456,7 @@
 #define SMP_VEL_I 200
 #define SMP_POS_P 201
 #define SMP_VEL_P 202
+#define SMP_VEL_D 203
 #define SMP_VEL_FF 220
 #define SMP_ACC_FF 221
 #define SMP_POS_FF 222
