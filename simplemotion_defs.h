@@ -350,8 +350,10 @@
 	#define SMP_SYSTEM_CONTROL_RESET_FB_AND_SETPOINT 512
 	//writes various FW version specific values into debug parameters
 	#define SMP_SYSTEM_CONTROL_GET_SPECIAL_DATA 1024
+	//stores encoder index position in SMP_DEBUGPARAM_1. while busy (index not found) SMP_DEBUGPARAM_2 will be 100, after found it is 200.
+	#define SMP_SYSTEM_CONTROL_CAPTURE_INDEX_POSITION 2048
 	//write SM bus SM_CRCINIT constant modifier. special purposes only, don't use if unsure because
-	//it is one time programmable variable (irreversible operation, can't be ever reset to default by provided methods)
+	//it is one time programmable variable (permanently irreversible operation, can't be ever reset to default by provided methods)
 	#define SMP_SYSTEM_CONTROL_MODIFY_CRCINIT 262144
 
 	//follow error tolerance for position control:
