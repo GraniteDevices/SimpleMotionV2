@@ -43,6 +43,10 @@ extern const smuint8 table_crc8[];
 extern FILE *smDebugOut; //such as stderr or file handle. if NULL, debug info disbled
 extern smuint16 readTimeoutMs;
 
+//smDebug: prints debug info to smDebugOut stream. If no handle availab, set it to -1.
+//set verbositylevel according to frequency of prints made.
+//I.e Low=low frequency, so it gets displayed when global verbosity level is set to at least Low or set it to Trace which gets filtered
+//out if global verbisity level is set less than Trace
 void smDebug( smbus handle, smVerbosityLevel verbositylevel, char *format, ...);
 
 SM_STATUS smRawCmd( const char *axisname, smuint8 cmd, smuint16 val, smuint32 *retdata );

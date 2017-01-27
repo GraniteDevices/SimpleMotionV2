@@ -92,7 +92,10 @@ void smDebug( smbus handle, smVerbosityLevel verbositylevel, char *format, ...)
         va_start(fmtargs,format);
         vsnprintf(buffer,sizeof(buffer)-1,format,fmtargs);
         va_end(fmtargs);
-        fprintf(smDebugOut,"%s: %s",smBus[handle].busDeviceName, buffer);
+        if(handle>=0)
+            fprintf(smDebugOut,"%s: %s",smBus[handle].busDeviceName, buffer);
+        else
+            fprintf(smDebugOut,"SMLib: %s",buffer);//no handle given
     }
 }
 #else
