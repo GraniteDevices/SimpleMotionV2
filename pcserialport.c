@@ -14,7 +14,7 @@
 #include "pcserialport.h"
 #include "simplemotion_private.h" //needed for timeout variable
 
-#ifdef __linux__
+#ifdef __unix__
 
 #include <termios.h>
 #include <limits.h>
