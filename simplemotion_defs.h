@@ -20,7 +20,7 @@
 /* SMV2 protocol change log:
  * Version 20:
  *   -V20 was introduced with Argon FW 1.0.0 and present at least until 1.4.0
- * Version 21 (is backwards compatible in syntax but not in setpoint behavior, see details below):
+ * Version 25 (is backwards compatible in syntax but not in setpoint behavior, see details below):
  *   -V25 was introduced with IONI
  *   -setpoint calculation is different:
  *     now there is only one common setpoint and all ABS and INC commands (buffered & instant)
@@ -31,6 +31,10 @@
  *    this makes it possible to insert any parameter read/write commands in middle of buffered motion.
  *   -implemented watchdog functionality in new param SMP_FAULT_BEHAVIOR
  *   -added param SMP_ADDRESS_OFFSET
+ * Version 26:
+ *    - fast SM command added (actually is also present in late V25 too, but as unofficial feature)
+ *    - watchdog timout now resets bitrate to default and aborts buffered motion
+ *
  */
 
 /* Important when using SMV2 protocol:
@@ -344,6 +348,13 @@
 	#define SMP_SYSTEM_CONTROL_MEASURE_MOTOR_RL 256
 	//resets position mode FB and setpoint values to 0, and also resets homing status. useful after using in vel or torq mode.
 	#define SMP_SYSTEM_CONTROL_RESET_FB_AND_SETPOINT 512
+	//writes various FW version specific values into debug parameters
+	#define SMP_SYSTEM_CONTROL_GET_SPECIAL_DATA 1024
+	//stores encoder index position in SMP_DEBUGPARAM_1. while busy (index not found) SMP_DEBUGPARAM_2 will be 100, after found it is 200.
+	#define SMP_SYSTEM_CONTROL_CAPTURE_INDEX_POSITION 2048
+	//write SM bus SM_CRCINIT constant modifier. special purposes only, don't use if unsure because
+	//it is one time programmable variable (permanently irreversible operation, can't be ever reset to default by provided methods)
+	#define SMP_SYSTEM_CONTROL_MODIFY_CRCINIT 262144
 
 	//follow error tolerance for position control:
 #define SMP_POS_FERROR_TRIP 555
@@ -421,7 +432,7 @@
     #define FLAG_INVERTED_HALLS BV(13)
     #define FLAG_USE_HALLS BV(14)
     #define FLAG_MECH_BRAKE_DURING_PHASING BV(15)
-	#define FLAG_LIMIT_SWITCHES_NORMALLY_CLOSED_TYPE BV(16)
+	#define FLAG_LIMIT_SWITCHES_NORMALLY_OPEN_TYPE BV(16)
 #define SMP_MOTION_FAULT_THRESHOLD 568
 #define SMP_HV_VOLTAGE_HI_LIMIT 569
 #define SMP_HV_VOLTAGE_LOW_LIMIT 570
@@ -447,6 +458,7 @@
 #define SMP_VEL_I 200
 #define SMP_POS_P 201
 #define SMP_VEL_P 202
+#define SMP_VEL_D 203
 #define SMP_VEL_FF 220
 #define SMP_ACC_FF 221
 #define SMP_POS_FF 222
