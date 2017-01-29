@@ -432,7 +432,7 @@
     #define FLAG_USE_INPUT_LP_FILTER BV(11)
     #define FLAG_USE_PID_CONTROLLER BV(12)//PIV is the default if bit is 0/*obsolete*/
     #define FLAG_INVERT_COMMUTATION_SENSOR_DIRECTION BV(13) /*inverts direction of commutation sensor instead, used together with SMP_COMMUTATION_SENSOR_OFFSET*//*originally was: invert hall sensors digital states*/
-    #define FLAG_USE_HALLS BV(14)
+    #define FLAG_USE_COMMUTATION_SENSOR BV(14)
     #define FLAG_MECH_BRAKE_DURING_PHASING BV(15)
 	#define FLAG_LIMIT_SWITCHES_NORMALLY_OPEN_TYPE BV(16)
 #define SMP_MOTION_FAULT_THRESHOLD 568
