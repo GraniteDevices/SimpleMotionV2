@@ -431,8 +431,8 @@
     #define FLAG_ALLOW_VOLTAGE_CLIPPING BV(10)
     #define FLAG_USE_INPUT_LP_FILTER BV(11)
     #define FLAG_USE_PID_CONTROLLER BV(12)//PIV is the default if bit is 0/*obsolete*/
-    #define FLAG_INVERT_COMMUTATION_SENSOR_DIRECTION BV(13) /*inverts direction of commutation sensor instead, used together with SMP_COMMUTATION_SENSOR_OFFSET*//*originally was: invert hall sensors digital states*/
-    #define FLAG_USE_HALLS BV(14)
+    //#define FLAG_INVERTED_HALLS BV(13) /*becoming obsolete, no effect on device where param SMP_COMMUTATION_SENSOR_CONFIG is present */
+    //#define FLAG_USE_HALLS BV(14) /*becoming obsolete, no effect on device where param SMP_COMMUTATION_SENSOR_CONFIG is present */
     #define FLAG_MECH_BRAKE_DURING_PHASING BV(15)
 	#define FLAG_LIMIT_SWITCHES_NORMALLY_OPEN_TYPE BV(16)
 #define SMP_MOTION_FAULT_THRESHOLD 568
@@ -541,8 +541,17 @@
 #define SMP_PHASESEARCH_VOLTAGE_SLOPE 480
 //by default this is calculated from other motor params:
 #define SMP_PHASESEARCH_CURRENT 481
-//commutation angle calibration, i.e. for hall sensors or absolute encoder. can be set with SMP_SYSTEM_CONTROL_START_COMMUTATION_SENSOR_AUTOSET
-#define SMP_COMMUTATION_SENSOR_OFFSET 482
+/* Commutation angle congiuration, i.e. for hall sensors or absolute encoder. can be automatically set with SMP_SYSTEM_CONTROL_START_COMMUTATION_SENSOR_AUTOSET.
+ * Format:
+ * bits 0-15 LSB: commutation sensor offset 0-65535 represents commutation angle offset 0-360 electical degrees
+ * bit 16: invert sensor count direction
+ * bit 17: enable commutation sensor
+ * bits 18-31: reserved, always 0
+ */
+#define SMP_COMMUTATION_SENSOR_CONFIG 482
+	#define SMP_COMMUTATION_SENSOR_CONFIG_ANGLE_MASK 0xFFFF
+	#define SMP_COMMUTATION_SENSOR_CONFIG_INVERT_MASK 0x10000
+	#define SMP_COMMUTATION_SENSOR_CONFIG_ENABLE_MASK 0x20000
 //low pass filter selector, value 0=100Hz, 9=3300Hz, 10=4700Hz, 11=unlimited (see Granity for all options):
 #define SMP_TORQUE_LPF_BANDWIDTH 490
 
