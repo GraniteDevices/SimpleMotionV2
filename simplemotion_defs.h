@@ -431,8 +431,8 @@
     #define FLAG_ALLOW_VOLTAGE_CLIPPING BV(10)
     #define FLAG_USE_INPUT_LP_FILTER BV(11)
     #define FLAG_USE_PID_CONTROLLER BV(12)//PIV is the default if bit is 0/*obsolete*/
-    //#define FLAG_INVERTED_HALLS BV(13) /*becoming obsolete, no effect on device where param SMP_COMMUTATION_SENSOR_CONFIG is present */
-    //#define FLAG_USE_HALLS BV(14) /*becoming obsolete, no effect on device where param SMP_COMMUTATION_SENSOR_CONFIG is present */
+    #define FLAG_INVERTED_HALLS BV(13) /*becoming obsolete, no effect on device where param SMP_COMMUTATION_SENSOR_CONFIG is present */
+    #define FLAG_USE_HALLS BV(14) /*becoming obsolete, no effect on device where param SMP_COMMUTATION_SENSOR_CONFIG is present */
     #define FLAG_MECH_BRAKE_DURING_PHASING BV(15)
 	#define FLAG_LIMIT_SWITCHES_NORMALLY_OPEN_TYPE BV(16)
 #define SMP_MOTION_FAULT_THRESHOLD 568
