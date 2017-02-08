@@ -446,10 +446,11 @@
 	#define EL_MODE_SIMUCUBE 2
     #define EL_MODE_IONIZER 3
 
-/*for BiSS encoder
- * bits defined as:
- * lowest 8 bits: single turn bits, value range 4-24
- * next 8 bits: multi turn bits, value range 0-16
+/*for BiSS/SSI encoder
+ * bits defined as (from LSB):
+ * bits 0-7: single turn bits, accepted value range 4-24
+ * bits 8-15: multi turn bits, accepted value range 0-16
+ * bits 16-17: SSI encoder mode: 00=SSI 01=SPI (SSI with CS) 10=AMS SSI (SSI with CS + with error bit monitoring & parity check)
  * rest: reserved for future use (always 0)
  */
 #define SMP_SERIAL_ENC_BITS 574
