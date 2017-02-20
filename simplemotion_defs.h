@@ -450,7 +450,7 @@
  * bits defined as (from LSB):
  * bits 0-7: single turn bits, accepted value range 4-24
  * bits 8-15: multi turn bits, accepted value range 0-16
- * bits 16-17: SSI encoder mode: 00=SSI 01=SPI (SSI with CS) 10=AMS SSI (SSI with CS + with error bit monitoring & parity check)
+ * bits 16-18: serial encoder mode: 000=BiSS, 001=SSI, 010=AMS SSI (SSI+CS+error monitoring), 011=SPI (SSI+CS) 100=GRAY SSI (i.e. SICK TTK70)
  * rest: reserved for future use (always 0)
  */
 #define SMP_SERIAL_ENC_BITS 574
