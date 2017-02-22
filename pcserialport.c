@@ -78,6 +78,12 @@ smint32 serialPortOpen(const char * port_device_name, smint32 baudrate_bps)
                 smDebug(-1, Low, "Serial port error: failed to set port parameters");
                 return -1;
 	}
+
+    //flush any stray bytes from device receive buffer that may reside in it
+    //note: according to following page, delay before this may be necessary http://stackoverflow.com/questions/13013387/clearing-the-serial-ports-buffer
+    usleep(100000);
+    tcflush(port_handle,TCIOFLUSH);
+
     return port_handle;
 }
 
@@ -166,6 +172,9 @@ smint32 serialPortOpen(const char *port_device_name, smint32 baudrate_bps)
         CloseHandle(port_handle);
         return(-1);
     }
+
+    //flush any stray bytes from device receive buffer that may reside in it
+    PurgeComm((HANDLE)port_handle,PURGE_RXABORT|PURGE_RXCLEAR|PURGE_TXABORT|PURGE_TXCLEAR);
 
     return( (smint32)port_handle);
 }
