@@ -112,7 +112,7 @@ LIB void smSetDebugOutput( smVerbosityLevel level, FILE *stream );
 /** This function returns all occurred SM_STATUS bits after smOpenBus or resetCumulativeStatus call*/
 LIB SM_STATUS getCumulativeStatus( const smbus handle );
 /** Reset cululative status so getCumultiveStatus returns 0 after calling this until one of the other functions are called*/
-LIB void resetCumulativeStatus( const smbus handle );
+LIB SM_STATUS resetCumulativeStatus( const smbus handle );
 
 
 /** SMV2 Device communication functionss */
