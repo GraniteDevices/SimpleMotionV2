@@ -1,17 +1,6 @@
 //Global SimpleMotion functions & definitions
 //Copyright (c) Granite Devices Oy
 
-/*
-     This program is free software; you can redistribute it and/or modify
-     it under the terms of the GNU General Public License as published by
-     the Free Software Foundation; version 2 of the License.
-
-     This program is distributed in the hope that it will be useful,
-     but WITHOUT ANY WARRANTY; without even the implied warranty of
-     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-     GNU General Public License for more details.
-*/
-
 #ifndef SIMPLEMOTION_H
 #define SIMPLEMOTION_H
 
@@ -80,6 +69,24 @@ typedef enum _smVerbosityLevel {Off,Low,Mid,High,Trace} smVerbosityLevel;
 	-return value: handle to be used with all other commands, -1 if fails
 	*/
 LIB smbus smOpenBus( const char * devicename );
+
+/** Change baudrate of SM communication port. This does not affect already opened ports but the next smOpenBus will be opened at the new speed. 
+	Calling this is optional. By default SM bus and all slave devices operates at 460800 BPS speed.
+	Parameters:
+	-bps: bus speed in bits per second. for possible choices, see rs232.c (but note that all speeds are not necessarily supported by SM devices)
+	Typical usage is:
+	- first call smSetParameter(handle,0,SMP_BUS_SPEED,N) to change speed of all connected slaves to N PBS
+	- then close port with smCloseBus
+	- then call smSetBaudrate(N)
+	- then open bus again with smOpenBus
+	
+	Note that in upcoming SM device firmware versions, bitrate will be reset to default (460800) if device side SM bus watchdog timer has been enabled, and it timeouts.
+	This allows re-establishing connection at defautl speed if connection breaks up and SM bus watchdog timeout gets exceeded. To identify is device supports this, 
+	read parameter SMP_SM_VERSION. Values above 25 support this feature. Value 25 and below will not reset baudrate.
+	
+	Note also that SMP_BUS_SPEED will not be saved in device flash memory - it will reset to default at every reset & power on.
+	*/
+LIB void smSetBaudrate( unsigned long pbs );
 
 /** Set timeout of how long to wait reply packet from bus. Must be set before smOpenBus and cannot be changed afterwards
  * max value 5000ms. In unix this is rounded to 100ms (rounding downwards), so 99 or less gives 0ms timeout.

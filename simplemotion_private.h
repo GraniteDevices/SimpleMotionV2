@@ -1,16 +1,6 @@
 //Internal functions & definitions, not for library user
 //Copyright (c) Granite Devices Oy
 
-/*
-     This program is free software; you can redistribute it and/or modify
-     it under the terms of the GNU General Public License as published by
-     the Free Software Foundation; version 2 of the License.
-
-     This program is distributed in the hope that it will be useful,
-     but WITHOUT ANY WARRANTY; without even the implied warranty of
-     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-     GNU General Public License for more details.
-*/
 
 #ifndef SIMPLEMOTION_PRIVATE_H
 #define SIMPLEMOTION_PRIVATE_H
@@ -19,7 +9,7 @@
 #include "busdevice.h"
 #include <stdio.h>
 
-#define SM_VERSION 0x020001
+#define SM_VERSION 0x020100
 //max number of simultaneously opened buses. change this and recompiple SMlib if
 //necessary (to increase channels or reduce to save memory)
 #define SM_MAX_BUSES 10
@@ -30,6 +20,7 @@
 #define BUSDEV_FTDI 2 /*not implemented yet: direct FTDI lib support*/
 
 #define SM_BUSDEVICENAME_LEN 64
+extern unsigned long SMBusBaudrate; //the next opened port (with smOpenBus) will be opened with the PBS defined here (default 460800 BPS)
 
 //default timeout in ms
 //Argon drive's worst case response time should be ~20ms with max length packets
@@ -42,6 +33,10 @@ extern const smuint8 table_crc8[];
 extern FILE *smDebugOut; //such as stderr or file handle. if NULL, debug info disbled
 extern smuint16 readTimeoutMs;
 
+//smDebug: prints debug info to smDebugOut stream. If no handle availab, set it to -1.
+//set verbositylevel according to frequency of prints made.
+//I.e Low=low frequency, so it gets displayed when global verbosity level is set to at least Low or set it to Trace which gets filtered
+//out if global verbisity level is set less than Trace
 void smDebug( smbus handle, smVerbosityLevel verbositylevel, char *format, ...);
 //accumulates status to internal variable by ORing the bits. returns same value that is fed as paramter
 SM_STATUS recordStatus( const smbus handle, const SM_STATUS stat );

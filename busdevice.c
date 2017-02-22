@@ -1,6 +1,6 @@
 #include "busdevice.h"
 
-#include "rs232.h"
+#include "pcserialport.h"
 #include <string.h>
 
 #define BD_NONE 0
@@ -9,6 +9,8 @@
 
 //how much bytes available in transmit buffer
 #define TANSMIT_BUFFER_LENGTH 128
+
+unsigned long SMBusBaudrate=SM_BAUDRATE; //the next opened port (with smOpenBus) will be opened with the PBS defined here (default 460800 BPS)
 
 typedef struct _SMBusDevice
 {
@@ -65,7 +67,7 @@ smbusdevicehandle smBDOpen( const char *devicename )
 
         if(strncmp(devicename,"COM",3) == 0 || strncmp(devicename,"/dev/tty",8) == 0) //use rs232 lib
 	{
-            BusDevice[handle].comPort=OpenComport( devicename, SM_BAUDRATE );
+            BusDevice[handle].comPort=serialPortOpen( devicename, SMBusBaudrate );
                 if( BusDevice[handle].comPort == -1 )
 		{
 			return -1; //failed to open
@@ -99,7 +101,7 @@ smbool smBDClose( const smbusdevicehandle handle )
 
 	if( BusDevice[handle].bdType==BD_RS )
 	{
-		CloseComport( BusDevice[handle].comPort );
+        serialPortClose( BusDevice[handle].comPort );
 		BusDevice[handle].opened=smfalse;
 		return smtrue;
 	}
@@ -140,7 +142,7 @@ smbool smBDTransmit(const smbusdevicehandle handle)
 
     if( BusDevice[handle].bdType==BD_RS )
     {
-        if(SendBuf(BusDevice[handle].comPort,BusDevice[handle].txBuffer, BusDevice[handle].txBufferUsed)==BusDevice[handle].txBufferUsed)
+        if(serialPortWriteBuffer(BusDevice[handle].comPort,BusDevice[handle].txBuffer, BusDevice[handle].txBufferUsed)==BusDevice[handle].txBufferUsed)
         {
             BusDevice[handle].txBufferUsed=0;
             return smtrue;
@@ -164,7 +166,7 @@ smbool smBDRead( const smbusdevicehandle handle, smuint8 *byte )
 	if( BusDevice[handle].bdType==BD_RS )
 	{
 		int n;
-		n=PollComport(BusDevice[handle].comPort, byte, 1);
+        n=serialPortRead(BusDevice[handle].comPort, byte, 1);
 		if( n!=1 ) return smfalse;
 		else return smtrue;
 	}

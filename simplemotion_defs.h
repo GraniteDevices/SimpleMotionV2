@@ -20,7 +20,7 @@
 /* SMV2 protocol change log:
  * Version 20:
  *   -V20 was introduced with Argon FW 1.0.0 and present at least until 1.4.0
- * Version 21 (is backwards compatible in syntax but not in setpoint behavior, see details below):
+ * Version 25 (is backwards compatible in syntax but not in setpoint behavior, see details below):
  *   -V25 was introduced with IONI
  *   -setpoint calculation is different:
  *     now there is only one common setpoint and all ABS and INC commands (buffered & instant)
@@ -31,6 +31,10 @@
  *    this makes it possible to insert any parameter read/write commands in middle of buffered motion.
  *   -implemented watchdog functionality in new param SMP_FAULT_BEHAVIOR
  *   -added param SMP_ADDRESS_OFFSET
+ * Version 26:
+ *    - fast SM command added (actually is also present in late V25 too, but as unofficial feature)
+ *    - watchdog timout now resets bitrate to default and aborts buffered motion
+ *
  */
 
 /* Important when using SMV2 protocol:
@@ -344,6 +348,13 @@
 	#define SMP_SYSTEM_CONTROL_MEASURE_MOTOR_RL 256
 	//resets position mode FB and setpoint values to 0, and also resets homing status. useful after using in vel or torq mode.
 	#define SMP_SYSTEM_CONTROL_RESET_FB_AND_SETPOINT 512
+	//writes various FW version specific values into debug parameters
+	#define SMP_SYSTEM_CONTROL_GET_SPECIAL_DATA 1024
+	//stores encoder index position in SMP_DEBUGPARAM_1. while busy (index not found) SMP_DEBUGPARAM_2 will be 100, after found it is 200.
+	#define SMP_SYSTEM_CONTROL_CAPTURE_INDEX_POSITION 2048
+	//write SM bus SM_CRCINIT constant modifier. special purposes only, don't use if unsure because
+	//it is one time programmable variable (permanently irreversible operation, can't be ever reset to default by provided methods)
+	#define SMP_SYSTEM_CONTROL_MODIFY_CRCINIT 262144
 
 	//follow error tolerance for position control:
 #define SMP_POS_FERROR_TRIP 555
@@ -421,7 +432,7 @@
     #define FLAG_INVERTED_HALLS BV(13)
     #define FLAG_USE_HALLS BV(14)
     #define FLAG_MECH_BRAKE_DURING_PHASING BV(15)
-	#define FLAG_LIMIT_SWITCHES_NORMALLY_CLOSED_TYPE BV(16)
+	#define FLAG_LIMIT_SWITCHES_NORMALLY_OPEN_TYPE BV(16)
 #define SMP_MOTION_FAULT_THRESHOLD 568
 #define SMP_HV_VOLTAGE_HI_LIMIT 569
 #define SMP_HV_VOLTAGE_LOW_LIMIT 570
@@ -432,19 +443,47 @@
 #define SMP_ELECTRICAL_MODE 573
     #define EL_MODE_STANDARD 0
     #define EL_MODE_IONICUBE 1
-    #define EL_MODE_IONIZER 2
+	#define EL_MODE_SIMUCUBE 2
+    #define EL_MODE_IONIZER 3
 
+/*for BiSS/SSI encoder
+ * bits defined as (from LSB):
+ * bits 0-7: single turn bits, accepted value range 4-24
+ * bits 8-15: multi turn bits, accepted value range 0-16
+ * bits 16-18: serial encoder mode: 000=BiSS, 001=SSI, 010=AMS SSI (SSI+CS+error monitoring), 011=SPI (SSI+CS) 100=GRAY SSI (i.e. SICK TTK70)
+ * rest: reserved for future use (always 0)
+ */
+#define SMP_SERIAL_ENC_BITS 574
 
 //primary feedback loop 200-299
 #define SMP_VEL_I 200
 #define SMP_POS_P 201
 #define SMP_VEL_P 202
+#define SMP_VEL_D 203
 #define SMP_VEL_FF 220
 #define SMP_ACC_FF 221
 #define SMP_POS_FF 222
 
 //anti dither limits
 #define SMP_ANTIDITHER_MODE 230
+
+//torque modifiers & effects
+/*SMP_TORQUE_NOTCH_FILTER contains 3 values in different bit positions:
+ * 0-7 (lowest byte), attenuation in 0.1dB steps and value V=1-255 means attenuation of (-V-255)/10 dB gain.  if V set 0, use notch filter instead of peaking with "infinite" attenuation. value 255 disables notch filter.
+ * 8-15, Q factor in 0.1 steps. Minimum is 0.1, below that filter is disabled.
+ * 16-29, center frequency in 0.1Hz steps, and 1.1Hz is minimum, so range is 1.1-409.5 Hz. value below or equal 1Hz disables the filter.
+ *
+ *Example, peaking filter with gain -11.5dB, center freq 20Hz and Q=3.5 value is: 0x00648c23 = dec 6589475
+ *
+ *Notch filter works in all control modes and is applied to torque controller setpoint
+ */
+#define SMP_TORQUE_NOTCH_FILTER 240
+//define damping effect gain in torque control mode, torque added to setpoint equals -speed*gain with
+#define SMP_TORQUE_EFFECT_DAMPING 241
+//define friction effect gain in torque control mode
+#define SMP_TORQUE_EFFECT_FRICTION 242
+//define inertia effect gain in torque control mode, torque added to setpoint equals -acceleration*gain
+#define SMP_TORQUE_EFFECT_INERTIA 243
 
 //secondary feedback loop 300-399
 //NOT IMPLEMENTED YET
