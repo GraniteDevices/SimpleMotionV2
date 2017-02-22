@@ -23,6 +23,7 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <string.h>
 
 smint32 serialPortOpen(const char * port_device_name, smint32 baudrate_bps)
 {

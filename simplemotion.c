@@ -1,3 +1,4 @@
+
 //Copyright (c) Granite Devices Oy
 
 #include <stdio.h>
@@ -463,12 +464,6 @@ SM_STATUS smAppendSMCommandToQueue( smbus handle, int smpCmdType,smint32 paramva
         SMPayloadCommand16 newcmd;
         newcmd.ID=SMPCMD_SETPARAMADDR;
         newcmd.param=paramvalue;
-
-        //          bufput8bit( smBus[handle].recv_rsbuf, smBus[handle].cmd_send_queue_bytes, 5);
-        //            bufput8bit( smBus[handle].recv_rsbuf, smBus[handle].cmd_send_queue_bytes, 6);
-        /*
-FIXME
-            ei toimi, menee vaa nollaa*/
         bufput8bit( smBus[handle].recv_rsbuf, smBus[handle].cmd_send_queue_bytes++, ((unsigned char*)&newcmd)[1]);
         bufput8bit( smBus[handle].recv_rsbuf, smBus[handle].cmd_send_queue_bytes++, ((unsigned char*)&newcmd)[0]);
     }
@@ -866,7 +861,7 @@ SM_STATUS smGetBufferClock( const smbus handle, const smaddr targetaddr, smuint1
     if(stat!=SM_OK) return recordStatus(handle,stat); //maybe timeouted
 
     if(clock!=NULL)
-        *clock=bufget16bit(smBus[handle].recv_rsbuf,0);
+	memcpy(clock,smBus[handle].recv_rsbuf,sizeof(smuint16));
 
     smBus[handle].recv_storepos=0;
 
