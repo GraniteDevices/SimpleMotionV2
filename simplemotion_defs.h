@@ -352,6 +352,8 @@
 	#define SMP_SYSTEM_CONTROL_GET_SPECIAL_DATA 1024
 	//stores encoder index position in SMP_DEBUGPARAM_1. while busy (index not found) SMP_DEBUGPARAM_2 will be 100, after found it is 200.
 	#define SMP_SYSTEM_CONTROL_CAPTURE_INDEX_POSITION 2048
+	//load settings that are saved in device flash memory. useful when changing parameters on the fly and want to restore originals, or when app is started and drive may have unknown parameter modifications active.
+	#define SMP_SYSTEM_CONTROL_RESTORE_SAVED_CONFIG 4096
 	//write SM bus SM_CRCINIT constant modifier. special purposes only, don't use if unsure because
 	//it is one time programmable variable (permanently irreversible operation, can't be ever reset to default by provided methods)
 	#define SMP_SYSTEM_CONTROL_MODIFY_CRCINIT 262144
@@ -719,7 +721,21 @@
 //#define RUNTIME_FEATURES1 6000
 #define SMP_SERIAL_NR 6002
 #define SMP_UID_NR 6003
-#define SMP_DRIVE_CAPABILITIES 6006
+
+//read only bit field that is can be used to identify device capabilities
+//the list below is subject to extend
+#define SMP_DEVICE_CAPABILITIES 6006
+	#define DEVICE_CAPABILITY_HOMING BV(0)
+	#define DEVICE_CAPABILITY_SERIAL_FBD BV(1)
+	#define DEVICE_CAPABILITY_RESTORE_SAVED_CONFIG BV(2)
+	#define DEVICE_CAPABILITY_MEASURE_RL BV(3)
+	#define DEVICE_CAPABILITY_TORQUE_RIPPLE_COMPENSATION BV(4)
+	#define DEVICE_CAPABILITY_NOTCH_FILTER BV(5)
+	#define DEVICE_CAPABILITY_TORQUE_EFFECTS BV(6)
+	#define DEVICE_CAPABILITY_AUTOSETUP_COMMUTATION_SENSOR BV(7)
+	#define DEVICE_CAPABILITY_SENSORLESS_COMMUTATION BV(8)
+	#define DEVICE_CAPABILITY_ANALOG_OUTPUT BV(9)
+
 #define SMP_FIRMWARE_VERSION 6010
 #define SMP_FIRMWARE_BACKWARDS_COMP_VERSION 6011
 #define SMP_GC_FIRMWARE_VERSION 6014
