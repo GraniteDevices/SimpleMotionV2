@@ -3,6 +3,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <simplemotion_private.h>
+#include <math.h>
 
 #ifdef __unix__
 #include <unistd.h>
@@ -52,15 +53,23 @@ unsigned int readFileLine( FILE *f, int charlimit, char *output, smbool *eof)
     return len;
 }
 
-smbool parseParameter(FILE *f, int idx, smint32 *paramaddr, smint32 *value, smbool *readonly)
+typedef struct
+{
+    int address;
+    double value;
+    smbool readOnly;
+    double scale;
+    double offset;
+} Parameter;
+
+smbool parseParameter(FILE *f, int idx, Parameter *param )
 {
     const int maxLineLen=100;
     char line[maxLineLen];
     char scanline[maxLineLen];
     //search correct row
     fseek(f,0,SEEK_SET);
-    smbool gotaddr=smfalse,gotvalue=smfalse, gotreadonly=smfalse, readRDonly;
-    int readAddr, readValue;
+    smbool gotaddr=smfalse,gotvalue=smfalse, gotreadonly=smfalse, gotscale=smfalse,gotoffset=smfalse;
     unsigned int readbytes;
     smbool eof;
 
@@ -71,36 +80,45 @@ smbool parseParameter(FILE *f, int idx, smint32 *paramaddr, smint32 *value, smbo
         //try read address
         sprintf(scanline,"%d\\addr=",idx);
         if(!strncmp(line,scanline,strlen(scanline)) && readbytes > strlen(scanline))//string starts with correct line
-            if(sscanf(line+strlen(scanline),"%d",&readAddr)==1)//parse number after the start of line
+            if(sscanf(line+strlen(scanline),"%d",&param->address)==1)//parse number after the start of line
                 gotaddr=smtrue;//number parse success
 
         //try read value
         sprintf(scanline,"%d\\value=",idx);
         if(!strncmp(line,scanline,strlen(scanline)) && readbytes > strlen(scanline))//string starts with correct line
-            if(sscanf(line+strlen(scanline),"%d",&readValue)==1)//parse number after the start of line
+            if(sscanf(line+strlen(scanline),"%lf",&param->value)==1)//parse number after the start of line
                 gotvalue=smtrue;//number parse success
+
+        //try read offset
+        sprintf(scanline,"%d\\offset=",idx);
+        if(!strncmp(line,scanline,strlen(scanline)) && readbytes > strlen(scanline))//string starts with correct line
+            if(sscanf(line+strlen(scanline),"%lf",&param->offset)==1)//parse number after the start of line
+                gotoffset=smtrue;//number parse success
+
+        //try read scale
+        sprintf(scanline,"%d\\scaling=",idx);
+        if(!strncmp(line,scanline,strlen(scanline)) && readbytes > strlen(scanline))//string starts with correct line
+            if(sscanf(line+strlen(scanline),"%lf",&param->scale)==1)//parse number after the start of line
+                gotscale=smtrue;//number parse success
 
         //try read readonly status
         sprintf(scanline,"%d\\readonly=true",idx);//check if readonly=true
         if(!strncmp(line,scanline,strlen(scanline)) && readbytes >= strlen(scanline))//line match
         {
-            readRDonly=smtrue;
+            param->readOnly=smtrue;
             gotreadonly=smtrue;
         }
         sprintf(scanline,"%d\\readonly=false",idx);//check if readonly=false
         if(!strncmp(line,scanline,strlen(scanline)) && readbytes >= strlen(scanline))//line match
         {
-            readRDonly=smfalse;
+            param->readOnly=smfalse;
             gotreadonly=smtrue;
         }
     }
-    while( (gotvalue==smfalse || gotaddr==smfalse || gotreadonly==smfalse) && eof==smfalse );
+    while( (gotvalue==smfalse || gotaddr==smfalse || gotreadonly==smfalse || gotscale==smfalse || gotoffset==smfalse) && eof==smfalse );
 
-    if(gotvalue==smtrue&&gotaddr==smtrue)
+    if(gotvalue==smtrue&&gotaddr==smtrue&&gotoffset==smtrue&&gotscale==smtrue&&gotreadonly==smtrue)
     {
-        *paramaddr=readAddr;
-        *value=readValue;
-        *readonly=readRDonly;
         return smtrue;
     }
 
@@ -157,17 +175,19 @@ LoadConfigurationStatus smLoadConfiguration(const smbus smhandle, const int smad
     smbool readOk;
     do
     {
-        smint32 readAddr, readValue;
-        smbool isReadOnly;
-        readOk=parseParameter(f,i,&readAddr,&readValue,&isReadOnly);
+        Parameter param;
+        readOk=parseParameter(f,i,&param);
 
-        if(readOk==smtrue && isReadOnly==smfalse)
+        if(readOk==smtrue && param.readOnly==smfalse)
         {
             smint32 currentValue;
+
+            int configFileValue=round(param.value*param.scale-param.offset);
+
             //set parameter to device
-            if(smRead1Parameter( smhandle, smaddress, readAddr, &currentValue )==SM_OK)
+            if(smRead1Parameter( smhandle, smaddress, param.address, &currentValue )==SM_OK)
             {
-                if(currentValue!=readValue  ) //set only if different
+                if(currentValue!=configFileValue  ) //set only if different
                 {
                     resetCumulativeStatus( smhandle );
                     smint32 dummy;
@@ -177,8 +197,8 @@ LoadConfigurationStatus smLoadConfiguration(const smbus smhandle, const int smad
                     //use low level SM commands so we can get execution status of each subpacet:
                     smAppendSMCommandToQueue( smhandle, SM_SET_WRITE_ADDRESS, SMP_RETURN_PARAM_LEN );
                     smAppendSMCommandToQueue( smhandle, SM_WRITE_VALUE_24B, SMPRET_CMD_STATUS );
-                    smAppendSMCommandToQueue( smhandle, SM_SET_WRITE_ADDRESS, readAddr );
-                    smAppendSMCommandToQueue( smhandle, SM_WRITE_VALUE_32B, readValue );
+                    smAppendSMCommandToQueue( smhandle, SM_SET_WRITE_ADDRESS, param.address );
+                    smAppendSMCommandToQueue( smhandle, SM_WRITE_VALUE_32B, configFileValue );
                     smExecuteCommandQueue( smhandle, smaddress );
                     smGetQueuedSMCommandReturnValue( smhandle, &dummy );
                     smGetQueuedSMCommandReturnValue( smhandle, &dummy );
@@ -190,7 +210,7 @@ LoadConfigurationStatus smLoadConfiguration(const smbus smhandle, const int smad
                     {
                         SM_STATUS stat=getCumulativeStatus(smhandle);
                         setErrors++;
-                        smDebug(smhandle,Low,"Failed to write parameter value %d to address %d (status: %d %d %d)\n",readValue,readAddr,(int)stat,cmdSetAddressStatus,cmdSetValueStatus);
+                        smDebug(smhandle,Low,"Failed to write parameter value %d to address %d (status: %d %d %d)\n",configFileValue,param.address,(int)stat,cmdSetAddressStatus,cmdSetValueStatus);
                     }
 
                     changed++;
@@ -199,7 +219,7 @@ LoadConfigurationStatus smLoadConfiguration(const smbus smhandle, const int smad
             else//device doesn't have such parameter. perhaps wrong model or fw version.
             {
                 ignoredCount++;
-                smDebug(smhandle,Low,"Ignoring parameter parameter value %d to address %d\n",readValue,readAddr);
+                smDebug(smhandle,Low,"Ignoring parameter parameter value %d to address %d\n",configFileValue,param.address);
             }
         }
 
