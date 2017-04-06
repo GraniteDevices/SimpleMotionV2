@@ -1,3 +1,14 @@
+/* Device deployment library based on SimpleMotionV2 lib. Features:
+ *
+ * - install .gdf format firmware to drive
+ * - load .drc settings file to drive
+ * - read installed firmware binary checksum from device - this may be used to verify that exact correct FW build is installed in the drive
+ *
+ * TODO:
+ * - Support Argon. Currently tested only on IONI/ATOMI series drives. Currently FW upgrade on Argon will fail, but settings load may work.
+ * - Add some way of reading binary checksum from .gdf file or settings file. Now user must read it from device and store that number somewhere manually.
+ */
+
 #ifndef SMDEPLOYMENTTOOL_H
 #define SMDEPLOYMENTTOOL_H
 

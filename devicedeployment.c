@@ -1,4 +1,4 @@
-#include "smdeploymenttool.h"
+#include "devicedeployment.h"
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
