@@ -226,6 +226,8 @@ LoadConfigurationStatus smLoadConfiguration(const smbus smhandle, const int smad
         i++;
     } while(readOk==smtrue);
 
+    fclose(f);
+
     *skippedCount=ignoredCount;
     *errorCount=setErrors;
 
@@ -355,7 +357,10 @@ smbool loadBinaryFile( const char *filename, smuint8 **data, int *numbytes )
     //allocate buffer
     *data=malloc(length);
     if(*data==NULL)
+    {
+        fclose(f);
         return smfalse;
+    }
 
     //read
     *numbytes=fread(*data,1,length,f);
@@ -363,9 +368,11 @@ smbool loadBinaryFile( const char *filename, smuint8 **data, int *numbytes )
     {
         free(*data);
         *numbytes=0;
+        fclose(f);
         return smfalse;
     }
 
+    fclose(f);
     return smtrue;//successl
 }
 
