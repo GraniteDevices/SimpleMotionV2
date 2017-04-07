@@ -158,7 +158,7 @@ SM_STATUS smSetTimeout( smuint16 millsecs )
     return SM_ERR_PARAMETER;
 }
 
-unsigned long smGetVersion()
+smuint32 smGetVersion()
 {
     return SM_VERSION;
 }
