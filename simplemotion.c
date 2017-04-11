@@ -34,7 +34,7 @@ SM_STATUS smReceiveReturnPacket( smbus bushandle );
 
 typedef struct SM_BUS_
 {
-    smint8 bdHandle;
+    smbusdevicehandle bdHandle;
     smbool opened;
 
     enum RecvState recv_state,recv_state_next;
@@ -420,7 +420,7 @@ SM_STATUS smReceiveErrorHandler( smbus handle, smbool flushrx )
         smbool success;
         do{
             smuint8 rx;
-            success=smBDRead(handle,&rx);
+            success=smBDRead(smBus[handle].bdHandle,&rx);
         }while(success==smtrue);
     }
     smResetSM485variables(handle);
@@ -644,7 +644,7 @@ SM_STATUS smReceiveReturnPacket( smbus bushandle )
         smuint8 ret;
         SM_STATUS stat;
 
-        smbool succ=smBDRead(bushandle,&ret);
+        smbool succ=smBDRead(smBus[bushandle].bdHandle,&ret);
 
         if(succ==smfalse)
         {
