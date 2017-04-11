@@ -39,7 +39,7 @@ smint32 serialPortOpen(const char * port_device_name, smint32 baudrate_bps)
     int err;
     int baudrateEnumValue;
     struct termios new_port_settings;
-    bool customBaudRate = false;
+    int customBaudRate = 0;
 
     port_handle = open(port_device_name, O_RDWR | O_NOCTTY);
 
@@ -106,7 +106,7 @@ smint32 serialPortOpen(const char * port_device_name, smint32 baudrate_bps)
         case 4000000 : baudrateEnumValue = B4000000; break;
 #endif
         default:
-            customBaudRate = true;
+            customBaudRate = 1;
 #if defined(__APPLE__)
             if (ioctl(port_handle, IOSSIOSPEED, &baudrate_bps) == -1)
             {
