@@ -321,7 +321,7 @@ FirmwareUploadStatus verifyFirmwareData(smuint8 *data, smuint32 numbytes, int co
     smuint32 cksumOffset=4+2+2+4+4+primaryMCUSize+secondaryMCUSize;
     if(cksumOffset>numbytes-4)
         return FWInvalidFile;
-    cksum=((smuint32*)((smuint32)data+cksumOffset))[0];
+    cksum=((smuint32*)(data+cksumOffset))[0];
 
     for(i=0;i< numbytes-4;i++)
     {
