@@ -714,7 +714,7 @@
 #define SMP_CAPTURE_SAMPLERATE 5012
 //rdonly
 #define SMP_CAPTURE_BUF_LENGHT 5013
-//SMP_CAPTURE_TRIGGER_DELAY sets scope capture trigger delay. Value 0 is traditional, -n starts capture n sample cycles before trigger, +n after trigger. In negative delay, the minimum effective value is SMP_CAPTURE_BUF_LENGHT divided by number of channels selected.
+//SMP_CAPTURE_TRIGGER_DELAY sets scope capture trigger delay. Value 0 is traditional, +n starts capture n sample cycles before trigger, -n after trigger. In positive delay, the maximum effective value is SMP_CAPTURE_BUF_LENGHT divided by number of channels selected.
 #define SMP_CAPTURE_TRIGGER_DELAY 5014
 //this is looped 0-n to make samples 0-n readable from SMP_CAPTURE_BUFFER_GET_VALUE
 #define SMP_CAPTURE_BUFFER_GET_ADDR 5333
