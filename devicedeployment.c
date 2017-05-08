@@ -5,11 +5,11 @@
 #include <simplemotion_private.h>
 #include <math.h>
 
-#ifdef __unix__
+#if defined(__unix__) || defined(__APPLE__)
 #include <unistd.h>
 void sleep_ms(int millisecs)
 {
-    msleep(millisecs);
+    usleep(millisecs*1000);
 }
 #else
 #include <windows.h>
