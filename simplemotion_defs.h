@@ -709,14 +709,15 @@
 	#define TRIG_FAULT 2
 	#define TRIG_TARGETCHANGE 3
 	#define TRIG_TARGETCHANGE_POS 4
-	#define TRIG_SERIALCMD 5
-	#define TRIG_EXTERNAL_INPUT 6
+	#define TRIG_EXTERNAL_INPUT 5
 
 #define SMP_CAPTURE_SAMPLERATE 5012
 //rdonly
 #define SMP_CAPTURE_BUF_LENGHT 5013
-//SMP_CAPTURE_BEFORE_TRIGGER_SAMPLE_COUNT sets how much samples will be preserved before trigger event. Value 0 is traditional, +n starts capture n sample cycles before trigger, -n after trigger. In positive delay, the maximum effective value is SMP_CAPTURE_BUF_LENGHT divided by number of channels selected.
-#define SMP_CAPTURE_BEFORE_TRIGGER_SAMPLE_COUNT 5014
+//SMP_CAPTURE_BEFORE_TRIGGER_PERCENTS sets how much samples will be preserved before trigger event. Value 0 is traditional, +n starts capture n percents before trigger (relative to whole capture length), -n after trigger. Value range -1000000%..+100%.
+#define SMP_CAPTURE_BEFORE_TRIGGER_PERCENTS 5014
+//SMP_CAPTURE_STATE, states: 0=idle (capture complete or not started), 1=waiting for trigger, 2=capturing. to start capture, write value 1 here starting from IONI FW V1110
+#define SMP_CAPTURE_STATE 5015
 //this is looped 0-n to make samples 0-n readable from SMP_CAPTURE_BUFFER_GET_VALUE
 #define SMP_CAPTURE_BUFFER_GET_ADDR 5333
 #define SMP_CAPTURE_BUFFER_GET_VALUE 5334
@@ -738,7 +739,7 @@
 	#define DEVICE_CAPABILITY_AUTOSETUP_COMMUTATION_SENSOR BV(7)
 	#define DEVICE_CAPABILITY_SENSORLESS_COMMUTATION BV(8)
 	#define DEVICE_CAPABILITY_ANALOG_OUTPUT BV(9)
-	#define DEVICE_CAPABILITY_SCOPE_TRIGGER_DELAY BV(10)
+	#define DEVICE_CAPABILITY_SCOPE_TRIGGER_DELAY BV(10) /*also means that params SMP_CAPTURE_BEFORE_TRIGGER_PERCENTS and SMP_CAPTURE_STATE exist */
 	#define DEVICE_CAPABILITY_SCOPE_EXTERNAL_TRIGGER BV(11)
 
 #define SMP_FIRMWARE_VERSION 6010
