@@ -455,15 +455,13 @@
  * ^^ sum of MT and ST must be max 32
  * bits 16-19: serial encoder mode (see below)
  * rest: reserved for future use (always 0)
- */
- /*
- * Serial encoder read modes
+ *
+ * Serial encoder read modes (bits 16-19):
  * 0 BiSS C
- * 1 BiSS C gray
- * 2 BiSS B
- * 3 SSI
- * 4 SSI gray
- * 5 AMS SSI
+ * 1 BiSS B
+ * 2 SSI
+ * 3 SSI gray
+ * 4 AMS SSI
  */
 #define SMP_SERIAL_ENC_BITS 574
 
