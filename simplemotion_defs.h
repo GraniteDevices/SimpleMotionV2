@@ -352,8 +352,10 @@
 	#define SMP_SYSTEM_CONTROL_GET_SPECIAL_DATA 1024
 	//stores encoder index position in SMP_DEBUGPARAM_1. while busy (index not found) SMP_DEBUGPARAM_2 will be 100, after found it is 200.
 	#define SMP_SYSTEM_CONTROL_CAPTURE_INDEX_POSITION 2048
+	//start a procedure to automatically configure hall sensors direction & offset, or other absolute sensor capable of commutation
+	#define SMP_SYSTEM_CONTROL_START_COMMUTATION_SENSOR_AUTOSETUP 4096
 	//load settings that are saved in device flash memory. useful when changing parameters on the fly and want to restore originals, or when app is started and drive may have unknown parameter modifications active.
-	#define SMP_SYSTEM_CONTROL_RESTORE_SAVED_CONFIG 4096
+	#define SMP_SYSTEM_CONTROL_RESTORE_SAVED_CONFIG 8192
 	//write SM bus SM_CRCINIT constant modifier. special purposes only, don't use if unsure because
 	//it is one time programmable variable (permanently irreversible operation, can't be ever reset to default by provided methods)
 	#define SMP_SYSTEM_CONTROL_MODIFY_CRCINIT 262144
@@ -431,8 +433,8 @@
     #define FLAG_ALLOW_VOLTAGE_CLIPPING BV(10)
     #define FLAG_USE_INPUT_LP_FILTER BV(11)
     #define FLAG_USE_PID_CONTROLLER BV(12)//PIV is the default if bit is 0/*obsolete*/
-    #define FLAG_INVERTED_HALLS BV(13)
-    #define FLAG_USE_HALLS BV(14)
+    #define FLAG_INVERTED_HALLS BV(13) /*becoming obsolete, no effect on device where param SMP_COMMUTATION_SENSOR_CONFIG is present */
+    #define FLAG_USE_HALLS BV(14) /*becoming obsolete, no effect on device where param SMP_COMMUTATION_SENSOR_CONFIG is present */
     #define FLAG_MECH_BRAKE_DURING_PHASING BV(15)
 	#define FLAG_LIMIT_SWITCHES_NORMALLY_OPEN_TYPE BV(16)
 #define SMP_MOTION_FAULT_THRESHOLD 568
@@ -550,7 +552,18 @@
 #define SMP_PHASESEARCH_VOLTAGE_SLOPE 480
 //by default this is calculated from other motor params:
 #define SMP_PHASESEARCH_CURRENT 481
-//selector value 0-9 = 100 - 3300Hz (see Granity):
+/* Commutation angle congiuration, i.e. for hall sensors or absolute encoder. can be automatically set with SMP_SYSTEM_CONTROL_START_COMMUTATION_SENSOR_AUTOSET.
+ * Format:
+ * bits 0-15 LSB: commutation sensor offset 0-65535 represents commutation angle offset 0-360 electical degrees
+ * bit 16: invert sensor count direction
+ * bit 17: enable commutation sensor
+ * bits 18-31: reserved, always 0
+ */
+#define SMP_COMMUTATION_SENSOR_CONFIG 482
+	#define SMP_COMMUTATION_SENSOR_CONFIG_ANGLE_MASK 0xFFFF
+	#define SMP_COMMUTATION_SENSOR_CONFIG_INVERT_MASK 0x10000
+	#define SMP_COMMUTATION_SENSOR_CONFIG_ENABLE_MASK 0x20000
+//low pass filter selector, value 0=100Hz, 9=3300Hz, 10=4700Hz, 11=unlimited (see Granity for all options):
 #define SMP_TORQUE_LPF_BANDWIDTH 490
 
 //motor rev to rotary/linear unit scale. like 5mm/rev or 0.1rev/rev. 30bit parameter & scale 100000=1.0
