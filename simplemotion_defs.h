@@ -773,7 +773,7 @@
 
 //read only bit field that is can be used to identify device capabilities
 //the list below is subject to extend
-#define SMP_DEVICE_CAPABILITIES2 6006
+#define SMP_DEVICE_CAPABILITIES2 6007
 	#define DEVICE_CAPABILITY2_RESTORE_SAVED_CONFIG BV(0)
 	#define DEVICE_CAPABILITY2_MEASURE_RL BV(1)
 	#define DEVICE_CAPABILITY2_TORQUE_RIPPLE_COMPENSATION BV(2)
