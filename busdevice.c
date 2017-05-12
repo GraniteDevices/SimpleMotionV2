@@ -52,6 +52,7 @@ void smBDinit()
 	bdInitialized=smtrue;
 }
 
+//accepted TCP/IP address format is nnn.nnn.nnn.nnn:pppp where n is IP address numbers and p is port number
 static int validateIpAddress(const char *s, const char **pip_end,
                              const char **pport_start)
 {

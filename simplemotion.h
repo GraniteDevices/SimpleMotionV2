@@ -65,7 +65,8 @@ typedef enum _smVerbosityLevel {Off,Low,Mid,High,Trace} smVerbosityLevel;
 ///////////////////////////////////////////////////////////////////////////////////////
 
 /** Open SM RS485 communication bus. Parameters:
-	-devicename: "USB2VSD" or com port as "COMx" where x=1-16
+    -devicename: "USB2VSD" or com port as "COMx" where x=1-n
+    -devicename for TCP/IP connection format is nnn.nnn.nnn.nnn:pppp where n is IP address numbers and p is port number for TCP/IP connection
 	-return value: handle to be used with all other commands, -1 if fails
 	*/
 LIB smbus smOpenBus( const char * devicename );
