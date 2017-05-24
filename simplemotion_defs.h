@@ -84,9 +84,10 @@
 
 
 
-/*
- * SimpleMotion V2 constants
- */
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// SimpleMotion V2 constants
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 
 /* broadcast address, if packet is sent to SM_BROADCAST_ADDR then all nodes in the network
  * will read it but no-one will send a reply because it would cause packet collision*/
@@ -165,22 +166,40 @@
  *
  */
 
-//if command is to set param addr to this -> NOP
-#define SMP_ADDR_NOP 0x3fff
-
-//SMPCommand values that are returned with every SMPCommand when SMPRET_OTHER set as SMP_RETURN_PARAM_LEN:
-#define SMP_CMD_STATUS_ACK 0
-#define SMP_CMD_STATUS_NACK 1
-#define SMP_CMD_STATUS_INVALID_ADDR 2
-#define SMP_CMD_STATUS_INVALID_VALUE 4
-#define SMP_CMD_STATUS_VALUE_TOO_HIGH 8
-#define SMP_CMD_STATUS_VALUE_TOO_LOW 16
-#define SMP_CMD_STATUS_OTHER_MASK32 (3L<<30) //1byte packet. payload codes:
+/* Following is a list of status (SMP_CMD_STATUS_) values that are the result of every SM subpacket command.
+ *
+ * To read directly this value on each SM subpacket command, set SMPRET_OTHER as SMP_RETURN_PARAM_LEN. In this
+ * case, user can not read value of the variable.
+ *
+ * As alternative to direct reading like above:
+ * All executed SM subpacket commands also modify SMP_CUMULATIVE_STATUS. User can
+ * read SMP_CUMULATIVE_STATUS to check whihc status bits the previous commands have set
+ * (i.e. to check if all parameters were reawd/written succesfully). Once bit is set in cumulative status, it will stick there
+ * until user clears this value by writing 0 to SMP_CUMULATIVE_STATUS. Procedure for using SMP_CUMULATIVE_STATUS:
+ *
+ * 1. Set SMP_CUMULATIVE_STATUS to 0
+ * 2. Write/read some SMP parameters
+ * 3. Read SMP_CUMULATIVE_STATUS and check which SMP_CMD_STATUS bits have been set.
+ *
+ * If all all above read/writes were succesfull, it contains only bit SMP_CMD_STATUS_ACK. If something else is returned, investigate which
+ * read/write operation caused the error (i.e. by narrowing the SMP_CUMULATIVE_STATUS monitoring range).
+ */
+#define SMP_CMD_STATUS_ACK 0 /* subpacket command executed successfully */
+#define SMP_CMD_STATUS_NACK 1 /* subpacket command failed, perhaps writing into read-only variable or invalid value */
+#define SMP_CMD_STATUS_INVALID_ADDR 2 /* subpacket command has been targetted in invalid SMP parameter address, perhaps parameter is not supported in target device */
+#define SMP_CMD_STATUS_INVALID_VALUE 4 /* attempt to set invalid value into parameter */
+#define SMP_CMD_STATUS_VALUE_TOO_HIGH 8 /* attempt to too high value into parameter */
+#define SMP_CMD_STATUS_VALUE_TOO_LOW 16 /* attempt to too low value into parameter */
 
 //params 0-63 are reserved for SM specific params, application specifics are >64-8090
 #define SMP_SM_RESERVED_ADDRESS_SPACE 63
 
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// SimpleMotion common parameter definitions start below. These parameters are mandatory on SimpleMotion devices.
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 //SMP=Simple motion parameter
+
 #define SMP_NULL 0
 #define SMP_NODE_ADDRSS 1
 #define SMP_BUS_MODE 2
@@ -197,12 +216,18 @@
 #define SMP_BUS_SPEED 5
 #define SMP_BUFFER_FREE_BYTES 6
 #define SMP_BUFFERED_CMD_STATUS 7
+	//bit mask
+	#define SM_BUFCMD_STAT_IDLE 1
+	#define SM_BUFCMD_STAT_RUN 2
+	#define SM_BUFCMD_STAT_UNDERRUN 4
+	#define SM_BUFCMD_STAT_OVERRUN 8
+
 #define SMP_BUFFERED_CMD_PERIOD 8
 #define SMP_RETURN_PARAM_ADDR 9
 #define SMP_RETURN_PARAM_LEN 10
 /*SMP_TIMOUT defines how long device waits for one packet to transmit before discarding it. unit 0.1 milliseconds*/
 #define SMP_TIMEOUT 12
-#define SMP_CUMULATIVE_STATUS 13 //error bits are set here if any, (SMP_CMD_STATUS_... bits). clear by writing 0
+#define SMP_CUMULATIVE_STATUS 13 //error bits are set here if any, (SMP_CMD_STATUS_... bits). clear by writing 0. For practical usage of SMP_CUMULATIVE_STATUS, see definitions of SMP_CMD_STATUS_ bits above.
 #define SMP_ADDRESS_OFFSET 14 /*used to set or offset device address along physical method, i.e. DIP SW + offset to allow greater range of addresses than switch allows. */
 /* SMP_FAULT_BEHAVIOR defines maximum amount of time between to valid received SM packets to device and other SM
  * fault behavior that affect drive operation.
@@ -219,14 +244,70 @@
 #define SMP_FAULT_BEHAVIOR 15
 
 
-//bit mask
-#define SM_BUFCMD_STAT_IDLE 1
-#define SM_BUFCMD_STAT_RUN 2
-#define SM_BUFCMD_STAT_UNDERRUN 4
-#define SM_BUFCMD_STAT_OVERRUN 8
 
-//each DIGITAL variable is 16 bits thus holds 16 i/o's
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// SimpleMotion device specific parameter definitions start below. Note: all parameters are not available in all device types/versions. To test which are available,
+// try reading them. If SMP_CMD_STATUS_INVALID_ADDR bit is being set into SMP_CUMULATIVE_STATUS on the read attempt, it means parameter doesn't exist in the target device.
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+//choose input from SMP_DIGITAL_IN_VALUES_1 to be used as home switch.
+//note: this might not have effect depending on other parameters (i.e. if output is consumed by some built-in functionality)
+#define SMP_HOME_SWITCH_SOURCE_SELECT 100
+
+//choose signal to be forwarded into aux output of drive (on IONI it is GPO5)
+/*list of aux sources
+ * value  	signal
+ * 0		constant 0
+ * 1		constant 1 (default)
+ */
+#define SMP_AUX_OUTPUT_SOURCE_SELECT 101
+
+//each DIGITAL variable holds one bit for each physical digital input
+/*SMP_DIGITAL_IN_VALUES_1 on GD motor drives:
+ * bit	physical input
+ * 0	GPI1
+ * 1	GPI2
+ * 2	GPI3
+ * 3 	GPI4
+ * 4	GPI5
+ * 5	HSIN1
+ * 6	HSIN2
+ * 7	Analog In 1 as digital value
+ * 8	Analog In 2 as digital value
+ * 9	ENC A
+ * 10	ENC B
+ * 11	ENC C
+ * 12	ENC D
+ * 13	Hall U
+ * 14	Hall V
+ * 15	Hall W
+ * 16	reserved
+ * 17	reserved
+ * 18	reserved
+ * 19	reserved
+ * 20	GPI6
+ * 21-	reserved
+ */
 #define SMP_DIGITAL_IN_VALUES_1 128
+	#define SMP_DIG_IN1_GPI1 BV(0)
+	#define SMP_DIG_IN1_GPI2 BV(1)
+	#define SMP_DIG_IN1_GPI3 BV(2)
+	#define SMP_DIG_IN1_GPI4 BV(3)
+	#define SMP_DIG_IN1_GPI5 BV(4)
+	#define SMP_DIG_IN1_GPI6 BV(20)
+	#define SMP_DIG_IN1_HSIN1 BV(5)
+	#define SMP_DIG_IN1_HSIN2 BV(6)
+	#define SMP_DIG_IN1_ANA1 BV(7)
+	#define SMP_DIG_IN1_ANA2 BV(8)
+	#define SMP_DIG_IN1_ENCA BV(9)
+	#define SMP_DIG_IN1_ENCB BV(10)
+	#define SMP_DIG_IN1_ENCC BV(11)
+	#define SMP_DIG_IN1_ENCD BV(12)
+	#define SMP_DIG_IN1_HALLU BV(13)
+	#define SMP_DIG_IN1_HALLV BV(14)
+	#define SMP_DIG_IN1_HALLW BV(15)
+
 #define SMP_DIGITAL_IN_VALUES_2 129
 #define SMP_DIGITAL_IN_VALUES_3 130
 #define SMP_DIGITAL_IN_VALUES_4 131
@@ -260,8 +341,6 @@
 #define SMP_ANALOG_OUT_VALUE_4 187
 #define SMP_ANALOG_OUT_VALUE_5 188
 // continue to .. 200
-
-
 
 /*
  * List of motor control parameters.
@@ -641,6 +720,9 @@
 	#define HOMING_ENABLED BV(7) /*if 0, homing cant be started */
 	#define _HOMING_CFG_MAX_VALUE 0x00ff
 
+//defines from which direction & distance home switch will be approached for second time (eliminate switch hysteresis)
+#define SMP_TRAJ_PLANNER_HOMING_SECOND_APPROACH_DISTANCE 807
+
 //starting and stopping homing:
 #define SMP_HOMING_CONTROL 7532
 
@@ -660,6 +742,7 @@
 #define SMP_ACTUAL_POSITION_FB 903
 #define SMP_SCOPE_CHANNEL_VALUE 904
 #define SMP_SCOPE_CHANNEL_SELECT 905
+#define SMP_ACTUAL_POSITION_FB_NEVER_RESETTING 906 /*this is same than SMP_ACTUAL_POSITION_FB but does not reset to 0 on homing or init (it is always the original counter value at power-on)*/
 
 #define SMP_MECH_BRAKE_RELEASE_DELAY 910
 #define SMP_MECH_BRAKE_ENGAGE_DELAY 911
@@ -785,6 +868,8 @@
 	#define DEVICE_CAPABILITY2_SCOPE_TRIGGER_DELAY BV(7) /*also means that params SMP_CAPTURE_BEFORE_TRIGGER_PERCENTS and SMP_CAPTURE_STATE exist */
 	#define DEVICE_CAPABILITY2_SCOPE_EXTERNAL_TRIGGER BV(8)
 	#define DEVICE_CAPABILITY2_SOUND_NOTIFICATIONS_FROM_MOTOR BV(9)
+	#define DEVICE_CAPABILITY2_ASSIGN_HOME_AND_AUX_IO BV(10)
+	#define DEVICE_CAPABILITY2_HOMING_SECOND_APPROACH BV(11)
 
 #define SMP_FIRMWARE_VERSION 6010
 #define SMP_FIRMWARE_BACKWARDS_COMP_VERSION 6011
