@@ -1,17 +1,6 @@
 //Global SimpleMotion functions & definitions
 //Copyright (c) Granite Devices Oy
 
-/*
-     This program is free software; you can redistribute it and/or modify
-     it under the terms of the GNU General Public License as published by
-     the Free Software Foundation; version 2 of the License.
-
-     This program is distributed in the hope that it will be useful,
-     but WITHOUT ANY WARRANTY; without even the implied warranty of
-     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-     GNU General Public License for more details.
-*/
-
 #ifndef SIMPLEMOTION_H
 #define SIMPLEMOTION_H
 
@@ -28,6 +17,7 @@
 #endif
 
 #include <stdio.h>
+#include <stdint.h>
 #include "simplemotion_defs.h"
 
 
@@ -49,13 +39,13 @@ extern "C"{
 ///////////////////////////////////////////////////////////////////////////////////////
 //declare SM lib types
 typedef long smbus;
-typedef unsigned long smuint32;
-typedef unsigned short smuint16;
-typedef unsigned char smuint8;
-typedef long smint32;
-typedef short smint16;
-typedef char smint8;
-typedef char smbool;
+typedef uint32_t smuint32;
+typedef uint16_t smuint16;
+typedef uint8_t smuint8;
+typedef int32_t smint32;
+typedef int16_t smint16;
+typedef int8_t smint8;
+typedef int8_t smbool;
 #define smtrue 1
 #define smfalse 0
 typedef int SM_STATUS;
@@ -76,7 +66,8 @@ typedef enum _smVerbosityLevel {Off,Low,Mid,High,Trace} smVerbosityLevel;
 ///////////////////////////////////////////////////////////////////////////////////////
 
 /** Open SM RS485 communication bus. Parameters:
-	-devicename: "USB2VSD" or com port as "COMx" where x=1-16
+    -devicename: "USB2VSD" or com port as "COMx" where x=1-n
+    -devicename for TCP/IP connection format is nnn.nnn.nnn.nnn:pppp where n is IP address numbers and p is port number for TCP/IP connection
 	-return value: handle to be used with all other commands, -1 if fails
 	*/
 LIB smbus smOpenBus( const char * devicename );
@@ -123,7 +114,7 @@ LIB void smSetDebugOutput( smVerbosityLevel level, FILE *stream );
 /** This function returns all occurred SM_STATUS bits after smOpenBus or resetCumulativeStatus call*/
 LIB SM_STATUS getCumulativeStatus( const smbus handle );
 /** Reset cululative status so getCumultiveStatus returns 0 after calling this until one of the other functions are called*/
-LIB void resetCumulativeStatus( const smbus handle );
+LIB SM_STATUS resetCumulativeStatus( const smbus handle );
 
 
 /** SMV2 Device communication functionss */

@@ -14,7 +14,7 @@
 #include "pcserialport.h"
 #include "simplemotion_private.h" //needed for timeout variable
 
-#ifdef __unix__
+#if defined(__unix__) || defined(__APPLE__)
 
 #include <termios.h>
 #include <limits.h>
@@ -23,6 +23,15 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <string.h>
+
+#if defined(__APPLE__)
+#include <CoreFoundation/CoreFoundation.h>
+#include <IOKit/IOKitLib.h>
+#include <IOKit/serial/IOSerialKeys.h>
+#include <IOKit/serial/ioss.h>
+#include <IOKit/IOBSD.h>
+#endif
 
 smint32 serialPortOpen(const char * port_device_name, smint32 baudrate_bps)
 {
@@ -30,54 +39,122 @@ smint32 serialPortOpen(const char * port_device_name, smint32 baudrate_bps)
     int err;
     int baudrateEnumValue;
     struct termios new_port_settings;
+    int customBaudRate = 0;
+
+    port_handle = open(port_device_name, O_RDWR | O_NOCTTY);
+
+    if(port_handle==-1)
+    {
+        smDebug(-1, Low, "Serial port error: port open failed");
+        return(port_handle);
+    }
 
     switch(baudrate_bps)
 	{
+#if defined(B9600)
         case    9600 : baudrateEnumValue = B9600; break;
+#endif
+#if defined(B19200)
         case   19200 : baudrateEnumValue = B19200; break;
+#endif
+#if defined(B38400)
         case   38400 : baudrateEnumValue = B38400; break;
+#endif
+#if defined(B57600)
         case   57600 : baudrateEnumValue = B57600; break;
+#endif
+#if defined(B115200)
         case  115200 : baudrateEnumValue = B115200; break;
+#endif
+#if defined(B230400)
         case  230400 : baudrateEnumValue = B230400; break;
+#endif
+#if defined(B460800)
         case  460800 : baudrateEnumValue = B460800; break;
+#endif
+#if defined(B500000)
         case  500000 : baudrateEnumValue = B500000; break;
+#endif
+#if defined(B576000)
         case  576000 : baudrateEnumValue = B576000; break;
+#endif
+#if defined(B921600)
         case  921600 : baudrateEnumValue = B921600; break;
+#endif
+#if defined(B1000000)
         case 1000000 : baudrateEnumValue = B1000000; break;
+#endif
+#if defined(B1152000)
         case 1115200 : baudrateEnumValue = B1152000; break;
+#endif
+#if defined(B1500000)
         case 1500000 : baudrateEnumValue = B1500000; break;
+#endif
+#if defined(B2000000)
         case 2000000 : baudrateEnumValue = B2000000; break;
+#endif
+#if defined(B2500000)
         case 2500000 : baudrateEnumValue = B2500000; break;
+#endif
+#if defined(B3000000)
         case 3000000 : baudrateEnumValue = B3000000; break;
+#endif
+#if defined(B3500000)
         case 3500000 : baudrateEnumValue = B3500000; break;
+#endif
+#if defined(B4000000)
         case 4000000 : baudrateEnumValue = B4000000; break;
-        default      : smDebug(-1,Low,"Serial port error: unsupported baudrate\n");
-		return(1);
-		break;
-	}
-
-        port_handle = open(port_device_name, O_RDWR | O_NOCTTY );
-        if(port_handle==-1)
-	{
-        smDebug(-1, Low, "Serial port error: port open failed");
-           return(port_handle);
+#endif
+        default:
+            customBaudRate = 1;
+#if defined(__APPLE__)
+            if (ioctl(port_handle, IOSSIOSPEED, &baudrate_bps) == -1)
+            {
+                smDebug(-1, Low, "Serial port error: unsupported baudrate\n");
+                close(port_handle);
+                return -1;
+            }
+#else
+            smDebug(-1,Low,"Serial port error: unsupported baudrate\n");
+            close(port_handle);
+            return(-1);
+            break;
+#endif
 	}
 
     memset(&new_port_settings, 0, sizeof(new_port_settings)); //reset struct
 
-    new_port_settings.c_cflag = baudrateEnumValue | CS8 | CLOCAL | CREAD;
+    new_port_settings.c_cflag = CS8 | CLOCAL | CREAD;
 	new_port_settings.c_iflag = IGNPAR;
 	new_port_settings.c_oflag = 0;
 	new_port_settings.c_lflag = 0;
     new_port_settings.c_cc[VMIN] = 0;      /* non blocking mode */
     new_port_settings.c_cc[VTIME] = readTimeoutMs/100;     /* timeout 100 ms steps */
-        err = tcsetattr(port_handle, TCSANOW, &new_port_settings);
+
+    if (!customBaudRate)
+    {
+#if defined(_BSD_SOURCE)
+        cfsetspeed(&new_port_settings, baudrateEnumValue);
+#else
+        cfsetispeed(&new_port_settings, baudrateEnumValue);
+        cfsetospeed(&new_port_settings, baudrateEnumValue);
+#endif
+    }
+
+    // Activate settings
+    err = tcsetattr(port_handle, TCSANOW, &new_port_settings);
     if(err==-1)
 	{
-                close(port_handle);
-                smDebug(-1, Low, "Serial port error: failed to set port parameters");
-                return -1;
+        close(port_handle);
+        smDebug(-1, Low, "Serial port error: failed to set port parameters");
+        return -1;
 	}
+
+    //flush any stray bytes from device receive buffer that may reside in it
+    //note: according to following page, delay before this may be necessary http://stackoverflow.com/questions/13013387/clearing-the-serial-ports-buffer
+    usleep(100000);
+    tcflush(port_handle,TCIOFLUSH);
+
     return port_handle;
 }
 
@@ -166,6 +243,9 @@ smint32 serialPortOpen(const char *port_device_name, smint32 baudrate_bps)
         CloseHandle(port_handle);
         return(-1);
     }
+
+    //flush any stray bytes from device receive buffer that may reside in it
+    PurgeComm((HANDLE)port_handle,PURGE_RXABORT|PURGE_RXCLEAR|PURGE_TXABORT|PURGE_TXCLEAR);
 
     return( (smint32)port_handle);
 }

@@ -1,16 +1,6 @@
 //Internal functions & definitions, not for library user
 //Copyright (c) Granite Devices Oy
 
-/*
-     This program is free software; you can redistribute it and/or modify
-     it under the terms of the GNU General Public License as published by
-     the Free Software Foundation; version 2 of the License.
-
-     This program is distributed in the hope that it will be useful,
-     but WITHOUT ANY WARRANTY; without even the implied warranty of
-     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-     GNU General Public License for more details.
-*/
 
 #ifndef SIMPLEMOTION_PRIVATE_H
 #define SIMPLEMOTION_PRIVATE_H
@@ -48,6 +38,8 @@ extern smuint16 readTimeoutMs;
 //I.e Low=low frequency, so it gets displayed when global verbosity level is set to at least Low or set it to Trace which gets filtered
 //out if global verbisity level is set less than Trace
 void smDebug( smbus handle, smVerbosityLevel verbositylevel, char *format, ...);
+//accumulates status to internal variable by ORing the bits. returns same value that is fed as paramter
+SM_STATUS recordStatus( const smbus handle, const SM_STATUS stat );
 
 SM_STATUS smRawCmd( const char *axisname, smuint8 cmd, smuint16 val, smuint32 *retdata );
 

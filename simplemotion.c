@@ -1,15 +1,5 @@
+
 //Copyright (c) Granite Devices Oy
-
-/*
-     This program is free software; you can redistribute it and/or modify
-     it under the terms of the GNU General Public License as published by
-     the Free Software Foundation; version 2 of the License.
-
-     This program is distributed in the hope that it will be useful,
-     but WITHOUT ANY WARRANTY; without even the implied warranty of
-     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-     GNU General Public License for more details.
-*/
 
 #include <stdio.h>
 #include <string.h>
@@ -44,7 +34,7 @@ SM_STATUS smReceiveReturnPacket( smbus bushandle );
 
 typedef struct SM_BUS_
 {
-    smint8 bdHandle;
+    smbusdevicehandle bdHandle;
     smbool opened;
 
     enum RecvState recv_state,recv_state_next;
@@ -168,7 +158,7 @@ SM_STATUS smSetTimeout( smuint16 millsecs )
     return SM_ERR_PARAMETER;
 }
 
-unsigned long smGetVersion()
+smuint32 smGetVersion()
 {
     return SM_VERSION;
 }
@@ -225,25 +215,25 @@ smbus smOpenBus( const char * devicename )
     return handle;
 }
 
-/** Change baudrate of SM communication port. This does not affect already opened ports but the next smOpenBus will be opened at the new speed. 
-	Calling this is optional. By default SM bus and all slave devices operates at 460800 BPS speed.
-	Parameters:
-	-bps: bus speed in bits per second. for possible choices, see rs232.c (but note that all speeds are not necessarily supported by SM devices)
-	Typical usage is:
-	- first call smSetParameter(handle,0,SMP_BUS_SPEED,N) to change speed of all connected slaves to N PBS
-	- then close port with smCloseBus
-	- then call smSetBaudrate(N)
-	- then open bus again with smOpenBus
-	
-	Note that in upcoming SM device firmware versions, bitrate will be reset to default (460800) if device side SM bus watchdog timer has been enabled, and it timeouts.
-	This allows re-establishing connection at defautl speed if connection breaks up and SM bus watchdog timeout gets exceeded. To identify is device supports this, 
-	read parameter SMP_SM_VERSION. Values above 25 support this feature. Value 25 and below will not reset baudrate.
-	
-	Note also that SMP_BUS_SPEED will not be saved in device flash memory - it will reset to default at every reset & power on.
-	*/
+/** Change baudrate of SM communication port. This does not affect already opened ports but the next smOpenBus will be opened at the new speed.
+    Calling this is optional. By default SM bus and all slave devices operates at 460800 BPS speed.
+    Parameters:
+    -bps: bus speed in bits per second. for possible choices, see rs232.c (but note that all speeds are not necessarily supported by SM devices)
+    Typical usage is:
+    - first call smSetParameter(handle,0,SMP_BUS_SPEED,N) to change speed of all connected slaves to N PBS
+    - then close port with smCloseBus
+    - then call smSetBaudrate(N)
+    - then open bus again with smOpenBus
+
+    Note that in upcoming SM device firmware versions, bitrate will be reset to default (460800) if device side SM bus watchdog timer has been enabled, and it timeouts.
+    This allows re-establishing connection at defautl speed if connection breaks up and SM bus watchdog timeout gets exceeded. To identify is device supports this,
+    read parameter SMP_SM_VERSION. Values above 25 support this feature. Value 25 and below will not reset baudrate.
+
+    Note also that SMP_BUS_SPEED will not be saved in device flash memory - it will reset to default at every reset & power on.
+    */
 LIB void smSetBaudrate( unsigned long pbs )
 {
-	SMBusBaudrate=pbs;
+    SMBusBaudrate=pbs;
 }
 
 /** Close connection to given bus handle number. This frees communication link therefore makes it available for other apps for opening.
@@ -319,7 +309,6 @@ smbool smTransmitBuffer( const smbus handle )
 SM_STATUS smSendSMCMD( smbus handle, smuint8 cmdid, smuint8 addr, smuint8 datalen, smuint8 *cmddata )
 {
     int i;
-    smuint8 data;
     smuint16 sendcrc;
 
     //check if bus handle is valid & opened
@@ -431,7 +420,7 @@ SM_STATUS smReceiveErrorHandler( smbus handle, smbool flushrx )
         smbool success;
         do{
             smuint8 rx;
-            success=smBDRead(handle,&rx);
+            success=smBDRead(smBus[handle].bdHandle,&rx);
         }while(success==smtrue);
     }
     smResetSM485variables(handle);
@@ -442,7 +431,6 @@ SM_STATUS smReceiveErrorHandler( smbus handle, smbool flushrx )
 
 SM_STATUS smAppendSMCommandToQueue( smbus handle, int smpCmdType,smint32 paramvalue  )
 {
-    smuint8 txbyte;
     int cmdlength;
 
     //check if bus handle is valid & opened
@@ -476,12 +464,6 @@ SM_STATUS smAppendSMCommandToQueue( smbus handle, int smpCmdType,smint32 paramva
         SMPayloadCommand16 newcmd;
         newcmd.ID=SMPCMD_SETPARAMADDR;
         newcmd.param=paramvalue;
-
-        //          bufput8bit( smBus[handle].recv_rsbuf, smBus[handle].cmd_send_queue_bytes, 5);
-        //            bufput8bit( smBus[handle].recv_rsbuf, smBus[handle].cmd_send_queue_bytes, 6);
-        /*
-FIXME
-            ei toimi, menee vaa nollaa*/
         bufput8bit( smBus[handle].recv_rsbuf, smBus[handle].cmd_send_queue_bytes++, ((unsigned char*)&newcmd)[1]);
         bufput8bit( smBus[handle].recv_rsbuf, smBus[handle].cmd_send_queue_bytes++, ((unsigned char*)&newcmd)[0]);
     }
@@ -582,7 +564,7 @@ SM_STATUS smGetQueuedSMCommandReturnValue(  const smbus bushandle, smint32 *retV
     if(smBus[bushandle].cmd_recv_queue_bytes>=smBus[bushandle].recv_payloadsize)
     {
 
-        smDebug(Trace,bushandle,"Packet receive error, return data coudn't be parsed\n");
+        smDebug(bushandle,Trace, "Packet receive error, return data coudn't be parsed\n");
 
         //return 0
         if(retValue!=NULL) *retValue=0;//check every time if retValue is set NULL by caller -> don't store anything to it if its NULL
@@ -603,7 +585,7 @@ SM_STATUS smGetQueuedSMCommandReturnValue(  const smbus bushandle, smint32 *retV
         smuint8 *readBuf=(smuint8*)&read;
         readBuf[1]=rxbyte;
         readBuf[0]=bufget8bit(smBus[bushandle].recv_rsbuf, smBus[bushandle].cmd_recv_queue_bytes++);
-        smDebug(Trace,bushandle,"RET16B: %d\n",read.retData);
+        smDebug(bushandle,Trace,"RET16B: %d\n",read.retData);
 
         if(retValue!=NULL) *retValue=read.retData;
         return recordStatus(bushandle,SM_OK);
@@ -616,7 +598,7 @@ SM_STATUS smGetQueuedSMCommandReturnValue(  const smbus bushandle, smint32 *retV
         readBuf[2]=rxbyte;
         readBuf[1]=bufget8bit(smBus[bushandle].recv_rsbuf, smBus[bushandle].cmd_recv_queue_bytes++);
         readBuf[0]=bufget8bit(smBus[bushandle].recv_rsbuf, smBus[bushandle].cmd_recv_queue_bytes++);
-        smDebug(Trace,bushandle,"RET24B: %d\n",read.retData);
+        smDebug(bushandle,Trace,"RET24B: %d\n",read.retData);
 
         if(retValue!=NULL) *retValue=read.retData;
         return recordStatus(bushandle,SM_OK);
@@ -630,7 +612,7 @@ SM_STATUS smGetQueuedSMCommandReturnValue(  const smbus bushandle, smint32 *retV
         readBuf[2]=bufget8bit(smBus[bushandle].recv_rsbuf, smBus[bushandle].cmd_recv_queue_bytes++);
         readBuf[1]=bufget8bit(smBus[bushandle].recv_rsbuf, smBus[bushandle].cmd_recv_queue_bytes++);
         readBuf[0]=bufget8bit(smBus[bushandle].recv_rsbuf, smBus[bushandle].cmd_recv_queue_bytes++);
-        smDebug(Trace,bushandle,"RET32B: %d\n",read.retData);
+        smDebug(bushandle,Trace,"RET32B: %d\n",read.retData);
 
         if(retValue!=NULL) *retValue=read.retData;
         return recordStatus(bushandle,SM_OK);
@@ -641,7 +623,7 @@ SM_STATUS smGetQueuedSMCommandReturnValue(  const smbus bushandle, smint32 *retV
         SMPayloadCommandRet8 read;
         smuint8 *readBuf=(smuint8*)&read;
         readBuf[0]=rxbyte;
-        smDebug(Trace,bushandle,"RET_OTHER: %d\n",read.retData);
+        smDebug(bushandle,Trace,"RET_OTHER: %d\n",read.retData);
 
         if(retValue!=NULL) *retValue=read.retData;
         return recordStatus(bushandle,SM_OK);
@@ -662,7 +644,7 @@ SM_STATUS smReceiveReturnPacket( smbus bushandle )
         smuint8 ret;
         SM_STATUS stat;
 
-        smbool succ=smBDRead(bushandle,&ret);
+        smbool succ=smBDRead(smBus[bushandle].bdHandle,&ret);
 
         if(succ==smfalse)
         {
@@ -879,7 +861,7 @@ SM_STATUS smGetBufferClock( const smbus handle, const smaddr targetaddr, smuint1
     if(stat!=SM_OK) return recordStatus(handle,stat); //maybe timeouted
 
     if(clock!=NULL)
-        *clock=bufget16bit(smBus[handle].recv_rsbuf,0);
+	memcpy(clock,smBus[handle].recv_rsbuf,sizeof(smuint16));
 
     smBus[handle].recv_storepos=0;
 
@@ -962,10 +944,12 @@ SM_STATUS getCumulativeStatus( const smbus handle )
 }
 
 /** Reset cululative status so getCumultiveStatus returns 0 after calling this until one of the other functions are called*/
-void resetCumulativeStatus( const smbus handle )
+SM_STATUS resetCumulativeStatus( const smbus handle )
 {
     if(smIsHandleOpen(handle)==smfalse) return SM_ERR_NODEVICE;
 
     smBus[handle].cumulativeSmStatus=0;
+
+    return SM_OK;
 }
 
