@@ -82,6 +82,19 @@ typedef enum
  */
 LIB LoadConfigurationStatus smLoadConfiguration( const smbus smhandle, const int smaddress, const char *filename, unsigned int mode, int *skippedCount, int *errorCount );
 
+/**
+ * @brief smConfigureParametersFromBuffer Same as smConfigureParameters but reads data from user specified memory address instead of file. Configures all target device parameters from file and performs device restart if necessary. This can take few seconds to complete. This may take 2-5 seconds to call.
+ * @param smhandle SM bus handle, must be opened before call
+ * @param smaddress Target SM device address
+ * @param drcData Pointer to to a memory where .drc file is loaded
+ * @param drcDataLen Number of bytes available in the drcData buffer
+ * @param mode Combined from CONFIGMODE_ define bits (can logic OR mutliple values).
+ * @return Enum LoadConfigurationStatus
+ *
+ * Requires DRC file version 111 or later to use CONFIGMODE_REQUIRE_SAME_FW.
+ */
+LIB LoadConfigurationStatus smLoadConfigurationFromBuffer(const smbus smhandle, const int smaddress, const smuint8 *drcData, const int drcDataLength, unsigned int mode, int *skippedCount, int *errorCount );
+
 
 /**
  * @brief smGetDeviceFirmwareUniqueID Reads installed firmware binary checksum that can be used to verify whether a wanted FW version is installed

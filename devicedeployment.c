@@ -21,24 +21,32 @@ void sleep_ms(int millisecs)
 
 int globalErrorDetailCode=0;
 
+smbool loadBinaryFile( const char *filename, smuint8 **data, int *numbytes );
+
 int smGetDeploymentToolErrroDetail()
 {
     return globalErrorDetailCode;
 }
 
 //return -1 if EOF
-unsigned int readFileLine( FILE *f, int charlimit, char *output, smbool *eof)
+//readPosition should be initialized to 0 and not touched by caller after that. this func will increment it after each call.
+unsigned int readFileLine( const smuint8 *data, const int dataLen, int *readPosition, int charlimit, char *output, smbool *eof)
 {
     int len=0;
     char c;
     do
     {
-        c=fgetc(f);
-
-        if(feof(f))
+        if(*readPosition>=dataLen)//end of data buffer
+        {
             *eof=smtrue;
+            c=0;
+        }
         else
+        {
             *eof=smfalse;
+            c=data[*readPosition+len];
+            (*readPosition)++;
+        }
 
         //eol or eof
         if( *eof==smtrue || c=='\n' || c=='\r' || len>=charlimit-1 )
@@ -62,20 +70,19 @@ typedef struct
     double offset;
 } Parameter;
 
-smbool parseParameter(FILE *f, int idx, Parameter *param )
+smbool parseParameter( const smuint8 *drcData, const int drcDataLen, int idx, Parameter *param )
 {
     const int maxLineLen=100;
     char line[maxLineLen];
     char scanline[maxLineLen];
-    //search correct row
-    fseek(f,0,SEEK_SET);
     smbool gotaddr=smfalse,gotvalue=smfalse, gotreadonly=smfalse, gotscale=smfalse,gotoffset=smfalse;
     unsigned int readbytes;
+    int readPosition=0;
     smbool eof;
 
     do//loop trhu all lines of file
     {
-        readbytes=readFileLine(f,maxLineLen,line,&eof);//read line
+        readbytes=readFileLine(drcData,drcDataLen,&readPosition,maxLineLen,line,&eof);//read line
 
         //try read address
         sprintf(scanline,"%d\\addr=",idx);
@@ -137,19 +144,44 @@ smbool parseParameter(FILE *f, int idx, Parameter *param )
  */
 LoadConfigurationStatus smLoadConfiguration(const smbus smhandle, const int smaddress, const char *filename, unsigned int mode , int *skippedCount, int *errorCount)
 {
+    LoadConfigurationStatus ret;
+    smuint8 *drcData=NULL;
+    int drcDataLength;
+
+    if(loadBinaryFile(filename,&drcData,&drcDataLength)!=smtrue)
+        return CFGUnableToOpenFile;
+
+    ret = smLoadConfigurationFromBuffer( smhandle, smaddress, drcData, drcDataLength, mode, skippedCount, errorCount );
+    free(drcData);
+
+    return ret;
+}
+
+/**
+ * @brief smConfigureParametersFromBuffer Same as smConfigureParameters but reads data from user specified memory address instead of file. Configures all target device parameters from file and performs device restart if necessary. This can take few seconds to complete. This may take 2-5 seconds to call.
+ * @param smhandle SM bus handle, must be opened before call
+ * @param smaddress Target SM device address
+ * @param drcData Pointer to to a memory where .drc file is loaded
+ * @param drcDataLen Number of bytes available in the drcData buffer
+ * @param mode Combined from CONFIGMODE_ define bits (can logic OR mutliple values).
+ * @return Enum LoadConfigurationStatus
+ *
+ * Requires DRC file version 111 or later to use CONFIGMODE_REQUIRE_SAME_FW.
+ */
+LIB LoadConfigurationStatus smLoadConfigurationFromBuffer( const smbus smhandle, const int smaddress, const smuint8 *drcData, const int drcDataLength, unsigned int mode, int *skippedCount, int *errorCount )
+{
     //test connection
     smint32 devicetype;
     SM_STATUS stat;
-    FILE *f;
     int ignoredCount=0;
     int setErrors=0;
     smint32 CB1Value;
     int changed=0;
-
     *skippedCount=-1;
     *errorCount=-1;
 
     //test connection
+    resetCumulativeStatus(smhandle);
     stat=smRead1Parameter(smhandle,smaddress,SMP_DEVICE_TYPE,&devicetype);
     if(stat!=SM_OK)
         return CFGCommunicationError;
@@ -165,10 +197,6 @@ LoadConfigurationStatus smLoadConfiguration(const smbus smhandle, const int smad
     if(getCumulativeStatus( smhandle )!=SM_OK )
         return CFGCommunicationError;
 
-    f=fopen(filename,"rb");
-    if(f==NULL)
-        return CFGUnableToOpenFile;
-
     smDebug(smhandle,Low,"Setting parameters\n");
 
     int i=1;
@@ -176,7 +204,7 @@ LoadConfigurationStatus smLoadConfiguration(const smbus smhandle, const int smad
     do
     {
         Parameter param;
-        readOk=parseParameter(f,i,&param);
+        readOk=parseParameter(drcData,drcDataLength,i,&param);
 
         if(readOk==smtrue && param.readOnly==smfalse)
         {
@@ -225,8 +253,6 @@ LoadConfigurationStatus smLoadConfiguration(const smbus smhandle, const int smad
 
         i++;
     } while(readOk==smtrue);
-
-    fclose(f);
 
     *skippedCount=ignoredCount;
     *errorCount=setErrors;
