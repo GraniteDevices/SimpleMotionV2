@@ -17,6 +17,7 @@
 #endif
 
 #include <stdio.h>
+#include <stdint.h>
 #include "simplemotion_defs.h"
 
 
@@ -38,13 +39,13 @@ extern "C"{
 ///////////////////////////////////////////////////////////////////////////////////////
 //declare SM lib types
 typedef long smbus;
-typedef unsigned long smuint32;
-typedef unsigned short smuint16;
-typedef unsigned char smuint8;
-typedef long smint32;
-typedef short smint16;
-typedef char smint8;
-typedef char smbool;
+typedef uint32_t smuint32;
+typedef uint16_t smuint16;
+typedef uint8_t smuint8;
+typedef int32_t smint32;
+typedef int16_t smint16;
+typedef int8_t smint8;
+typedef int8_t smbool;
 #define smtrue 1
 #define smfalse 0
 typedef int SM_STATUS;
