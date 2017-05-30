@@ -137,6 +137,7 @@ static int parseIpAddress(const char *s, char *ip, size_t ipsize, short *port)
 {
     const char *ip_end, *port_start;
 
+    //ip_end and port_start are pointers to memory area of s, not offsets or indexes to s
     if (validateIpAddress(s, &ip_end, &port_start) == -1)
         return -1;
 
@@ -144,7 +145,7 @@ static int parseIpAddress(const char *s, char *ip, size_t ipsize, short *port)
     if (!ip)
         return 0;
 
-    if (ipsize < ip_end - s + 1)
+    if (ipsize < (size_t)(ip_end - s + 1))
         return -1;
 
     memcpy(ip, s, ip_end - s);
