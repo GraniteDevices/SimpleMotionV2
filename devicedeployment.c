@@ -44,7 +44,7 @@ unsigned int readFileLine( const smuint8 *data, const int dataLen, int *readPosi
         else
         {
             *eof=smfalse;
-            c=data[*readPosition+len];
+            c=data[*readPosition];
             (*readPosition)++;
         }
 
