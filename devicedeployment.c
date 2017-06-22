@@ -36,7 +36,7 @@ unsigned int readFileLine( const smuint8 *data, const int dataLen, int *readPosi
     char c;
     do
     {
-        if(*readPosition>=dataLen)//end of data buffer
+        if((*readPosition)>=dataLen)//end of data buffer
         {
             *eof=smtrue;
             c=0;
@@ -44,12 +44,12 @@ unsigned int readFileLine( const smuint8 *data, const int dataLen, int *readPosi
         else
         {
             *eof=smfalse;
-            c=data[*readPosition+len];
+            c=data[(*readPosition)];
             (*readPosition)++;
         }
 
         //eol or eof
-        if( *eof==smtrue || c=='\n' || c=='\r' || len>=charlimit-1 )
+        if( (*eof)==smtrue || c=='\n' || c=='\r' || len>=charlimit-1 )
         {
             output[len]=0;//terminate str
             return len;
