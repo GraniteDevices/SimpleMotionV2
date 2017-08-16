@@ -41,7 +41,8 @@ typedef enum
     FWIncompatibleFW=-3,
     FWConnectionLoss=-4,
     FWUnsupportedTargetDevice=-5,
-    FWFileNotReadable=-6
+    FWFileNotReadable=-6,
+    FWConnectingDFUModeFailed=-7
 } FirmwareUploadStatus;
 
 /**
@@ -58,7 +59,6 @@ typedef enum
     CFGComplete=100,
     CFGInvalidFile=-1,
     CFGCommunicationError=-2,
-    CFGConnectingDFUModeFailed=-3,
     CFGIncompatibleFW=-4,
     CFGUnsupportedTargetDevice=-5,
     CFGUnableToOpenFile=-6

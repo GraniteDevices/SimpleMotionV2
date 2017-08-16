@@ -633,7 +633,7 @@ FirmwareUploadStatus smFirmwareUpload( const smbus smhandle, const int smaddress
         }
 
         if(i==256)//DFU device not found
-            return abortFWUpload(CFGConnectingDFUModeFailed,fwData,&state,400);//setting DFU mode failed
+            return abortFWUpload(FWConnectingDFUModeFailed,fwData,&state,400);//setting DFU mode failed
 
         progress=3;
     }
