@@ -54,6 +54,16 @@ typedef enum
  */
 LIB FirmwareUploadStatus smFirmwareUpload(const smbus smhandle, const int smaddress, const char *firmware_filename );
 
+/**
+ * @brief smFirmwareUpload Sets drive in firmware upgrade mode if necessary and uploads a new firmware. Call this many until it returns value 100 (complete) or a negative value (error).
+ * @param smhandle SM bus handle, must be opened before call
+ * @param smaddress Target SM device address. Can be device in DFU mode or main operating mode. For Argon, one device in a bus must be started into DFU mode by DIP switches and smaddress must be set to 255.
+ * @param fwData pointer to memory address where .gdf file contents are loaded. Note: on some architectures (such as ARM Cortex M) fwData must be aligned to nearest 4 byte boundary to avoid illegal machine instructions.
+ * @param fwDataLenght number of bytes in fwData
+ * @return Enum FirmwareUploadStatus that indicates errors or Complete status. Typecast to integer to get progress value 0-100.
+ */
+FirmwareUploadStatus smFirmwareUploadFromBuffer( const smbus smhandle, const int smaddress, smuint8 *fwData, const int fwDataLength );
+
 typedef enum
 {
     CFGComplete=100,

@@ -576,6 +576,8 @@
 #define SMP_TORQUE_EFFECT_FRICTION 242
 //define inertia effect gain in torque control mode, torque added to setpoint equals -acceleration*gain
 #define SMP_TORQUE_EFFECT_INERTIA 243
+//special smoothing filter. 0=disabled, other choices application dependent. this value is not saved in flash at the time of release, set it in run-time.
+#define SMP_SETPOINT_FILTER_MODE 244
 
 //secondary feedback loop 300-399
 //NOT IMPLEMENTED YET

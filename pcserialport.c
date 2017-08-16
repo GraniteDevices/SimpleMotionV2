@@ -41,16 +41,32 @@ smint32 serialPortOpen(const char * port_device_name, smint32 baudrate_bps)
     struct termios new_port_settings;
     int customBaudRate = 0;
 
-    port_handle = open(port_device_name, O_RDWR | O_NOCTTY);
+    port_handle = open(port_device_name, O_RDWR | O_NOCTTY | O_NONBLOCK);
 
     if(port_handle==-1)
     {
         smDebug(-1, Low, "Serial port error: port open failed");
-        return(port_handle);
+        return -1;
+    }
+
+
+    // open() follows POSIX semantics: multiple open() calls to the same file will succeed
+    // unless the TIOCEXCL ioctl is issued (except for root)
+    if (ioctl(port_handle, TIOCEXCL) == -1) {
+        smDebug(-1, Low, "Serial port error: error setting TIOCEXCL");
+        close(port_handle);
+        return -1;
+    }
+
+    // as the port is now open, clear O_NONBLOCK flag for subsequent I/O calls
+    if (fcntl(port_handle, F_SETFL, 0) == -1) {
+        smDebug(-1, Low, "Serial port error: error clearing O_NONBLOCK");
+        close(port_handle);
+        return -1;
     }
 
     switch(baudrate_bps)
-	{
+    {
 #if defined(B9600)
         case    9600 : baudrateEnumValue = B9600; break;
 #endif
@@ -107,48 +123,61 @@ smint32 serialPortOpen(const char * port_device_name, smint32 baudrate_bps)
 #endif
         default:
             customBaudRate = 1;
-#if defined(__APPLE__)
-            if (ioctl(port_handle, IOSSIOSPEED, &baudrate_bps) == -1)
-            {
-                smDebug(-1, Low, "Serial port error: unsupported baudrate\n");
-                close(port_handle);
-                return -1;
-            }
-#else
-            smDebug(-1,Low,"Serial port error: unsupported baudrate\n");
-            close(port_handle);
-            return(-1);
-            break;
-#endif
-	}
+            baudrateEnumValue=B9600;//must set something initially, changed later
+        break;
+    }
 
     memset(&new_port_settings, 0, sizeof(new_port_settings)); //reset struct
-
+    cfmakeraw(&new_port_settings);//reset struct
     new_port_settings.c_cflag = CS8 | CLOCAL | CREAD;
-	new_port_settings.c_iflag = IGNPAR;
-	new_port_settings.c_oflag = 0;
-	new_port_settings.c_lflag = 0;
+    new_port_settings.c_iflag = IGNPAR;
+    new_port_settings.c_oflag = 0;
+    new_port_settings.c_lflag = 0;
     new_port_settings.c_cc[VMIN] = 0;      /* non blocking mode */
     new_port_settings.c_cc[VTIME] = readTimeoutMs/100;     /* timeout 100 ms steps */
 
-    if (!customBaudRate)
-    {
 #if defined(_BSD_SOURCE)
-        cfsetspeed(&new_port_settings, baudrateEnumValue);
+    cfsetspeed(&new_port_settings, baudrateEnumValue);
 #else
-        cfsetispeed(&new_port_settings, baudrateEnumValue);
-        cfsetospeed(&new_port_settings, baudrateEnumValue);
+    cfsetispeed(&new_port_settings, baudrateEnumValue);
+    cfsetospeed(&new_port_settings, baudrateEnumValue);
 #endif
-    }
 
     // Activate settings
     err = tcsetattr(port_handle, TCSANOW, &new_port_settings);
     if(err==-1)
-	{
+    {
         close(port_handle);
         smDebug(-1, Low, "Serial port error: failed to set port parameters");
         return -1;
-	}
+    }
+
+    if(customBaudRate)
+    {
+        #if defined(IOSSIOSPEED)
+        speed_t bps = baudrate_bps;
+        if (ioctl(port_handle, IOSSIOSPEED, &bps) == -1)
+        {
+            smDebug(-1, Low, "Serial port error: unsupported baudrate\n");
+            close(port_handle);
+            return -1;
+        }
+        #else
+        smDebug(-1, Low, "Serial port error: unsupported baudrate\n");
+        close(port_handle);
+        return -1;
+        #endif
+    }
+
+    // set receive latency to 1 ms
+    #if defined(IOSSDATALAT)
+    unsigned long microsecs = 1000UL;
+    if (ioctl(port_handle, IOSSDATALAT, &microsecs) == -1) {
+        smDebug(-1, Low, "Serial port error: error setting read latency");
+        close(port_handle);
+        return -1;
+    }
+    #endif
 
     //flush any stray bytes from device receive buffer that may reside in it
     //note: according to following page, delay before this may be necessary http://stackoverflow.com/questions/13013387/clearing-the-serial-ports-buffer

@@ -56,7 +56,7 @@ int OpenTCPPort(const char * ip_addr, int port)
     fd_set myset;
     int res, valopt;
     socklen_t lon;
-    long arg;
+    unsigned long arg;
 
 #if defined(_WIN32)
     initwsa();
@@ -98,7 +98,7 @@ int OpenTCPPort(const char * ip_addr, int port)
             tv.tv_sec = 5;
             tv.tv_usec = 0;
             FD_ZERO(&myset);
-            FD_SET(sockfd, &myset);
+            FD_SET((unsigned int)sockfd, &myset);
             if (select(sockfd+1, NULL, &myset, NULL, &tv) > 0)
             {
                 lon = sizeof(int);
@@ -138,7 +138,7 @@ int PollTCPPort(int sockfd, unsigned char *buf, int size)
     int n;
     fd_set input;
     FD_ZERO(&input);
-    FD_SET(sockfd, &input);
+    FD_SET((unsigned int)sockfd, &input);
     struct timeval timeout;
     timeout.tv_sec = 0;
     timeout.tv_usec = readTimeoutMs * 1000;
@@ -155,14 +155,14 @@ int PollTCPPort(int sockfd, unsigned char *buf, int size)
         return(-1);
     }
 
-    n = read(sockfd, buf, size);
+    n = read(sockfd, (char*)buf, size);
     return(n);
 }
 
 int SendTCPByte(int sockfd, unsigned char byte)
 {
     int n;
-    n = write(sockfd, &byte, 1);
+    n = write(sockfd, (char*)&byte, 1);
     if(n<0)
         return(1);
     return(0);
@@ -171,7 +171,7 @@ int SendTCPByte(int sockfd, unsigned char byte)
 
 int SendTCPBuf(int sockfd, unsigned char *buf, int size)
 {
-    int sent = write(sockfd, buf, size);
+    int sent = write(sockfd, (char*)buf, size);
     if (sent != size)
     {
         return sent;

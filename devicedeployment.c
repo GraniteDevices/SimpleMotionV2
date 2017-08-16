@@ -36,7 +36,7 @@ unsigned int readFileLine( const smuint8 *data, const int dataLen, int *readPosi
     char c;
     do
     {
-        if(*readPosition>=dataLen)//end of data buffer
+        if((*readPosition)>=dataLen)//end of data buffer
         {
             *eof=smtrue;
             c=0;
@@ -44,12 +44,12 @@ unsigned int readFileLine( const smuint8 *data, const int dataLen, int *readPosi
         else
         {
             *eof=smfalse;
-            c=data[*readPosition+len];
+            c=data[(*readPosition)];
             (*readPosition)++;
         }
 
         //eol or eof
-        if( *eof==smtrue || c=='\n' || c=='\r' || len>=charlimit-1 )
+        if( (*eof)==smtrue || c=='\n' || c=='\r' || len>=charlimit-1 )
         {
             output[len]=0;//terminate str
             return len;
@@ -538,12 +538,11 @@ smbool flashFirmwarePrimaryMCU( smbus smhandle, int deviceaddress, const smuint8
 
 typedef enum { StatIdle=0, StatEnterDFU, StatFindDFUDevice, StatLoadFile, StatUpload, StatLaunch } UploadState;//state machine status
 
-//free buffer and return given status code
-FirmwareUploadStatus abortFWUpload( FirmwareUploadStatus stat, smuint8 *fwData, UploadState *state, int errorDetailCode )
+//handle error in FW upload
+FirmwareUploadStatus abortFWUpload( FirmwareUploadStatus stat, UploadState *state, int errorDetailCode )
 {
     globalErrorDetailCode=errorDetailCode;
     *state=StatIdle;
-    free(fwData);
     return stat;
 }
 
@@ -558,6 +557,41 @@ FirmwareUploadStatus smFirmwareUpload( const smbus smhandle, const int smaddress
 {
     static smuint8 *fwData=NULL;
     static int fwDataLength;
+    static smbool fileLoaded=smfalse;
+    FirmwareUploadStatus state;
+
+    //load file to buffer if not loaded yet
+    if(fileLoaded==smfalse)
+    {
+        if(loadBinaryFile(firmware_filename,&fwData,&fwDataLength)!=smtrue)
+            return FWFileNotReadable;
+        fileLoaded=smtrue;
+    }
+
+    //update FW, called multiple times per upgrade
+    state=smFirmwareUploadFromBuffer( smhandle, smaddress, fwData, fwDataLength );
+
+    //if process complete, due to finish or error -> unload file.
+    if(((int)state<0 || state==FWComplete) && fileLoaded==smtrue)
+    {
+        free(fwData);
+        fileLoaded=smfalse;
+    }
+
+    return state;
+}
+
+
+/**
+ * @brief smFirmwareUpload Sets drive in firmware upgrade mode if necessary and uploads a new firmware. Call this many until it returns value 100 (complete) or a negative value (error).
+ * @param smhandle SM bus handle, must be opened before call
+ * @param smaddress Target SM device address. Can be device in DFU mode or main operating mode. For Argon, one device in a bus must be started into DFU mode by DIP switches and smaddress must be set to 255.
+ * @param fwData pointer to memory address where .gdf file contents are loaded. Note: on some architectures (such as ARM Cortex M) fwData must be aligned to nearest 4 byte boundary to avoid illegal machine instructions.
+ * @param fwDataLenght number of bytes in fwData
+ * @return Enum FirmwareUploadStatus that indicates errors or Complete status. Typecast to integer to get progress value 0-100.
+ */
+FirmwareUploadStatus smFirmwareUploadFromBuffer( const smbus smhandle, const int smaddress, smuint8 *fwData, const int fwDataLength )
+{
     static smuint32 primaryMCUDataOffset, primaryMCUDataLenth;
     static smuint32 secondaryMCUDataOffset,secondaryMCUDataLength;
     static UploadState state=StatIdle;//state machine status
@@ -582,7 +616,7 @@ FirmwareUploadStatus smFirmwareUpload( const smbus smhandle, const int smaddress
         {
             if(deviceType==4000)//argon does not support restarting in DFU mode by software
             {
-                return abortFWUpload(FWConnectionError,fwData,&state,200);
+                return abortFWUpload(FWConnectionError,&state,200);
             }
 
             //restart device into DFU mode
@@ -590,7 +624,7 @@ FirmwareUploadStatus smFirmwareUpload( const smbus smhandle, const int smaddress
 
             stat=smSetParameter(smhandle,smaddress,SMP_SYSTEM_CONTROL,64);//reset device to DFU command
             if(stat!=SM_OK)
-                return abortFWUpload(FWConnectionError,fwData,&state,300);
+                return abortFWUpload(FWConnectionError,&state,300);
         }
         else
             state=StatFindDFUDevice;//search DFU device in brute force, fallback for older BL versions that don't preserve same smaddress than non-DFU mode
@@ -633,22 +667,19 @@ FirmwareUploadStatus smFirmwareUpload( const smbus smhandle, const int smaddress
         }
 
         if(i==256)//DFU device not found
-            return abortFWUpload(FWConnectingDFUModeFailed,fwData,&state,400);//setting DFU mode failed
+            return abortFWUpload(FWConnectingDFUModeFailed,&state,400);//setting DFU mode failed
 
         progress=3;
     }
 
     else if(state==StatLoadFile)
     {
-        if(loadBinaryFile(firmware_filename,&fwData,&fwDataLength)!=smtrue)
-            return FWFileNotReadable;
-
         FirmwareUploadStatus stat=verifyFirmwareData(fwData, fwDataLength, deviceType,
                                   &primaryMCUDataOffset, &primaryMCUDataLenth,
                                   &secondaryMCUDataOffset, &secondaryMCUDataLength);
         if(stat!=FWComplete)//error in verify
         {
-            return abortFWUpload(stat,fwData,&state,100);
+            return abortFWUpload(stat,&state,100);
         }
 
         //all good, upload firmware
@@ -662,7 +693,7 @@ FirmwareUploadStatus smFirmwareUpload( const smbus smhandle, const int smaddress
         smbool ret=flashFirmwarePrimaryMCU(smhandle,DFUAddress,fwData+primaryMCUDataOffset,primaryMCUDataLenth,&progress);
         if(ret==smfalse)//failed
         {
-            return abortFWUpload(FWConnectionError,fwData,&state,1000);
+            return abortFWUpload(FWConnectionError,&state,1000);
         }
         else
         {
@@ -681,6 +712,7 @@ FirmwareUploadStatus smFirmwareUpload( const smbus smhandle, const int smaddress
 
     return (FirmwareUploadStatus)progress;
 }
+
 
 
 
