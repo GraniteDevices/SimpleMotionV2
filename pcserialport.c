@@ -25,6 +25,11 @@
 #include <sys/types.h>
 #include <string.h>
 
+#if defined(__linux__)
+//needed for setting low latency
+#include <linux/serial.h>
+#endif
+
 #if defined(__APPLE__)
 #include <CoreFoundation/CoreFoundation.h>
 #include <IOKit/IOKitLib.h>
@@ -177,6 +182,20 @@ smint32 serialPortOpen(const char * port_device_name, smint32 baudrate_bps)
         close(port_handle);
         return -1;
     }
+    #endif
+    
+    #if defined(TIOCGSERIAL) && defined(ASYNC_LOW_LATENCY)
+    struct serial_struct serial; 
+    if(ioctl(port_handle, TIOCGSERIAL, &serial)!=-1)
+    {
+        serial.flags |= ASYNC_LOW_LATENCY;
+        if(ioctl(port_handle, TIOCSSERIAL, &serial) == -1 )
+        {
+            smDebug(-1, Low, "Serial port warning: unable to set low latency mode, maybe try running with root permissions.");
+        }
+    }
+    else
+        smDebug(-1, Low, "Serial port warning: unable to read TIOCGSERIAL for low latency mode, maybe try running with root permissions.");
     #endif
 
     //flush any stray bytes from device receive buffer that may reside in it
