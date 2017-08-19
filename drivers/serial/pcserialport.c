@@ -140,7 +140,8 @@ smint32 serialPortOpen(const char * port_device_name, smint32 baudrate_bps)
     new_port_settings.c_lflag = 0;
     new_port_settings.c_cc[VMIN] = 0;      /* non blocking mode */
     new_port_settings.c_cc[VTIME] = readTimeoutMs/100;     /* timeout 100 ms steps */
-
+    if(new_port_settings.c_cc[VTIME]<1)//don't allow value 0ms
+        new_port_settings.c_cc[VTIME]=1;
 #if defined(_BSD_SOURCE)
     cfsetspeed(&new_port_settings, baudrateEnumValue);
 #else

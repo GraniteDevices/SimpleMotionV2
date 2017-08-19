@@ -99,7 +99,10 @@ LIB smbus smOpenBus( const char * devicename );
 LIB void smSetBaudrate( unsigned long pbs );
 
 /** Set timeout of how long to wait reply packet from bus. Must be set before smOpenBus and cannot be changed afterwards
- * max value 5000ms. In unix this is rounded to 100ms (rounding downwards), so 99 or less gives 0ms timeout.
+ * max value 5000ms. Range may depend on underyling OS / drivers. If supplied argument is lower than minimum supported by drivers,
+ * then driver minimum is used without notice (return SM_OK).
+ *
+ * In unix PC serial port minimum is 100ms, on Windows serial port recommended minimum is 30ms and with FTDI driver 10ms. On TCP/IP: TBD.
  *
  *This is the only function that returns SM_STATUS which doesn't accumulate status bits to be read with getCumulativeStatus because it has no bus handle
  */

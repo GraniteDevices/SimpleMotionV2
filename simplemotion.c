@@ -151,7 +151,7 @@ smuint8 calcCRC8Buf( smuint8 *buf, int len, int crcinit )
 
 SM_STATUS smSetTimeout( smuint16 millsecs )
 {
-    if(millsecs<=5000)
+    if(millsecs<=5000 && millsecs>=1)
     {
         readTimeoutMs=millsecs;
         return SM_OK;

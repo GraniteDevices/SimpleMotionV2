@@ -9,7 +9,7 @@
 
 #include "drivers/ftdi_d2xx/sm_d2xx.h"
 #include "simplemotion_private.h" //needed for timeout variable
-#include "drivers/ftdi_d2xx/ftd2xx.h"
+#include "drivers/ftdi_d2xx/third_party/ftd2xx.h"
 #include <string.h>
 #include <simplemotion.h>
 
