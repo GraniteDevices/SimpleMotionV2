@@ -954,3 +954,36 @@ SM_STATUS resetCumulativeStatus( const smbus handle )
     return SM_OK;
 }
 
+
+/** Return number of bus devices found. details of each device may be consequently fetched by smGetBusDeviceDetails() */
+smint smGetNumberOfDetectedBuses()
+{
+    return smBDGetNumberOfDetectedBuses();
+}
+
+/** Fetch information of detected bus nodes at certain index. Example:
+
+    smint num=smGetNumberOfDetectedBuses();
+    for(int i=0;i<num;i++)
+    {
+        SM_BUS_DEVICE_INFO info;
+        SM_STATUS s=smGetBusDeviceDetails(i,&info);
+        if(s==SM_OK)
+        {
+            ...do something with info...
+        }
+        else
+        {
+            ...report error...
+        }
+    }
+*/
+LIB SM_STATUS smGetBusDeviceDetails( smint index, SM_BUS_DEVICE_INFO *info )
+{
+    smbool ok=smBDGetBusDeviceDetails(index,info);
+
+    if(ok==smtrue)
+        return SM_OK;
+    else
+        return SM_ERR_NODEVICE;
+}

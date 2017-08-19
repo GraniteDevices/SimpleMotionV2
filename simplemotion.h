@@ -46,10 +46,18 @@ typedef int32_t smint32;
 typedef int16_t smint16;
 typedef int8_t smint8;
 typedef int8_t smbool;
+typedef smint32 smint;
 #define smtrue 1
 #define smfalse 0
 typedef int SM_STATUS;
 typedef smuint8 smaddr;
+typedef struct
+{
+    smbool is_simplemotion_device;//smtrue if usable in SM lib
+    char device_name[64];//name that should be fed to smOpenBus
+    char description[128];//such as "SimpleMotion USB"
+} SM_BUS_DEVICE_INFO;
+
 
 //comment out to disable, gives smaller & faster code
 #define ENABLE_DEBUG_PRINTS
@@ -146,6 +154,28 @@ LIB SM_STATUS smGetBufferClock( const smbus handle, const smaddr targetaddr, smu
 /** smFastUpdateCycle uses special SimpleMotion command to perform fast turaround communication. May be used with cyclic real time control. Parameter & return data
  *content are application specific and defined . */
 LIB SM_STATUS smFastUpdateCycle( smbus handle, smuint8 nodeAddress, smuint16 write1, smuint16 write2, smuint16 *read1, smuint16 *read2);
+
+/** Return number of bus devices found. details of each device may be consequently fetched by smGetBusDeviceDetails() */
+LIB smint smGetNumberOfDetectedBuses();
+
+/** Fetch information of detected bus nodes at certain index. Example:
+
+    smint num=smGetNumberOfDetectedBuses();
+    for(int i=0;i<num;i++)
+    {
+        SM_BUS_DEVICE_INFO info;
+        SM_STATUS s=smGetBusDeviceDetails(i,&info);
+        if(s==SM_OK)
+        {
+            ...do something with info...
+        }
+        else
+        {
+            ...report error...
+        }
+    }
+*/
+LIB SM_STATUS smGetBusDeviceDetails( smint index, SM_BUS_DEVICE_INFO *info );
 
 #ifdef __cplusplus
 }

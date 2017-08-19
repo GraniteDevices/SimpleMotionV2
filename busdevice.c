@@ -373,3 +373,25 @@ smbool smBDRead( const smbusdevicehandle handle, smuint8 *byte )
 
 	return smfalse;
 }
+
+//BUS DEVICE INFO FETCH FUNCTIONS:
+
+//Return number of bus devices found. details of each device may be consequently fetched by smGetBusDeviceDetails()
+smint smBDGetNumberOfDetectedBuses()
+{
+    //only supports FTDI D2XX at the moment
+#ifdef FTDI_D2XX_SUPPORT
+    return d2xxGetNumberOfDetectedBuses();
+#endif
+    return 0;
+}
+
+smbool smBDGetBusDeviceDetails( smint index, SM_BUS_DEVICE_INFO *info )
+{
+    //only supports FTDI D2XX at the moment
+#ifdef FTDI_D2XX_SUPPORT
+    return d2xxGetBusDeviceDetails(index,info);
+#endif
+    return smfalse;
+
+}

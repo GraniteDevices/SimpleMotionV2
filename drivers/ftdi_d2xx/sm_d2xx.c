@@ -11,13 +11,11 @@
 #include "simplemotion_private.h" //needed for timeout variable
 #include "drivers/ftdi_d2xx/ftd2xx.h"
 #include <string.h>
+#include <simplemotion.h>
 
 smbool handles_initialized=smfalse;
 FT_HANDLE handles[MAX_OPEN_PORTS];//FT_HANDLE type is just a pointer
 
-#if defined(__unix__) || defined(__APPLE__)
-
-#else
 
 static int stringToNumber( const char *str, smbool *ok )
 {
@@ -180,4 +178,63 @@ void d2xxPortClose(smint32 serialport_handle)
 }
 
 
-#endif//windows
+
+//BUS DEVICE INFO FETCH FUNCTIONS:
+
+//Return number of bus devices found. details of each device may be consequently fetched by smGetBusDeviceDetails()
+smint d2xxGetNumberOfDetectedBuses()
+{
+    FT_STATUS ftStatus;
+    DWORD numDevs;
+    // Get the number of devices currently connected
+    ftStatus = FT_ListDevices(&numDevs,NULL,FT_LIST_NUMBER_ONLY);
+    if (ftStatus == FT_OK)
+    {
+        return numDevs;
+    }
+    else
+    {
+        return 0;
+    }
+
+    return 0;
+}
+
+smbool d2xxGetBusDeviceDetails( smint index, SM_BUS_DEVICE_INFO *info )
+{
+    DWORD devIndex = index;
+    char description[64]; // more than enough room
+    FT_STATUS ftStatus = FT_ListDevices((PVOID)devIndex, description, FT_LIST_BY_INDEX|FT_OPEN_BY_DESCRIPTION);
+    if (ftStatus == FT_OK)
+    {
+        smbool compatible=smfalse;
+        if(strncmp(description,"TTL232R",7)==0
+                || strncmp(description,"SMV2USB",7)==0
+                || strncmp(description,"USB-SMV2",8)==0
+                || strncmp(description,"FT230X",6)==0
+                || strncmp(description,"IONICUBE",8)==0
+                || strncmp(description,"ATOMI",5)==0)
+            compatible=smtrue;
+
+        info->is_simplemotion_device=compatible;
+
+        if(compatible==smtrue)
+        {
+            sprintf(info->description,"SimpleMotion USB (%s)",description);
+            sprintf(info->device_name,"FTDI%d",index);
+        }
+        else//some unknown device with FTDI chip
+        {
+            sprintf(info->description,"Unknown FTDI device (%s)",description);
+            sprintf(info->device_name,"FTDI%d",index);
+        }
+        return smtrue;
+    }
+    else
+    {
+        return smfalse;
+    }
+
+    return smfalse;
+}
+

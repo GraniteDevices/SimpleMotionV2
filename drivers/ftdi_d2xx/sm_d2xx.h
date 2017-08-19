@@ -27,6 +27,9 @@ smint32 d2xxPortWriteByte(smint32 serialport_handle, unsigned char byte);
 smint32 d2xxPortWriteBuffer(smint32 serialport_handle, unsigned char *buf, smint32 size);
 void d2xxPortClose(smint32 serialport_handle);
 
+//Return number of bus devices found. details of each device may be consequently fetched by smGetBusDeviceDetails()
+smint d2xxGetNumberOfDetectedBuses();
+smbool d2xxGetBusDeviceDetails( smint index, SM_BUS_DEVICE_INFO *info );
 
 #ifdef __cplusplus
 }
