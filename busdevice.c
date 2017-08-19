@@ -2,6 +2,7 @@
 
 #include "pcserialport.h"
 #include "tcpclient.h"
+#include "drivers/ftdi_d2xx/sm_d2xx.h"
 
 #include <string.h>
 #include <errno.h>
@@ -207,8 +208,21 @@ smbusdevicehandle smBDOpen( const char *devicename )
         BusDevice[handle].bdType=BD_TCP;
         BusDevice[handle].txBufferUsed=0;
     }
+#ifdef FTDI_D2XX_SUPPORT
+    else if (strncmp(devicename,"FTDI",4) == 0)//starts with FTDI. Full name is FTDIn where n=index starting from 0.
+    {
+        BusDevice[handle].comPort=d2xxPortOpen( devicename, SMBusBaudrate );
+            if( BusDevice[handle].comPort == -1 )
+        {
+            return -1; //failed to open
+        }
+        BusDevice[handle].bdType=BD_FTDI;
+        BusDevice[handle].txBufferUsed=0;
+    }
+#endif
     else//no other bus types supproted yet
     {
+        smDebug( -1, Low, "smBDOpen device name argument syntax didn't match any supported driver port name");
         return -1;
     }
 
@@ -243,8 +257,16 @@ smbool smBDClose( const smbusdevicehandle handle )
         BusDevice[handle].opened=smfalse;
         return smtrue;
     }
+#ifdef FTDI_D2XX_SUPPORT
+    else if( BusDevice[handle].bdType==BD_FTDI )
+    {
+        d2xxPortClose( BusDevice[handle].comPort );
+        BusDevice[handle].opened=smfalse;
+        return smtrue;
+    }
+#endif
 
-	return smfalse;
+    return smfalse;
 }
 
 
@@ -257,20 +279,15 @@ smbool smBDWrite(const smbusdevicehandle handle, const smuint8 byte )
 	//check if handle valid & open
 	if( smIsBDHandleOpen(handle)==smfalse ) return smfalse;
 
-	if( BusDevice[handle].bdType==BD_RS || BusDevice[handle].bdType==BD_TCP )
-	{
-        if(BusDevice[handle].txBufferUsed<TANSMIT_BUFFER_LENGTH)
-        {
-            //append to buffer
-            BusDevice[handle].txBuffer[BusDevice[handle].txBufferUsed]=byte;
-            BusDevice[handle].txBufferUsed++;
-            return smtrue;
-        }
-        else
-            return smfalse;
-	}
+    if(BusDevice[handle].txBufferUsed<TANSMIT_BUFFER_LENGTH)
+    {
+        //append to buffer
+        BusDevice[handle].txBuffer[BusDevice[handle].txBufferUsed]=byte;
+        BusDevice[handle].txBufferUsed++;
+        return smtrue;
+    }
 
-	return smfalse;
+    return smfalse;
 }
 
 smbool smBDTransmit(const smbusdevicehandle handle)
@@ -304,6 +321,21 @@ smbool smBDTransmit(const smbusdevicehandle handle)
             return smfalse;
         }
     }
+#ifdef FTDI_D2XX_SUPPORT
+    else if( BusDevice[handle].bdType==BD_FTDI )
+    {
+        if(d2xxPortWriteBuffer(BusDevice[handle].comPort,BusDevice[handle].txBuffer, BusDevice[handle].txBufferUsed)==BusDevice[handle].txBufferUsed)
+        {
+            BusDevice[handle].txBufferUsed=0;
+            return smtrue;
+        }
+        else
+        {
+            BusDevice[handle].txBufferUsed=0;
+            return smfalse;
+        }
+    }
+#endif
 
     return smfalse;
 }
@@ -329,7 +361,15 @@ smbool smBDRead( const smbusdevicehandle handle, smuint8 *byte )
         if( n!=1 ) return smfalse;
         else return smtrue;
     }
-
+#ifdef FTDI_D2XX_SUPPORT
+    else if( BusDevice[handle].bdType==BD_FTDI )
+    {
+        int n;
+        n=d2xxPortRead(BusDevice[handle].comPort, byte, 1);
+        if( n!=1 ) return smfalse;
+        else return smtrue;
+    }
+#endif
 
 	return smfalse;
 }

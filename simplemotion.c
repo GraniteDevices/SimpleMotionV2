@@ -73,17 +73,18 @@ void smDebug( smbus handle, smVerbosityLevel verbositylevel, char *format, ...)
     va_list fmtargs;
     char buffer[1024];
 
-
-    //check if bus handle is valid & opened
-    if(smIsHandleOpen(handle)==smfalse) return;
-
     if(smDebugOut!=NULL && verbositylevel <= smDebugThreshold )
     {
         va_start(fmtargs,format);
         vsnprintf(buffer,sizeof(buffer)-1,format,fmtargs);
         va_end(fmtargs);
         if(handle>=0)
-            fprintf(smDebugOut,"%s: %s",smBus[handle].busDeviceName, buffer);
+        {
+            if(smIsHandleOpen(handle)==smtrue)
+            {
+                fprintf(smDebugOut,"%s: %s",smBus[handle].busDeviceName, buffer);
+            }
+        }
         else
             fprintf(smDebugOut,"SMLib: %s",buffer);//no handle given
     }
