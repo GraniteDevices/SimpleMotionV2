@@ -81,6 +81,12 @@ smint32 d2xxPortOpen(const char *port_device_name, smint32 baudrate_bps)
         {
             if(handles[i]==NULL)
             {
+                if(FT_ResetDevice(h)!=FT_OK)
+                {
+                    smDebug( -1, Low, "FTDI port error: failed to reset USB chip\n");
+                    goto error;
+                }
+
                 //init port settings
                 s=FT_SetBaudRate(h,baudrate_bps);
                 if(s!=FT_OK)
@@ -95,9 +101,27 @@ smint32 d2xxPortOpen(const char *port_device_name, smint32 baudrate_bps)
                     goto error;
                 }
 
+                if(FT_SetFlowControl(h,FT_FLOW_NONE,0,0)!=FT_OK)
+                {
+                    smDebug( -1, Low, "FTDI port error: failed to set flow control\n");
+                    goto error;
+                }
+
+                if(FT_SetDataCharacteristics(h,FT_BITS_8,FT_STOP_BITS_1,FT_PARITY_NONE)!=FT_OK)
+                {
+                    smDebug( -1, Low, "FTDI port error: failed to set data characteristics\n");
+                    goto error;
+                }
+
                 if(FT_SetTimeouts(h,readTimeoutMs,readTimeoutMs)!=FT_OK)
                 {
                     smDebug( -1, Low, "FTDI port error: failed to set timeout\n");
+                    goto error;
+                }
+
+                if(FT_Purge(h,FT_PURGE_RX|FT_PURGE_TX)!=FT_OK)
+                {
+                    smDebug( -1, Low, "FTDI port error: failed to set purge\n");
                     goto error;
                 }
 
