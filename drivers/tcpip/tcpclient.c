@@ -1,6 +1,8 @@
 #include "simplemotion_private.h"
 #include "tcpclient.h"
 #include <stdio.h>
+#include <ctype.h>
+#include <string.h>
 
 #if defined(_WIN32)
 #if defined(CM_NONE)
@@ -186,4 +188,117 @@ void CloseTCPport(int sockfd)
 #if defined(_WIN32)
     WSACleanup();
 #endif
+}
+
+
+//accepted TCP/IP address format is nnn.nnn.nnn.nnn:pppp where n is IP address numbers and p is port number
+int validateIpAddress(const char *s, const char **pip_end,
+                             const char **pport_start)
+{
+    int octets = 0;
+    int ch = 0, prev = 0;
+    int len = 0;
+    const char *ip_end = NULL;
+    const char *port_start = NULL;
+
+    while (*s)
+    {
+        ch = *s;
+
+        if (isdigit(ch))
+        {
+            ++len;
+            // Octet len must be 1-3 digits
+            if (len > 3)
+            {
+                return -1;
+            }
+        }
+        else if (ch == '.' && isdigit(prev))
+        {
+            ++octets;
+            len = 0;
+            // No more than 4 octets please
+            if (octets > 4)
+            {
+                return -1;
+            }
+        }
+        else if (ch == ':' && isdigit(prev))
+        {
+            ++octets;
+            // We want exactly 4 octets at this point
+            if (octets != 4)
+            {
+                return -1;
+            }
+            ip_end = s;
+            ++s;
+            port_start = s;
+            while (isdigit((ch = *s)))
+                ++s;
+            // After port we want the end of the string
+            if (ch != '\0')
+                return -1;
+            // This will skip over the ++s below
+            continue;
+        }
+        else
+        {
+            return -1;
+        }
+
+        prev = ch;
+        ++s;
+    }
+
+    // We reached the end of the string and did not encounter the port
+    if (*s == '\0' && ip_end == NULL)
+    {
+        ++octets;
+        ip_end = s;
+    }
+
+    // Check that there are exactly 4 octets
+    if (octets != 4)
+        return -1;
+
+    if (pip_end)
+        *pip_end = ip_end;
+
+    if (pport_start)
+        *pport_start = port_start;
+
+    return 0;
+}
+
+int parseIpAddress(const char *s, char *ip, size_t ipsize, short *port)
+{
+    const char *ip_end, *port_start;
+
+    //ip_end and port_start are pointers to memory area of s, not offsets or indexes to s
+    if (validateIpAddress(s, &ip_end, &port_start) == -1)
+        return -1;
+
+    // If ip=NULL, we just report that the parsing was ok
+    if (!ip)
+        return 0;
+
+    if (ipsize < (size_t)(ip_end - s + 1))
+        return -1;
+
+    memcpy(ip, s, ip_end - s);
+    ip[ip_end - s] = '\0';
+
+    if (port_start)
+    {
+        *port = 0;
+        while (*port_start)
+        {
+            *port = *port * 10 + (*port_start - '0');
+            ++port_start;
+        }
+    }
+
+    return 0;
 }

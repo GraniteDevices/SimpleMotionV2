@@ -31,5 +31,13 @@ smbool smBDTransmit(const smbusdevicehandle handle);
 smbool smBDRead( const smbusdevicehandle handle , smuint8 *byte );
 
 
+//BUS DEVICE INFO FETCH FUNCTIONS:
+
+// Return number of bus devices found. details of each device may be consequently fetched by smBDGetBusDeviceDetails()
+smint smBDGetNumberOfDetectedBuses();
+
+//return smtrue if success
+smbool smBDGetBusDeviceDetails( smint index, SM_BUS_DEVICE_INFO *info );
+
 
 #endif

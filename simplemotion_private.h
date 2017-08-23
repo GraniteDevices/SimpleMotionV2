@@ -9,7 +9,7 @@
 #include "busdevice.h"
 #include <stdio.h>
 
-#define SM_VERSION 0x020100
+#define SM_VERSION 0x020500
 //max number of simultaneously opened buses. change this and recompiple SMlib if
 //necessary (to increase channels or reduce to save memory)
 #define SM_MAX_BUSES 10
@@ -58,7 +58,7 @@ typedef struct {
          * ID=3 reserved
          */
         long param :30; //LSB 30 bits
-        long ID:2; //MSB 2 bits. when serailzied to bytestream byte4 must be transmitted first to contain ID
+        unsigned long ID:2; //MSB 2 bits. when serailzied to bytestream byte4 must be transmitted first to contain ID
 } PACKED SMPayloadCommand32;
 
 typedef struct {
@@ -68,7 +68,7 @@ typedef struct {
          * ID=3 reserved
          */
         long param :14; //LSB 30 bits
-        long ID:2; //MSB 2 bits. when serailzied to bytestream byte4 must be transmitted first to contain ID
+        unsigned long ID:2; //MSB 2 bits. when serailzied to bytestream byte4 must be transmitted first to contain ID
 } PACKED SMPayloadCommand16;
 
 typedef struct {
@@ -78,7 +78,7 @@ typedef struct {
          * ID=3 reserved
          */
         long param :22; //MSB 30 bits
-        long ID:2; //MSB 2 bits. when serailzied to bytestream byte4 must be transmitted first to contain ID
+        unsigned long ID:2; //MSB 2 bits. when serailzied to bytestream byte4 must be transmitted first to contain ID
 } PACKED SMPayloadCommand24;
 
 //SM payload command return data structure
@@ -89,7 +89,7 @@ typedef struct {
          * ID=3 reserved
          */
         long retData: 30; //LSB 30 bits
-        long ID:2; //MSB 2 bits. when serailzied to bytestream byte4 must be transmitted first to contain ID
+        unsigned long ID:2; //MSB 2 bits. when serailzied to bytestream byte4 must be transmitted first to contain ID
 } PACKED SMPayloadCommandRet32;
 
 //SM payload command return data structure
@@ -100,7 +100,7 @@ typedef struct {
          * ID=3 reserved
          */
         long retData: 22; //LSB 30 bits
-        long ID:2; //MSB 2 bits. when serailzied to bytestream byte4 must be transmitted first to contain ID
+        unsigned long ID:2; //MSB 2 bits. when serailzied to bytestream byte4 must be transmitted first to contain ID
 } PACKED SMPayloadCommandRet24;
 
 //SM payload command return data structure
@@ -111,7 +111,7 @@ typedef struct {
          * ID=3 reserved
          */
         long retData: 14; //LSB 30 bits
-        long ID:2; //MSB 2 bits. when serailzied to bytestream byte4 must be transmitted first to contain ID
+        unsigned long ID:2; //MSB 2 bits. when serailzied to bytestream byte4 must be transmitted first to contain ID
 } PACKED SMPayloadCommandRet16;
 
 //SM payload command return data structure
@@ -122,7 +122,7 @@ typedef struct {
          * ID=3 reserved
          */
         long retData: 6; //LSB 30 bits
-        long ID:2; //MSB 2 bits. when serailzied to bytestream byte4 must be transmitted first to contain ID
+        unsigned long ID:2; //MSB 2 bits. when serailzied to bytestream byte4 must be transmitted first to contain ID
 } PACKED SMPayloadCommandRet8;
 
 /*Workaround to have packed structs that compile on GCC and MSVC*/
