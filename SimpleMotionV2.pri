@@ -19,7 +19,7 @@ HEADERS += $$PWD/simplemotion_private.h\
 greaterThan(SUPPORT_FTDI_D2XX_DRIVER, 0+)  {
     SOURCES += $$PWD/drivers/ftdi_d2xx/sm_d2xx.c
     HEADERS += $$PWD/drivers/ftdi_d2xx/sm_d2xx.c
-    macx:LIBS              += $$PWD/drivers/ftdi_d2xx/third_party/osx/libftd2xx.a #mac will needs insetalling some FTDI helper tool & reboot to make port open to work. see d2xx downloads page from ftdi.
+    macx:LIBS              += $$PWD/drivers/ftdi_d2xx/third_party/osx/libftd2xx.a -framework CoreFoundation #mac will needs insetalling some FTDI helper tool & reboot to make port open to work. see d2xx downloads page from ftdi.
     win32:LIBS             += $$PWD/drivers/ftdi_d2xx/third_party/win_32bit/ftd2xx.lib
     linux:LIBS             += #tbd
     DEFINES += FTDI_D2XX_SUPPORT

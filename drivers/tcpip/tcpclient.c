@@ -2,6 +2,7 @@
 #include "tcpclient.h"
 #include <stdio.h>
 #include <ctype.h>
+#include <string.h>
 
 #if defined(_WIN32)
 #if defined(CM_NONE)
