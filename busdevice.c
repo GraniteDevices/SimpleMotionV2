@@ -97,7 +97,8 @@ smbusdevicehandle smBDOpen( const char *devicename )
         BusDevice[handle].txBufferUsed=0;
     }
 #ifdef FTDI_D2XX_SUPPORT
-    else if (strncmp(devicename,"FTDI",4) == 0)//starts with FTDI. Full name is FTDIn where n=index starting from 0.
+    //try to open FTDI bus by any name: FTDIn (n=index, 0 or greater) or device name (any string programmed in FTDI EEPROM)
+    else
     {
         BusDevice[handle].comPort=d2xxPortOpen( devicename, SMBusBaudrate );
             if( BusDevice[handle].comPort == -1 )
@@ -107,12 +108,13 @@ smbusdevicehandle smBDOpen( const char *devicename )
         BusDevice[handle].bdType=BD_FTDI;
         BusDevice[handle].txBufferUsed=0;
     }
-#endif
+#else
     else//no other bus types supproted yet
     {
         smDebug( -1, Low, "smBDOpen device name argument syntax didn't match any supported driver port name");
         return -1;
     }
+#endif
 
 	//success
     BusDevice[handle].cumulativeSmStatus=0;

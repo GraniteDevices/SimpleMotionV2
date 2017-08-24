@@ -74,8 +74,16 @@ typedef enum _smVerbosityLevel {Off,Low,Mid,High,Trace} smVerbosityLevel;
 ///////////////////////////////////////////////////////////////////////////////////////
 
 /** Open SM RS485 communication bus. Parameters:
-    -devicename: "USB2VSD" or com port as "COMx" where x=1-n
-    -devicename for TCP/IP connection format is nnn.nnn.nnn.nnn:pppp where n is IP address numbers and p is port number for TCP/IP connection
+    -devicename: formatted string that depend on device type to attempt opening. Supported formats/drivers:
+    --Serial port device:
+    ---on Windows: COMn where n=port number, i.e. COM2
+    ---on Linux: /dev/ttyN where N=port name, i.e. /dev/ttyUSB0 or /dev/ttyS0
+    ---on macOS: /dev/tty.cuN where N=port name
+    --TCP/IP socket: format is nnn.nnn.nnn.nnn:pppp where n is IP address numbers and p is port number
+    --FTDI USB serial port (FTDI D2XX API, availablity depends whether library has been compiled with FTDI support enabled, see SimpleMotionV2.pri):
+    ---Opening by device index: FTDIn where n=index (0 or greater)
+    ---Opening by device description (programmed in FTDI EEPROM): raw name, i.e. USB-SMV2 or TTL232R (hint: name is displayed in Granity 1.14 or later)
+    ---Hint: D2XX driver supports listing available devices. See: smGetNumberOfDetectedBuses() and smGetBusDeviceDetails()
 	-return value: handle to be used with all other commands, -1 if fails
 	*/
 LIB smbus smOpenBus( const char * devicename );

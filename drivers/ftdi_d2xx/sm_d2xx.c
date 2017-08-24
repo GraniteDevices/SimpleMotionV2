@@ -54,24 +54,22 @@ smint32 d2xxPortOpen(const char *port_device_name, smint32 baudrate_bps)
     }
 
     //parse name string
-    int ftdiIndex;
-    smbool ok;
+    int ftdiIndex=0;
+    smbool ftdiIndexParseOk=smfalse;
 
-    if (strncmp(port_device_name,"FTDI",4) != 0)//must start with FTDI. Full name is FTDIn where n=index starting from 0.
+    if (strncmp(port_device_name,"FTDI",4) == 0)//must start with FTDI. Full name is FTDIn where n=index starting from 0.
     {
-        smDebug( -1, Low, "FTDI port error: malformed port name '%s'. Must be 'FTDIx' where x is index starting from 0.\n",port_device_name);
-        return -1;
-    }
-    ftdiIndex=stringToNumber(port_device_name+4,&ok);
-    if (ok==smfalse)
-    {
-        smDebug( -1, Low, "FTDI port error: malformed port number '%s'. Must be 'FTDIx' where x is index starting from 0.\n",port_device_name);
-        return -1;
+        ftdiIndex=stringToNumber(port_device_name+4,&ftdiIndexParseOk);
     }
 
     //open port
     FT_HANDLE h;
-    FT_STATUS s=FT_Open(ftdiIndex,&h);
+    FT_STATUS s;
+
+    if(ftdiIndexParseOk==smtrue)//if name suggests that we should try opening by index
+        s=FT_Open(ftdiIndex,&h);
+    else//try to open by device name instead
+        s=FT_OpenEx((char*)port_device_name,FT_OPEN_BY_DESCRIPTION,&h);
 
     if(s==FT_OK)
     {
@@ -134,7 +132,17 @@ smint32 d2xxPortOpen(const char *port_device_name, smint32 baudrate_bps)
         goto error;
     }
     else
-        smDebug( -1, Low, "FTDI port error: FT_Open failed\n");
+    {
+        if(ftdiIndexParseOk==smtrue)
+        {
+            smDebug( -1, Low, "FTDI port error: FT_Open with name %s (index %d) failed\n", port_device_name, ftdiIndex);
+        }
+        else
+        {
+            smDebug( -1, Low, "FTDI port error: FT_OpenEx with device description %s failed.\n", port_device_name);
+            smDebug( -1, Low, "FTDI port error additional info: FTDI D2XX port open attempt was made by device description because smOpenBus() argument format was not FTDIn where index number (0 or greater), or any other supported port name format.\n");
+        }
+    }
 
     error:
     FT_Close(h);
