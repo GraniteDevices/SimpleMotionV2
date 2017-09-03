@@ -14,6 +14,9 @@ HEADERS += $$PWD/simplemotion_private.h\
     $$PWD/drivers/serial/pcserialport.h $$PWD/busdevice.h  $$PWD/simplemotion.h $$PWD/sm485.h $$PWD/simplemotion_defs.h \
     $$PWD/bufferedmotion.h $$PWD/drivers/tcpip/tcpclient.h $$PWD/devicedeployment.h
 
+win32 {
+    LIBS+=-lws2_32 #needed for tcp ip API
+}
 
 #If FTDI D2XX support is enabled
 greaterThan(SUPPORT_FTDI_D2XX_DRIVER, 0+)  {
