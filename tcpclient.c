@@ -140,8 +140,8 @@ int PollTCPPort(int sockfd, unsigned char *buf, int size)
     FD_ZERO(&input);
     FD_SET((unsigned int)sockfd, &input);
     struct timeval timeout;
-    timeout.tv_sec = 0;
-    timeout.tv_usec = readTimeoutMs * 1000;
+    timeout.tv_sec = readTimeoutMs / 1000;
+    timeout.tv_usec = (readTimeoutMs % 1000) * 1000;
 
     n = select(sockfd + 1, &input, NULL, NULL, &timeout);
 
