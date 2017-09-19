@@ -34,6 +34,9 @@
  * Version 26:
  *    - fast SM command added (actually is also present in late V25 too, but as unofficial feature)
  *    - watchdog timout now resets bitrate to default and aborts buffered motion
+ * Version 27:
+ *    - introduced new SMP_BUFFERED_MODE parameter and optional linear interpolation of buffered setpoints
+ *    - introduced SMP_CB1_FORCE_ENABLE flag
  *
  */
 
@@ -243,6 +246,21 @@
  */
 #define SMP_FAULT_BEHAVIOR 15
 
+/* SMP_BUFFERED_MODE defines the behavior in buffered motion commands:
+ * bits 0-3 (LSB): setpoint interpolation mode.
+ * bits 4-31: reserved for future use.
+ *
+ * Setpoint interpolation modes:
+ * 0: apply nearest setpoint (default). If there are non-setpoint commands between setpoint commands,
+ *    these are executed in order with setpoint commands. Non-setpoint commands are executed without time delay to allow setpoint
+ *    commands to be executed at constant frequency.
+ * 1: linear interpolation between setpoints. If there are non-setpoint commands between setpoint commands,
+ *    these are executed one setpoit command in advance compared to a setpoint commands. This is a result from look-ahead buffering.
+ *    Non-setpoint commands are executed without time delay to allow setpoint commands to be executed at constant frequency.
+ *
+ * Note: this is present only in SM protocol version 27 and later.
+ */
+#define SMP_BUFFERED_MODE 16
 
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -689,7 +707,8 @@
 	#define SMP_CB1_QUICKSTOP BV(2)//not implemented at the moment
 	#define SMP_CB1_USE_TRAJPLANNER BV(3)//not implemented at the moment
 	#define SMP_CB1_START_HOMING BV(4)//write 1 here to start homing //not implemented at the moment
-	#define SMP_STATIC_CBS1 (SMP_CB1_ENABLE|SMP_CB1_USE_TRAJPLANNER)
+	#define SMP_CB1_FORCE_ENABLE BV(5)//writing & holding value 1 here will override lack of phyiscal enable signal (SMP_CB2_ENABLE). User can force device go in enabled state when both SMP_CB1_ENABLE and aSMP_CB1_FORCE_ENABLE are set.
+	#define SMP_STATIC_CBS1 (SMP_CB1_ENABLE|SMP_CB1_USE_TRAJPLANNER|SMP_CB1_FORCE_ENABLE)
 
 #define SMP_CONTROL_BITS2 2534
 	//bitfiled values:
@@ -856,6 +875,7 @@
 	#define DEVICE_CAPABILITY1_FB_SINCOS BV(17)
 	#define DEVICE_CAPABILITY1_GEARING BV(18)
 	#define DEVICE_CAPABILITY1_AUTOSETUP_COMMUTATION_SENSOR BV(19)
+	#define DEVICE_CAPABILITY1_BUFFERED_MOTION_LINEAR_INTERPOLATION BV(20)
 
 //read only bit field that is can be used to identify device capabilities
 //the list below is subject to extend
