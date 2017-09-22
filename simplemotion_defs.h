@@ -261,6 +261,10 @@
  * Note: this is present only in SM protocol version 27 and later.
  */
 #define SMP_BUFFERED_MODE 16
+	#define BUFFERED_INTERPOLATION_MODE_MASK 0x0F
+	#define BUFFERED_INTERPOLATION_MODE_NEAREST 0
+	#define BUFFERED_INTERPOLATION_MODE_LINEAR 1
+
 
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
