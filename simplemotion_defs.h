@@ -674,14 +674,14 @@
 #define SMP_AXIS_SCALE 491
 //output unit 0=mm 1=um 2=inch 3=revolutions 4=degrees
 #define SMP_AXIS_UNITS 492
-//0=none 1=qei1 2=qei2 3=resolver 4=ssi 5=biss
+//0=none 1=qei1 2=qei2 3=resolver 4=digital hall sensors 5=serial data
 #define SMP_FB1_DEVICE_SELECTION 493
 	#define SMP_FBD_NONE 0
 	#define SMP_FBD_INCR1 1
 	#define SMP_FBD_INCR2 2
 	#define SMP_FBD_RESOLVER 3
-	#define SMP_FBD_SSI 4
-	#define SMP_FBD_BISS 5
+	#define SMP_FBD_HALLS 4
+	#define SMP_FBD_SERIALDATA 5
 	#define SMP_FBD_SINCOS16X 6
 	#define SMP_FBD_SINCOS64X 7
 	#define SMP_FBD_SINCOS256X 8
