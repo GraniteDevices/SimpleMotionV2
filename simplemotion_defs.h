@@ -743,7 +743,8 @@
 	#define HOMING_HOME_AT_POWER_ON BV(5)
 	#define HOMING_FULL_SPEED_OFFSET_MOVE BV(6)
 	#define HOMING_ENABLED BV(7) /*if 0, homing cant be started */
-	#define _HOMING_CFG_MAX_VALUE 0x00ff
+	#define HOMING_USE_ABSOLUTE_FBD_METHOD BV(8) /*if 1, init home position directly from absolute encoder reading without performing any motion. setpoint and posfb will be set to absolute position, and optional soft ravel limits will activate too. if 1, bits 0-4 will have no effect. */
+	#define _HOMING_CFG_MAX_VALUE 0x01ff
 
 //defines from which direction & distance home switch will be approached for second time (eliminate switch hysteresis)
 #define SMP_TRAJ_PLANNER_HOMING_SECOND_APPROACH_DISTANCE 807
