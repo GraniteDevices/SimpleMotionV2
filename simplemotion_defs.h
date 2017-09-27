@@ -569,6 +569,11 @@
  */
 #define SMP_SERIAL_ENC_BITS 574
 
+/*
+ * if HOMING_RESET_POS_AND_SETPOINT_TO_ABSOLUTE_FBD_READING is 1, then SMP_SERIAL_ENC_OFFSET will be added to the absolute feedback reading before resetting fb value and setpoint to it.
+ */
+#define SMP_SERIAL_ENC_OFFSET 575
+
 //primary feedback loop 200-299
 #define SMP_VEL_I 200
 #define SMP_POS_P 201
@@ -743,7 +748,7 @@
 	#define HOMING_HOME_AT_POWER_ON BV(5)
 	#define HOMING_FULL_SPEED_OFFSET_MOVE BV(6)
 	#define HOMING_ENABLED BV(7) /*if 0, homing cant be started */
-	#define HOMING_USE_ABSOLUTE_FBD_METHOD BV(8) /*if 1, init home position directly from absolute encoder reading without performing any motion. setpoint and posfb will be set to absolute position, and optional soft ravel limits will activate too. if 1, bits 0-4 will have no effect. */
+	#define HOMING_RESET_POS_AND_SETPOINT_TO_ABSOLUTE_FBD_READING BV(8) /*if 1, init feedback & setpoint values froma absolute positions sensor + SMP_ABS_FBD_OFFSET. If enabled, this step is performed after index search. */
 	#define _HOMING_CFG_MAX_VALUE 0x01ff
 
 //defines from which direction & distance home switch will be approached for second time (eliminate switch hysteresis)
