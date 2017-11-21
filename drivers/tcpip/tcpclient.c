@@ -71,11 +71,9 @@ int OpenTCPPort(const char * ip_addr, int port)
         return -1;
     }
 
-    // Set OFF NAGLE algorithm to reduce latency with small packets
-    /*
+    // Set OFF NAGLE algorithm to disable stack buffering of small packets
     int one = 1;
     setsockopt(sockfd, IPPROTO_TCP, TCP_NODELAY, (void *)&one, sizeof(one));
-    */
 
     server.sin_addr.s_addr = inet_addr(ip_addr);
     server.sin_family = AF_INET;
