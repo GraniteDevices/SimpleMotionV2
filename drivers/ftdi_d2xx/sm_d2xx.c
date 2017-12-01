@@ -13,9 +13,6 @@
 #include <string.h>
 #include <simplemotion.h>
 
-smbool handles_initialized=smfalse;
-FT_HANDLE handles[MAX_OPEN_PORTS];//FT_HANDLE type is just a pointer
-
 
 static int stringToNumber( const char *str, smbool *ok )
 {
@@ -46,15 +43,6 @@ smBusdevicePointer d2xxPortOpen(const char *port_device_name, smint32 baudrate_b
 {
     *success=smfalse;
 
-    //init array of handles if not done yet
-    if(handles_initialized==smfalse)
-    {
-        int i;
-        for(i=0;i<MAX_OPEN_PORTS;i++)
-            handles[i]=NULL;
-        handles_initialized=smtrue;
-    }
-
     //parse name string
     int ftdiIndex=0;
     smbool ftdiIndexParseOk=smfalse;
@@ -75,62 +63,54 @@ smBusdevicePointer d2xxPortOpen(const char *port_device_name, smint32 baudrate_b
 
     if(s==FT_OK)
     {
-        //all good, find free handle
-        int i;
-        for(i=0;i<MAX_OPEN_PORTS;i++)
+        if(FT_ResetDevice(h)!=FT_OK)
         {
-            if(handles[i]==NULL)
-            {
-                if(FT_ResetDevice(h)!=FT_OK)
-                {
-                    smDebug( -1, Low, "FTDI port error: failed to reset USB chip\n");
-                    goto error;
-                }
-
-                //init port settings
-                s=FT_SetBaudRate(h,baudrate_bps);
-                if(s!=FT_OK)
-                {
-                    smDebug( -1, Low, "FTDI port error: failed to set baud rate\n");
-                    goto error;
-                }
-
-                if(FT_SetLatencyTimer(h,1)!=FT_OK)//API doc says 2ms is minimum but 1 seem to work too
-                {
-                    smDebug( -1, Low, "FTDI port error: failed to set latency\n");
-                    goto error;
-                }
-
-                if(FT_SetFlowControl(h,FT_FLOW_NONE,0,0)!=FT_OK)
-                {
-                    smDebug( -1, Low, "FTDI port error: failed to set flow control\n");
-                    goto error;
-                }
-
-                if(FT_SetDataCharacteristics(h,FT_BITS_8,FT_STOP_BITS_1,FT_PARITY_NONE)!=FT_OK)
-                {
-                    smDebug( -1, Low, "FTDI port error: failed to set data characteristics\n");
-                    goto error;
-                }
-
-                if(FT_SetTimeouts(h,readTimeoutMs,readTimeoutMs)!=FT_OK)
-                {
-                    smDebug( -1, Low, "FTDI port error: failed to set timeout\n");
-                    goto error;
-                }
-
-                if(FT_Purge(h,FT_PURGE_RX|FT_PURGE_TX)!=FT_OK)
-                {
-                    smDebug( -1, Low, "FTDI port error: failed to set purge\n");
-                    goto error;
-                }
-
-                smDebug( -1, Mid, "FTDI port opened\n");
-                handles[i]=h;
-                *success=smtrue;
-                return (smBusdevicePointer)i;
-            }
+            smDebug( -1, Low, "FTDI port error: failed to reset USB chip\n");
+            goto error;
         }
+
+        //init port settings
+        s=FT_SetBaudRate(h,baudrate_bps);
+        if(s!=FT_OK)
+        {
+            smDebug( -1, Low, "FTDI port error: failed to set baud rate\n");
+            goto error;
+        }
+
+        if(FT_SetLatencyTimer(h,1)!=FT_OK)//API doc says 2ms is minimum but 1 seem to work too
+        {
+            smDebug( -1, Low, "FTDI port error: failed to set latency\n");
+            goto error;
+        }
+
+        if(FT_SetFlowControl(h,FT_FLOW_NONE,0,0)!=FT_OK)
+        {
+            smDebug( -1, Low, "FTDI port error: failed to set flow control\n");
+            goto error;
+        }
+
+        if(FT_SetDataCharacteristics(h,FT_BITS_8,FT_STOP_BITS_1,FT_PARITY_NONE)!=FT_OK)
+        {
+            smDebug( -1, Low, "FTDI port error: failed to set data characteristics\n");
+            goto error;
+        }
+
+        if(FT_SetTimeouts(h,readTimeoutMs,readTimeoutMs)!=FT_OK)
+        {
+            smDebug( -1, Low, "FTDI port error: failed to set timeout\n");
+            goto error;
+        }
+
+        if(FT_Purge(h,FT_PURGE_RX|FT_PURGE_TX)!=FT_OK)
+        {
+            smDebug( -1, Low, "FTDI port error: failed to set purge\n");
+            goto error;
+        }
+
+        smDebug( -1, Mid, "FTDI port opened\n");
+        *success=smtrue;
+        return (smBusdevicePointer)h;
+
         smDebug( -1, Low, "FTDI port error: all handles taken, too many ports open\n");
         goto error;
     }
@@ -155,11 +135,11 @@ smBusdevicePointer d2xxPortOpen(const char *port_device_name, smint32 baudrate_b
 
 smint32 d2xxPortRead(smBusdevicePointer busdevicepointer, unsigned char *buf, smint32 size)
 {
-    int hanldeidx=(int)busdevicepointer;
+    FT_HANDLE hanlde=(FT_HANDLE)busdevicepointer;
     FT_STATUS s;
     DWORD BytesReceived;
 
-    s=FT_Read(handles[hanldeidx],buf,size,&BytesReceived);
+    s=FT_Read(hanlde,buf,size,&BytesReceived);
     if(s!=FT_OK)
     {
         //failed
@@ -173,9 +153,9 @@ smint32 d2xxPortRead(smBusdevicePointer busdevicepointer, unsigned char *buf, sm
 
 smint32 d2xxPortWriteBuffer(smBusdevicePointer busdevicepointer, unsigned char *buf, smint32 size)
 {
-    int hanldeidx=(int)busdevicepointer;
+    FT_HANDLE handle=(FT_HANDLE)busdevicepointer;
     DWORD BytesWritten;
-    FT_STATUS s=FT_Write(handles[hanldeidx], buf, size, &BytesWritten);
+    FT_STATUS s=FT_Write(handle, buf, size, &BytesWritten);
 
     if(s!=FT_OK)
     {
@@ -189,15 +169,13 @@ smint32 d2xxPortWriteBuffer(smBusdevicePointer busdevicepointer, unsigned char *
 
 void d2xxPortClose(smBusdevicePointer busdevicepointer)
 {
-    int hanldeidx=(int)busdevicepointer;
+    FT_HANDLE handle=(FT_HANDLE)busdevicepointer;
 
-    if(FT_Close(handles[hanldeidx])!=FT_OK)
+    if(FT_Close(handle)!=FT_OK)
     {
         //failed
         smDebug( -1, Low, "FTDI port error: failed to close port\n");
     }
-    else
-        handles[hanldeidx]=NULL;
 }
 
 
