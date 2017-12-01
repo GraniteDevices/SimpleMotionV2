@@ -1,16 +1,18 @@
 #ifndef tcpclient_INCLUDED
 #define tcpclient_INCLUDED
 
+#include "simplemotion_private.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-//return port handle or -1 if fails
-int OpenTCPPort(const char * ip_addr, int port);
-int PollTCPPort(int, unsigned char *, int);
-int SendTCPByte(int, unsigned char);
-int SendTCPBuf(int, unsigned char *, int);
-void CloseTCPport(int);
+//return port handle. sets success=smtrue if ok
+smBusdevicePointer *OpenTCPPort(const char * ip_addr, int port, smbool *success);
+int PollTCPPort(smBusdevicePointer busdevicePointer, unsigned char *, int);
+int SendTCPByte(smBusdevicePointer busdevicePointer, unsigned char);
+int SendTCPBuf(smBusdevicePointer busdevicePointer, unsigned char *, int);
+void CloseTCPport(smBusdevicePointer busdevicePointer);
 
 
 //accepted TCP/IP address format is nnn.nnn.nnn.nnn:pppp where n is IP address numbers and p is port number

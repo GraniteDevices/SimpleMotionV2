@@ -42,8 +42,10 @@ static int stringToNumber( const char *str, smbool *ok )
     return number;
 }
 
-smint32 d2xxPortOpen(const char *port_device_name, smint32 baudrate_bps)
+smBusdevicePointer d2xxPortOpen(const char *port_device_name, smint32 baudrate_bps, smbool *success)
 {
+    *success=smfalse;
+
     //init array of handles if not done yet
     if(handles_initialized==smfalse)
     {
@@ -125,7 +127,8 @@ smint32 d2xxPortOpen(const char *port_device_name, smint32 baudrate_bps)
 
                 smDebug( -1, Mid, "FTDI port opened\n");
                 handles[i]=h;
-                return i;
+                *success=smtrue;
+                return (smBusdevicePointer)i;
             }
         }
         smDebug( -1, Low, "FTDI port error: all handles taken, too many ports open\n");
@@ -146,16 +149,17 @@ smint32 d2xxPortOpen(const char *port_device_name, smint32 baudrate_bps)
 
     error:
     FT_Close(h);
-    return -1;
+    return SMBUSDEVICE_RETURN_ON_OPEN_FAIL;
 }
 
 
-smint32 d2xxPortRead(smint32 serialport_handle, unsigned char *buf, smint32 size)
+smint32 d2xxPortRead(smBusdevicePointer busdevicepointer, unsigned char *buf, smint32 size)
 {
+    int hanldeidx=(int)busdevicepointer;
     FT_STATUS s;
     DWORD BytesReceived;
 
-    s=FT_Read(handles[serialport_handle],buf,size,&BytesReceived);
+    s=FT_Read(handles[hanldeidx],buf,size,&BytesReceived);
     if(s!=FT_OK)
     {
         //failed
@@ -166,12 +170,12 @@ smint32 d2xxPortRead(smint32 serialport_handle, unsigned char *buf, smint32 size
 }
 
 
-smint32 d2xxPortWriteByte(smint32 serialport_handle, unsigned char byte)
+
+smint32 d2xxPortWriteBuffer(smBusdevicePointer busdevicepointer, unsigned char *buf, smint32 size)
 {
-    unsigned char buf[1];
+    int hanldeidx=(int)busdevicepointer;
     DWORD BytesWritten;
-    buf[0]=byte;
-    FT_STATUS s=FT_Write(handles[serialport_handle], buf, 1, &BytesWritten);
+    FT_STATUS s=FT_Write(handles[hanldeidx], buf, size, &BytesWritten);
 
     if(s!=FT_OK)
     {
@@ -183,30 +187,17 @@ smint32 d2xxPortWriteByte(smint32 serialport_handle, unsigned char byte)
 }
 
 
-smint32 d2xxPortWriteBuffer(smint32 serialport_handle, unsigned char *buf, smint32 size)
+void d2xxPortClose(smBusdevicePointer busdevicepointer)
 {
-    DWORD BytesWritten;
-    FT_STATUS s=FT_Write(handles[serialport_handle], buf, size, &BytesWritten);
+    int hanldeidx=(int)busdevicepointer;
 
-    if(s!=FT_OK)
-    {
-        //failed
-        smDebug( -1, Low, "FTDI port error: failed to write data to port\n");
-    }
-
-    return BytesWritten;
-}
-
-
-void d2xxPortClose(smint32 serialport_handle)
-{
-    if(FT_Close(handles[serialport_handle])!=FT_OK)
+    if(FT_Close(handles[hanldeidx])!=FT_OK)
     {
         //failed
         smDebug( -1, Low, "FTDI port error: failed to close port\n");
     }
     else
-        handles[serialport_handle]=NULL;
+        handles[hanldeidx]=NULL;
 }
 
 

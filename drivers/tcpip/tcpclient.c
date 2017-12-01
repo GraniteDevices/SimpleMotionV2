@@ -50,7 +50,7 @@ static int initwsa()
 }
 #endif
 
-int OpenTCPPort(const char * ip_addr, int port)
+smBusdevicePointer *OpenTCPPort(const char * ip_addr, int port, smbool *success)
 {
     int sockfd;
     struct sockaddr_in server;
@@ -60,6 +60,8 @@ int OpenTCPPort(const char * ip_addr, int port)
     socklen_t lon;
     unsigned long arg;
 
+    *success=smfalse;
+
 #if defined(_WIN32)
     initwsa();
 #endif
@@ -68,7 +70,7 @@ int OpenTCPPort(const char * ip_addr, int port)
     sockfd = socket(AF_INET , SOCK_STREAM , IPPROTO_TCP);
     if (sockfd == -1)
     {
-        return -1;
+        return SMBUSDEVICE_RETURN_ON_OPEN_FAIL;
     }
 
     // Set OFF NAGLE algorithm to disable stack buffering of small packets
@@ -105,17 +107,17 @@ int OpenTCPPort(const char * ip_addr, int port)
                 getsockopt(sockfd, SOL_SOCKET, SO_ERROR, (void*)(&valopt), &lon);
                 if (valopt)
                 {
-                    return -1;
+                    return SMBUSDEVICE_RETURN_ON_OPEN_FAIL;
                 }
             }
             else
             {
-               return -1;
+               return SMBUSDEVICE_RETURN_ON_OPEN_FAIL;
             }
         }
         else
         {
-            return -1;
+            return SMBUSDEVICE_RETURN_ON_OPEN_FAIL;
         }
     }
 
@@ -129,13 +131,15 @@ int OpenTCPPort(const char * ip_addr, int port)
     ioctlsocket(sockfd, FIONBIO, &arg);
 #endif
 
-    return sockfd;
+    *success=smtrue;
+    return (smBusdevicePointer)sockfd;
 }
 
 // Read bytes from socket
-int PollTCPPort(int sockfd, unsigned char *buf, int size)
+int PollTCPPort(smBusdevicePointer busdevicePointer, unsigned char *buf, int size)
 {
     int n;
+    int sockfd=(int)busdevicePointer;
     fd_set input;
     FD_ZERO(&input);
     FD_SET((unsigned int)sockfd, &input);
@@ -159,8 +163,9 @@ int PollTCPPort(int sockfd, unsigned char *buf, int size)
     return(n);
 }
 
-int SendTCPByte(int sockfd, unsigned char byte)
+int SendTCPByte(smBusdevicePointer busdevicePointer, unsigned char byte)
 {
+    int sockfd=(int)busdevicePointer;
     int n;
     n = write(sockfd, (char*)&byte, 1);
     if(n<0)
@@ -169,8 +174,9 @@ int SendTCPByte(int sockfd, unsigned char byte)
 }
 
 
-int SendTCPBuf(int sockfd, unsigned char *buf, int size)
+int SendTCPBuf(smBusdevicePointer busdevicePointer, unsigned char *buf, int size)
 {
+    int sockfd=(int)busdevicePointer;
     int sent = write(sockfd, (char*)buf, size);
     if (sent != size)
     {
@@ -180,8 +186,9 @@ int SendTCPBuf(int sockfd, unsigned char *buf, int size)
 }
 
 
-void CloseTCPport(int sockfd)
+void CloseTCPport(smBusdevicePointer busdevicePointer)
 {
+    int sockfd=(int)busdevicePointer;
     close(sockfd);
 #if defined(_WIN32)
     WSACleanup();

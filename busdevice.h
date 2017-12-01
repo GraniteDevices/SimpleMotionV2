@@ -1,6 +1,15 @@
 
 //HW interface to phyiscal bus device
-
+/*
+ * idea: strukti, jossa on fpointterit portin avaamiseen, datan siirtoon jne.
+ *
+ * jokainen busdevicen handle on pointteri. busdevicen funkkarit voi sitten palauttaa siinä vaikka
+ * handlen tai oman struktin, joka sisältää mitä tahansa.
+ *
+ * busOpen täytyy jotenkin purkata inittaamaan fpointterit jos on busname on tunnettua muotoa
+ *
+ *
+ */
 #ifndef SM_BUSDEVICE
 #define SM_BUSDEVICE
 
