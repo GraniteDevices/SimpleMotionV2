@@ -64,6 +64,11 @@ typedef struct
 
 typedef enum _smVerbosityLevel {Off,Low,Mid,High,Trace} smVerbosityLevel;
 
+typedef void* smBusdevicePointer;
+typedef smBusdevicePointer (*BusdeviceOpen)(const char *port_device_name, smint32 baudrate_bps, smbool *success);
+typedef smint32 (*BusdeviceReadBuffer)(smBusdevicePointer busdevicePointer, unsigned char *buf, smint32 size);
+typedef smint32 (*BusdeviceWriteBuffer)(smBusdevicePointer busdevicePointer, unsigned char *buf, smint32 size);
+typedef void (*BusdeviceClose)(smBusdevicePointer busdevicePointer);
 
 
 //max number of simultaneously opened buses. change this and recompiple SMlib if

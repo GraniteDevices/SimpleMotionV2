@@ -85,11 +85,7 @@ smbusdevicehandle smBDOpen( const char *devicename )
 	}
     else if (validateIpAddress(devicename, NULL, NULL) == 0)
     {
-        char ip[128];
-        short port = 4001;
-        if (parseIpAddress(devicename, ip, sizeof(ip), &port) < 0)
-            return -1;
-        BusDevice[handle].busDevicePointer=OpenTCPPort( ip, port, &success );
+        BusDevice[handle].busDevicePointer=OpenTCPPort( devicename, SMBusBaudrate, &success );
         if( success==smfalse )
         {
             return -1; //failed to open

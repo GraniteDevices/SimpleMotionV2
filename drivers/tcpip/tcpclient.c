@@ -50,7 +50,7 @@ static int initwsa()
 }
 #endif
 
-smBusdevicePointer *OpenTCPPort(const char * ip_addr, int port, smbool *success)
+smBusdevicePointer OpenTCPPort(const char * devicename, smint32 baudrate_bps, smbool *success)
 {
     int sockfd;
     struct sockaddr_in server;
@@ -61,6 +61,15 @@ smBusdevicePointer *OpenTCPPort(const char * ip_addr, int port, smbool *success)
     unsigned long arg;
 
     *success=smfalse;
+
+    char ip_addr[128];
+    unsigned short port = 4001;
+    if (parseIpAddress(devicename, ip_addr, sizeof(devicename), &port) < 0)
+        return SMBUSDEVICE_RETURN_ON_OPEN_FAIL;
+
+
+    if(baudrate_bps!=SM_BAUDRATE)
+        return SMBUSDEVICE_RETURN_ON_OPEN_FAIL;
 
 #if defined(_WIN32)
     initwsa();
@@ -162,17 +171,6 @@ int PollTCPPort(smBusdevicePointer busdevicePointer, unsigned char *buf, int siz
     n = read(sockfd, (char*)buf, size);
     return(n);
 }
-
-int SendTCPByte(smBusdevicePointer busdevicePointer, unsigned char byte)
-{
-    int sockfd=(int)busdevicePointer;
-    int n;
-    n = write(sockfd, (char*)&byte, 1);
-    if(n<0)
-        return(1);
-    return(0);
-}
-
 
 int SendTCPBuf(smBusdevicePointer busdevicePointer, unsigned char *buf, int size)
 {
@@ -277,7 +275,7 @@ int validateIpAddress(const char *s, const char **pip_end,
     return 0;
 }
 
-int parseIpAddress(const char *s, char *ip, size_t ipsize, short *port)
+int parseIpAddress(const char *s, char *ip, size_t ipsize, unsigned short *port)
 {
     const char *ip_end, *port_start;
 
