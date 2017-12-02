@@ -50,7 +50,7 @@ static int initwsa()
 }
 #endif
 
-smBusdevicePointer OpenTCPPort(const char * devicename, smint32 baudrate_bps, smbool *success)
+smBusdevicePointer TCPIPPortOpen(const char * devicename, smint32 baudrate_bps, smbool *success)
 {
     int sockfd;
     struct sockaddr_in server;
@@ -148,7 +148,7 @@ smBusdevicePointer OpenTCPPort(const char * devicename, smint32 baudrate_bps, sm
 }
 
 // Read bytes from socket
-int PollTCPPort(smBusdevicePointer busdevicePointer, unsigned char *buf, int size)
+int TCPIPPortRead(smBusdevicePointer busdevicePointer, unsigned char *buf, int size)
 {
     int n;
     int sockfd=(int)busdevicePointer;
@@ -175,7 +175,7 @@ int PollTCPPort(smBusdevicePointer busdevicePointer, unsigned char *buf, int siz
     return(n);
 }
 
-int SendTCPBuf(smBusdevicePointer busdevicePointer, unsigned char *buf, int size)
+int TCPIPPortWrite(smBusdevicePointer busdevicePointer, unsigned char *buf, int size)
 {
     int sockfd=(int)busdevicePointer;
     int sent = write(sockfd, (char*)buf, size);
@@ -187,7 +187,7 @@ int SendTCPBuf(smBusdevicePointer busdevicePointer, unsigned char *buf, int size
 }
 
 
-void CloseTCPport(smBusdevicePointer busdevicePointer)
+void TCPIPPortClose(smBusdevicePointer busdevicePointer)
 {
     int sockfd=(int)busdevicePointer;
     close(sockfd);

@@ -317,7 +317,7 @@ smint32 serialPortRead(smBusdevicePointer busdevicePointer, unsigned char *buf, 
 }
 
 
-smint32 serialPortWriteBuffer(smBusdevicePointer busdevicePointer, unsigned char *buf, smint32 size)
+smint32 serialPortWrite(smBusdevicePointer busdevicePointer, unsigned char *buf, smint32 size)
 {
     HANDLE serialport_handle=(HANDLE)busdevicePointer;
     smint32 n;

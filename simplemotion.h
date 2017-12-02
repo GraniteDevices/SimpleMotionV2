@@ -64,11 +64,14 @@ typedef struct
 
 typedef enum _smVerbosityLevel {Off,Low,Mid,High,Trace} smVerbosityLevel;
 
+//define communication interface device driver callback types
 typedef void* smBusdevicePointer;
 typedef smBusdevicePointer (*BusdeviceOpen)(const char *port_device_name, smint32 baudrate_bps, smbool *success);
 typedef smint32 (*BusdeviceReadBuffer)(smBusdevicePointer busdevicePointer, unsigned char *buf, smint32 size);
 typedef smint32 (*BusdeviceWriteBuffer)(smBusdevicePointer busdevicePointer, unsigned char *buf, smint32 size);
 typedef void (*BusdeviceClose)(smBusdevicePointer busdevicePointer);
+//BusdeviceOpen callback should return this if port open fails (in addition to setting *success to smfalse):
+#define SMBUSDEVICE_RETURN_ON_OPEN_FAIL NULL
 
 
 //max number of simultaneously opened buses. change this and recompiple SMlib if

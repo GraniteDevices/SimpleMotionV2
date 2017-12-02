@@ -57,12 +57,12 @@ smbusdevicehandle smBDOpen( const char *devicename )
     smbusdevicehandle h;
 
     //try opening with all drivers:
-    h=smBDOpenWithCallbacks( devicename, serialPortOpen, serialPortClose, serialPortWriteBuffer, serialPortRead );
+    h=smBDOpenWithCallbacks( devicename, serialPortOpen, serialPortClose, serialPortRead, serialPortWrite );
     if(h>=0) return h;//was success
-    h=smBDOpenWithCallbacks( devicename, OpenTCPPort, CloseTCPport, SendTCPBuf, PollTCPPort );
+    h=smBDOpenWithCallbacks( devicename, tcpipPortOpen, tcpipPortClose, tcpipPortRead, tcpipPortWrite );
     if(h>=0) return h;//was success
 #ifdef FTDI_D2XX_SUPPORT
-    h=smBDOpenWithCallbacks( devicename, d2xxPortOpen, d2xxPortClose, d2xxPortWriteBuffer, d2xxPortRead );
+    h=smBDOpenWithCallbacks( devicename, d2xxPortOpen, d2xxPortClose, d2xxPortRead, d2xxPortWrite );
     if(h>=0) return h;//was success
 #endif
 
@@ -98,7 +98,7 @@ smbusdevicehandle smBDOpenWithCallbacks(const char *devicename, BusdeviceOpen bu
     BusDevice[handle].busCloseCallback=busCloseCallback;
 
     //try opening
-    BusDevice[handle].busOpenCallback( devicename, SMBusBaudrate, &success );
+    BusDevice[handle].busDevicePointer=BusDevice[handle].busOpenCallback( devicename, SMBusBaudrate, &success );
     if( success==smfalse )
     {
         return -1; //failed to open

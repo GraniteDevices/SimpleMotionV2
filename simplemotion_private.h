@@ -132,6 +132,5 @@ typedef struct {
 #undef PACKED
 #endif
 
-#define SMBUSDEVICE_RETURN_ON_OPEN_FAIL NULL
 
 #endif // SIMPLEMOTION_PRIVATE_H

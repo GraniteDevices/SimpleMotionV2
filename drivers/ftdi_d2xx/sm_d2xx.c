@@ -151,7 +151,7 @@ smint32 d2xxPortRead(smBusdevicePointer busdevicepointer, unsigned char *buf, sm
 
 
 
-smint32 d2xxPortWriteBuffer(smBusdevicePointer busdevicepointer, unsigned char *buf, smint32 size)
+smint32 d2xxPortWrite(smBusdevicePointer busdevicepointer, unsigned char *buf, smint32 size)
 {
     FT_HANDLE handle=(FT_HANDLE)busdevicepointer;
     DWORD BytesWritten;
