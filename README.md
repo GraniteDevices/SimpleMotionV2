@@ -28,7 +28,7 @@ Following files need modification if ported to another platform where SimpleMoti
 
 - If porting to a non-PC system, make sure that ENABLE_BUILT_IN_DRIVERS is not defined at compilation time (see qmake .pri file for clues) and use smOpenBusWithCallbacks instead of smOpenBus
 - Write custom communication interface device driver and use smOpenBusWithCallbacks to open bus with custom driver callbacks
-  - Ssee existing drivers for example
+  - See existing drivers for example
   - Only four simple functions are needed to write custom port driver: open port, close port, write port and read port
 
 Feature specific
