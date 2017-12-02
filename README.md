@@ -1,7 +1,7 @@
 SimpleMotionV2
 ==============
 
-This is a SimpleMotion V2 library, which is an API to control motor controller from any programmable platform, such as PC, PLC or MCU.
+This is a SimpleMotion V2 library, which is an API to control motor controller from any programmable platform, such as PC (Linux, Win, Mac), Rasperry Pi, MCU or PLC system.
 
 For main documentation, see:
 http://granitedevices.com/wiki/SimpleMotion_V2
@@ -22,13 +22,14 @@ Compulsory
 - simplemotion_private.h
 - busdevice.c/.h
 
-Platform specific
------------------
-Following files probably need modification if ported to another platform
+Porting to new platform
+-----------------------
+Following files need modification if ported to another platform where SimpleMotion communication interface device driver does not yet exist
 
-- pcserialport.c/.h - Contains a driver for communication device interface. This driver controls serial/COM port on Unix & Windows. Also busdevice.c/.h need to be modified accordingly if this driver is removed or modified.
-
-A typical platform port would involve writing a communication driver that implements same functions as pcserialport.c and adding their relevant calls to busdevice.c/.h.
+- If porting to a non-PC system, make sure that ENABLE_BUILT_IN_DRIVERS is not defined at compilation time (see qmake .pri file for clues) and use smOpenBusWithCallbacks instead of smOpenBus
+- Write custom communication interface device driver and use smOpenBusWithCallbacks to open bus with custom driver callbacks
+  - Ssee existing drivers for example
+  - Only four simple functions are needed to write custom port driver: open port, close port, write port and read port
 
 Feature specific
 ----------------

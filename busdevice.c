@@ -54,6 +54,7 @@ void smBDinit()
 //return -1 if fails, otherwise handle number
 smbusdevicehandle smBDOpen( const char *devicename )
 {
+#ifdef ENABLE_BUILT_IN_DRIVERS
     smbusdevicehandle h;
 
     //try opening with all drivers:
@@ -64,6 +65,9 @@ smbusdevicehandle smBDOpen( const char *devicename )
 #ifdef FTDI_D2XX_SUPPORT
     h=smBDOpenWithCallbacks( devicename, d2xxPortOpen, d2xxPortClose, d2xxPortRead, d2xxPortWrite );
     if(h>=0) return h;//was success
+#endif
+#else
+    smDebug( -1, High, "smBDOpen ENABLE_BUILT_IN_DRIVERS is not defined during SM library compile time. smOpenBus not supported in this case, see README.md.");
 #endif
 
     //none succeeded
