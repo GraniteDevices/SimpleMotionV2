@@ -1,6 +1,5 @@
 
 //HW interface to phyiscal bus device
-
 #ifndef SM_BUSDEVICE
 #define SM_BUSDEVICE
 
@@ -14,6 +13,8 @@ typedef smint16 smbusdevicehandle;
 //ie "COM1" "VSD2USB"
 //return 0-1 if fails, otherwise handle number
 smbusdevicehandle smBDOpen( const char *devicename );
+
+smbusdevicehandle smBDOpenWithCallbacks( const char *devicename, BusdeviceOpen busOpenCallback, BusdeviceClose busCloseCallback, BusdeviceReadBuffer busReadCallback, BusdeviceWriteBuffer busWriteCallback );
 
 //return true if ok
 smbool smBDClose( const smbusdevicehandle handle );

@@ -8,10 +8,6 @@
 #include <errno.h>
 #include <stdlib.h>
 
-#define BD_NONE 0
-#define BD_RS 1
-#define BD_FTDI 2
-#define BD_TCP 3
 
 //how much bytes available in transmit buffer
 #define TANSMIT_BUFFER_LENGTH 128
@@ -21,18 +17,20 @@ unsigned long SMBusBaudrate=SM_BAUDRATE; //the next opened port (with smOpenBus)
 typedef struct _SMBusDevice
 {
 	//common
-    smint8 bdType;//bus device type (such as rs232 or ftdi lib or mcu UART etc). 1=rs232 lib
-	smbool opened;
+    smbool opened;
 
     SM_STATUS cumulativeSmStatus;
 
-	//used for rs232 lib only
-	int comPort;
+    //pointer used by bus device drivers
+    smBusdevicePointer busDevicePointer;
 
     smuint8 txBuffer[TANSMIT_BUFFER_LENGTH];
     smint32 txBufferUsed;//how many bytes in buffer currently
 
-	//used for FTDI lib only
+    BusdeviceOpen busOpenCallback;
+    BusdeviceReadBuffer busReadCallback;
+    BusdeviceWriteBuffer busWriteCallback;
+    BusdeviceClose busCloseCallback;
 } SMBusDevice;
 
 //init on first open
@@ -45,7 +43,6 @@ void smBDinit()
 	int i;
 	for(i=0;i<SM_MAX_BUSES;i++)
 	{
-		BusDevice[i].bdType=BD_NONE;
 		BusDevice[i].opened=smfalse;
         BusDevice[i].txBufferUsed=0;
 	}
@@ -57,69 +54,61 @@ void smBDinit()
 //return -1 if fails, otherwise handle number
 smbusdevicehandle smBDOpen( const char *devicename )
 {
-	int handle;
+    smbusdevicehandle h;
 
-	//true on first call
-	if(bdInitialized==smfalse)
-		smBDinit();
-
-	//find free handle
-	for(handle=0;handle<SM_MAX_BUSES;handle++)
-	{
-		if(BusDevice[handle].opened==smfalse) break;//choose this
-	}
-
-	//all handles in use
-	if(handle>=SM_MAX_BUSES) return -1;
-
-        if(strncmp(devicename,"COM",3) == 0 || strncmp(devicename,"/dev/tty",8) == 0 || strncmp(devicename,"/dev/cu.",8) == 0) //use rs232 lib
-	{
-            BusDevice[handle].comPort=serialPortOpen( devicename, SMBusBaudrate );
-                if( BusDevice[handle].comPort == -1 )
-		{
-			return -1; //failed to open
-		}
-		BusDevice[handle].bdType=BD_RS;
-        BusDevice[handle].txBufferUsed=0;
-	}
-    else if (validateIpAddress(devicename, NULL, NULL) == 0)
-    {
-        char ip[128];
-        short port = 4001;
-        if (parseIpAddress(devicename, ip, sizeof(ip), &port) < 0)
-            return -1;
-        BusDevice[handle].comPort=OpenTCPPort( ip, port );
-        if( BusDevice[handle].comPort == -1 )
-        {
-            return -1; //failed to open
-        }
-        BusDevice[handle].bdType=BD_TCP;
-        BusDevice[handle].txBufferUsed=0;
-    }
+    //try opening with all drivers:
+    h=smBDOpenWithCallbacks( devicename, serialPortOpen, serialPortClose, serialPortRead, serialPortWrite );
+    if(h>=0) return h;//was success
+    h=smBDOpenWithCallbacks( devicename, tcpipPortOpen, tcpipPortClose, tcpipPortRead, tcpipPortWrite );
+    if(h>=0) return h;//was success
 #ifdef FTDI_D2XX_SUPPORT
-    //try to open FTDI bus by any name: FTDIn (n=index, 0 or greater) or device name (any string programmed in FTDI EEPROM)
-    else
-    {
-        BusDevice[handle].comPort=d2xxPortOpen( devicename, SMBusBaudrate );
-            if( BusDevice[handle].comPort == -1 )
-        {
-            return -1; //failed to open
-        }
-        BusDevice[handle].bdType=BD_FTDI;
-        BusDevice[handle].txBufferUsed=0;
-    }
-#else
-    else//no other bus types supproted yet
-    {
-        smDebug( -1, Low, "smBDOpen device name argument syntax didn't match any supported driver port name");
-        return -1;
-    }
+    h=smBDOpenWithCallbacks( devicename, d2xxPortOpen, d2xxPortClose, d2xxPortRead, d2xxPortWrite );
+    if(h>=0) return h;//was success
 #endif
 
-	//success
+    //none succeeded
+    //smDebug( -1, Low, "smBDOpen device name argument syntax didn't match any supported driver port name");
+    return -1;
+}
+
+
+
+smbusdevicehandle smBDOpenWithCallbacks(const char *devicename, BusdeviceOpen busOpenCallback, BusdeviceClose busCloseCallback , BusdeviceReadBuffer busReadCallback, BusdeviceWriteBuffer busWriteCallback)
+{
+    int handle;
+    smbool success;
+
+    //true on first call
+    if(bdInitialized==smfalse)
+        smBDinit();
+
+    //find free handle
+    for(handle=0;handle<SM_MAX_BUSES;handle++)
+    {
+        if(BusDevice[handle].opened==smfalse) break;//choose this
+    }
+
+    //all handles in use
+    if(handle>=SM_MAX_BUSES) return -1;
+
+    //setup callbacks
+    BusDevice[handle].busOpenCallback=busOpenCallback;
+    BusDevice[handle].busWriteCallback=busWriteCallback;
+    BusDevice[handle].busReadCallback=busReadCallback;
+    BusDevice[handle].busCloseCallback=busCloseCallback;
+
+    //try opening
+    BusDevice[handle].busDevicePointer=BusDevice[handle].busOpenCallback( devicename, SMBusBaudrate, &success );
+    if( success==smfalse )
+    {
+        return -1; //failed to open
+    }
+
+    //success
+    BusDevice[handle].txBufferUsed=0;
     BusDevice[handle].cumulativeSmStatus=0;
-	BusDevice[handle].opened=smtrue;
-	return handle;
+    BusDevice[handle].opened=smtrue;
+    return handle;
 }
 
 smbool smIsBDHandleOpen( const smbusdevicehandle handle )
@@ -135,28 +124,9 @@ smbool smBDClose( const smbusdevicehandle handle )
 	//check if handle valid & open
 	if( smIsBDHandleOpen(handle)==smfalse ) return smfalse;
 
-	if( BusDevice[handle].bdType==BD_RS )
-	{
-        serialPortClose( BusDevice[handle].comPort );
-		BusDevice[handle].opened=smfalse;
-		return smtrue;
-	}
-    else if( BusDevice[handle].bdType==BD_TCP )
-    {
-        CloseTCPport( BusDevice[handle].comPort );
-        BusDevice[handle].opened=smfalse;
-        return smtrue;
-    }
-#ifdef FTDI_D2XX_SUPPORT
-    else if( BusDevice[handle].bdType==BD_FTDI )
-    {
-        d2xxPortClose( BusDevice[handle].comPort );
-        BusDevice[handle].opened=smfalse;
-        return smtrue;
-    }
-#endif
-
-    return smfalse;
+    BusDevice[handle].busCloseCallback(BusDevice[handle].busDevicePointer );
+    BusDevice[handle].opened=smfalse;
+    return smtrue;
 }
 
 
@@ -185,49 +155,16 @@ smbool smBDTransmit(const smbusdevicehandle handle)
     //check if handle valid & open
     if( smIsBDHandleOpen(handle)==smfalse ) return smfalse;
 
-    if( BusDevice[handle].bdType==BD_RS )
+    if(BusDevice[handle].busWriteCallback(BusDevice[handle].busDevicePointer,BusDevice[handle].txBuffer, BusDevice[handle].txBufferUsed)==BusDevice[handle].txBufferUsed)
     {
-        if(serialPortWriteBuffer(BusDevice[handle].comPort,BusDevice[handle].txBuffer, BusDevice[handle].txBufferUsed)==BusDevice[handle].txBufferUsed)
-        {
-            BusDevice[handle].txBufferUsed=0;
-            return smtrue;
-        }
-        else
-        {
-            BusDevice[handle].txBufferUsed=0;
-            return smfalse;
-        }
+        BusDevice[handle].txBufferUsed=0;
+        return smtrue;
     }
-    else if( BusDevice[handle].bdType==BD_TCP )
+    else
     {
-        if(SendTCPBuf(BusDevice[handle].comPort,BusDevice[handle].txBuffer, BusDevice[handle].txBufferUsed)==BusDevice[handle].txBufferUsed)
-        {
-            BusDevice[handle].txBufferUsed=0;
-            return smtrue;
-        }
-        else
-        {
-            BusDevice[handle].txBufferUsed=0;
-            return smfalse;
-        }
+        BusDevice[handle].txBufferUsed=0;
+        return smfalse;
     }
-#ifdef FTDI_D2XX_SUPPORT
-    else if( BusDevice[handle].bdType==BD_FTDI )
-    {
-        if(d2xxPortWriteBuffer(BusDevice[handle].comPort,BusDevice[handle].txBuffer, BusDevice[handle].txBufferUsed)==BusDevice[handle].txBufferUsed)
-        {
-            BusDevice[handle].txBufferUsed=0;
-            return smtrue;
-        }
-        else
-        {
-            BusDevice[handle].txBufferUsed=0;
-            return smfalse;
-        }
-    }
-#endif
-
-    return smfalse;
 }
 
 //read one byte from bus. if byte not immediately available, block return up to SM_READ_TIMEOUT millisecs to wait data
@@ -237,31 +174,10 @@ smbool smBDRead( const smbusdevicehandle handle, smuint8 *byte )
 	//check if handle valid & open
 	if( smIsBDHandleOpen(handle)==smfalse ) return smfalse;
 
-	if( BusDevice[handle].bdType==BD_RS )
-	{
-		int n;
-        n=serialPortRead(BusDevice[handle].comPort, byte, 1);
-		if( n!=1 ) return smfalse;
-		else return smtrue;
-	}
-    else if( BusDevice[handle].bdType==BD_TCP )
-    {
-        int n;
-        n=PollTCPPort(BusDevice[handle].comPort, byte, 1);
-        if( n!=1 ) return smfalse;
-        else return smtrue;
-    }
-#ifdef FTDI_D2XX_SUPPORT
-    else if( BusDevice[handle].bdType==BD_FTDI )
-    {
-        int n;
-        n=d2xxPortRead(BusDevice[handle].comPort, byte, 1);
-        if( n!=1 ) return smfalse;
-        else return smtrue;
-    }
-#endif
-
-	return smfalse;
+    int n;
+    n=BusDevice[handle].busReadCallback(BusDevice[handle].busDevicePointer, byte, 1);
+    if( n!=1 ) return smfalse;
+    else return smtrue;
 }
 
 //BUS DEVICE INFO FETCH FUNCTIONS:

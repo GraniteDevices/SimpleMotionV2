@@ -64,6 +64,14 @@ typedef struct
 
 typedef enum _smVerbosityLevel {Off,Low,Mid,High,Trace} smVerbosityLevel;
 
+//define communication interface device driver callback types
+typedef void* smBusdevicePointer;
+typedef smBusdevicePointer (*BusdeviceOpen)(const char *port_device_name, smint32 baudrate_bps, smbool *success);
+typedef smint32 (*BusdeviceReadBuffer)(smBusdevicePointer busdevicePointer, unsigned char *buf, smint32 size);
+typedef smint32 (*BusdeviceWriteBuffer)(smBusdevicePointer busdevicePointer, unsigned char *buf, smint32 size);
+typedef void (*BusdeviceClose)(smBusdevicePointer busdevicePointer);
+//BusdeviceOpen callback should return this if port open fails (in addition to setting *success to smfalse):
+#define SMBUSDEVICE_RETURN_ON_OPEN_FAIL NULL
 
 
 //max number of simultaneously opened buses. change this and recompiple SMlib if
@@ -87,6 +95,9 @@ typedef enum _smVerbosityLevel {Off,Low,Mid,High,Trace} smVerbosityLevel;
 	-return value: handle to be used with all other commands, -1 if fails
 	*/
 LIB smbus smOpenBus( const char * devicename );
+
+/** Same as smOpenBus but with user supplied port driver callbacks */
+LIB smbus smOpenBusWithCallbacks( const char *devicename, BusdeviceOpen busOpenCallback, BusdeviceClose busCloseCallback, BusdeviceReadBuffer busReadCallback, BusdeviceWriteBuffer busWriteCallback );
 
 /** Change baudrate of SM communication port. This does not affect already opened ports but the next smOpenBus will be opened at the new speed. 
 	Calling this is optional. By default SM bus and all slave devices operates at 460800 BPS speed.

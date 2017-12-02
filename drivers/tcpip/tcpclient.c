@@ -50,7 +50,7 @@ static int initwsa()
 }
 #endif
 
-int OpenTCPPort(const char * ip_addr, int port)
+smBusdevicePointer tcpipPortOpen(const char * devicename, smint32 baudrate_bps, smbool *success)
 {
     int sockfd;
     struct sockaddr_in server;
@@ -60,6 +60,20 @@ int OpenTCPPort(const char * ip_addr, int port)
     socklen_t lon;
     unsigned long arg;
 
+    *success=smfalse;
+
+    if (validateIpAddress(devicename, NULL, NULL) != 0)
+        return SMBUSDEVICE_RETURN_ON_OPEN_FAIL;
+
+    char ip_addr[128];
+    unsigned short port = 4001;
+    if (parseIpAddress(devicename, ip_addr, sizeof(devicename), &port) < 0)
+        return SMBUSDEVICE_RETURN_ON_OPEN_FAIL;
+
+
+    if(baudrate_bps!=SM_BAUDRATE)
+        return SMBUSDEVICE_RETURN_ON_OPEN_FAIL;
+
 #if defined(_WIN32)
     initwsa();
 #endif
@@ -68,7 +82,7 @@ int OpenTCPPort(const char * ip_addr, int port)
     sockfd = socket(AF_INET , SOCK_STREAM , IPPROTO_TCP);
     if (sockfd == -1)
     {
-        return -1;
+        return SMBUSDEVICE_RETURN_ON_OPEN_FAIL;
     }
 
     // Set OFF NAGLE algorithm to disable stack buffering of small packets
@@ -105,17 +119,17 @@ int OpenTCPPort(const char * ip_addr, int port)
                 getsockopt(sockfd, SOL_SOCKET, SO_ERROR, (void*)(&valopt), &lon);
                 if (valopt)
                 {
-                    return -1;
+                    return SMBUSDEVICE_RETURN_ON_OPEN_FAIL;
                 }
             }
             else
             {
-               return -1;
+               return SMBUSDEVICE_RETURN_ON_OPEN_FAIL;
             }
         }
         else
         {
-            return -1;
+            return SMBUSDEVICE_RETURN_ON_OPEN_FAIL;
         }
     }
 
@@ -129,13 +143,15 @@ int OpenTCPPort(const char * ip_addr, int port)
     ioctlsocket(sockfd, FIONBIO, &arg);
 #endif
 
-    return sockfd;
+    *success=smtrue;
+    return (smBusdevicePointer)sockfd;
 }
 
 // Read bytes from socket
-int PollTCPPort(int sockfd, unsigned char *buf, int size)
+int tcpipPortRead(smBusdevicePointer busdevicePointer, unsigned char *buf, int size)
 {
     int n;
+    int sockfd=(int)busdevicePointer;
     fd_set input;
     FD_ZERO(&input);
     FD_SET((unsigned int)sockfd, &input);
@@ -159,18 +175,9 @@ int PollTCPPort(int sockfd, unsigned char *buf, int size)
     return(n);
 }
 
-int SendTCPByte(int sockfd, unsigned char byte)
+int tcpipPortWrite(smBusdevicePointer busdevicePointer, unsigned char *buf, int size)
 {
-    int n;
-    n = write(sockfd, (char*)&byte, 1);
-    if(n<0)
-        return(1);
-    return(0);
-}
-
-
-int SendTCPBuf(int sockfd, unsigned char *buf, int size)
-{
+    int sockfd=(int)busdevicePointer;
     int sent = write(sockfd, (char*)buf, size);
     if (sent != size)
     {
@@ -180,8 +187,9 @@ int SendTCPBuf(int sockfd, unsigned char *buf, int size)
 }
 
 
-void CloseTCPport(int sockfd)
+void tcpipPortClose(smBusdevicePointer busdevicePointer)
 {
+    int sockfd=(int)busdevicePointer;
     close(sockfd);
 #if defined(_WIN32)
     WSACleanup();
@@ -270,7 +278,7 @@ int validateIpAddress(const char *s, const char **pip_end,
     return 0;
 }
 
-int parseIpAddress(const char *s, char *ip, size_t ipsize, short *port)
+int parseIpAddress(const char *s, char *ip, size_t ipsize, unsigned short *port)
 {
     const char *ip_end, *port_start;
 

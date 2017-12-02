@@ -216,6 +216,35 @@ smbus smOpenBus( const char * devicename )
     return handle;
 }
 
+/** same as smOpenBus but with user supplied port driver callbacks */
+smbus smOpenBusWithCallbacks( const char *devicename, BusdeviceOpen busOpenCallback, BusdeviceClose busCloseCallback, BusdeviceReadBuffer busReadCallback, BusdeviceWriteBuffer busWriteCallback )
+{
+    int handle;
+
+    //true on first call
+    if(smInitialized==smfalse)
+        smBusesInit();
+
+    //find free handle
+    for(handle=0;handle<SM_MAX_BUSES;handle++)
+    {
+        if(smBus[handle].opened==smfalse) break;//choose this
+    }
+    //all handles in use
+    if(handle>=SM_MAX_BUSES) return -1;
+
+    //open bus device
+    smBus[handle].bdHandle=smBDOpenWithCallbacks(devicename, busOpenCallback, busCloseCallback, busReadCallback, busWriteCallback );
+    if(smBus[handle].bdHandle==-1) return -1;
+
+    //success
+    strncpy( smBus[handle].busDeviceName, devicename, SM_BUSDEVICENAME_LEN );
+    smBus[handle].busDeviceName[SM_BUSDEVICENAME_LEN-1]=0;//null terminate string
+    smBus[handle].opened=smtrue;
+    return handle;
+}
+
+
 /** Change baudrate of SM communication port. This does not affect already opened ports but the next smOpenBus will be opened at the new speed.
     Calling this is optional. By default SM bus and all slave devices operates at 460800 BPS speed.
     Parameters:
