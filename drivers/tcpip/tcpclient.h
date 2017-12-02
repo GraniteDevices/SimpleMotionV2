@@ -8,10 +8,10 @@ extern "C" {
 #endif
 
 //return port handle. sets success=smtrue if ok
-smBusdevicePointer TCPIPPortOpen(const char * devicename, smint32 baudrate_bps, smbool *success);
-int TCPIPPortRead(smBusdevicePointer busdevicePointer, unsigned char *, int);
-int TCPIPPortWrite(smBusdevicePointer busdevicePointer, unsigned char *, int);
-void TCPIPPortClose(smBusdevicePointer busdevicePointer);
+smBusdevicePointer tcpipPortOpen(const char * devicename, smint32 baudrate_bps, smbool *success);
+int tcpipPortRead(smBusdevicePointer busdevicePointer, unsigned char *, int);
+int tcpipPortWrite(smBusdevicePointer busdevicePointer, unsigned char *, int);
+void tcpipPortClose(smBusdevicePointer busdevicePointer);
 
 
 //accepted TCP/IP address format is nnn.nnn.nnn.nnn:pppp where n is IP address numbers and p is port number
