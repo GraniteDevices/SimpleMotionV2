@@ -47,6 +47,10 @@ smBusdevicePointer serialPortOpen(const char * port_device_name, smint32 baudrat
     int customBaudRate = 0;
     *success=false;
 
+    //check if devicename is correct format
+    if( strncmp(port_device_name,"/dev/tty",8) != 0 && strncmp(port_device_name,"/dev/cu.",8) != 0)
+        return SMBUSDEVICE_RETURN_ON_OPEN_FAIL;
+
     port_handle = open(port_device_name, O_RDWR | O_NOCTTY | O_NONBLOCK);
 
     if(port_handle==-1)
@@ -244,6 +248,10 @@ smBusdevicePointer serialPortOpen(const char *port_device_name, smint32 baudrate
     char port_def_string[64], port_name[32];
     HANDLE port_handle;
     *success=smfalse;
+
+    //check port name
+    if(strncmp(port_device_name,"COM",3) != 0 )
+        return SMBUSDEVICE_RETURN_ON_OPEN_FAIL;
 
     sprintf(port_def_string,"baud=%d data=8 parity=N stop=1", (int)baudrate_bps);
     sprintf(port_name,"\\\\.\\%s",port_device_name);

@@ -62,6 +62,9 @@ smBusdevicePointer OpenTCPPort(const char * devicename, smint32 baudrate_bps, sm
 
     *success=smfalse;
 
+    if (validateIpAddress(devicename, NULL, NULL) != 0)
+        return SMBUSDEVICE_RETURN_ON_OPEN_FAIL;
+
     char ip_addr[128];
     unsigned short port = 4001;
     if (parseIpAddress(devicename, ip_addr, sizeof(devicename), &port) < 0)

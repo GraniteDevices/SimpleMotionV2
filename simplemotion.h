@@ -93,6 +93,9 @@ typedef void (*BusdeviceClose)(smBusdevicePointer busdevicePointer);
 	*/
 LIB smbus smOpenBus( const char * devicename );
 
+/** Same as smOpenBus but with user supplied port driver callbacks */
+LIB smbus smOpenBusWithCallbacks( const char *devicename, BusdeviceOpen busOpenCallback, BusdeviceClose busCloseCallback, BusdeviceReadBuffer busReadCallback, BusdeviceWriteBuffer busWriteCallback );
+
 /** Change baudrate of SM communication port. This does not affect already opened ports but the next smOpenBus will be opened at the new speed. 
 	Calling this is optional. By default SM bus and all slave devices operates at 460800 BPS speed.
 	Parameters:

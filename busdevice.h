@@ -14,6 +14,8 @@ typedef smint16 smbusdevicehandle;
 //return 0-1 if fails, otherwise handle number
 smbusdevicehandle smBDOpen( const char *devicename );
 
+smbusdevicehandle smBDOpenWithCallbacks( const char *devicename, BusdeviceOpen busOpenCallback, BusdeviceClose busCloseCallback, BusdeviceReadBuffer busReadCallback, BusdeviceWriteBuffer busWriteCallback );
+
 //return true if ok
 smbool smBDClose( const smbusdevicehandle handle );
 

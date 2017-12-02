@@ -54,81 +54,61 @@ void smBDinit()
 //return -1 if fails, otherwise handle number
 smbusdevicehandle smBDOpen( const char *devicename )
 {
-	int handle;
-    smbool success;
+    smbusdevicehandle h;
 
-	//true on first call
-	if(bdInitialized==smfalse)
-		smBDinit();
-
-	//find free handle
-	for(handle=0;handle<SM_MAX_BUSES;handle++)
-	{
-		if(BusDevice[handle].opened==smfalse) break;//choose this
-	}
-
-	//all handles in use
-	if(handle>=SM_MAX_BUSES) return -1;
-
-        if(strncmp(devicename,"COM",3) == 0 || strncmp(devicename,"/dev/tty",8) == 0 || strncmp(devicename,"/dev/cu.",8) == 0) //use rs232 lib
-	{
-            BusDevice[handle].busDevicePointer=serialPortOpen( devicename, SMBusBaudrate, &success );
-                if( success==smfalse )
-		{
-			return -1; //failed to open
-		}
-        //setup callbacks
-        BusDevice[handle].busOpenCallback=serialPortOpen;
-        BusDevice[handle].busWriteCallback=serialPortWriteBuffer;
-        BusDevice[handle].busReadCallback=serialPortRead;
-        BusDevice[handle].busCloseCallback=serialPortClose;
-
-        BusDevice[handle].txBufferUsed=0;
-	}
-    else if (validateIpAddress(devicename, NULL, NULL) == 0)
-    {
-        BusDevice[handle].busDevicePointer=OpenTCPPort( devicename, SMBusBaudrate, &success );
-        if( success==smfalse )
-        {
-            return -1; //failed to open
-        }
-        //setup callbacks
-        BusDevice[handle].busOpenCallback=OpenTCPPort;
-        BusDevice[handle].busWriteCallback=SendTCPBuf;
-        BusDevice[handle].busReadCallback=PollTCPPort;
-        BusDevice[handle].busCloseCallback=CloseTCPport;
-
-        BusDevice[handle].txBufferUsed=0;
-    }
+    //try opening with all drivers:
+    h=smBDOpenWithCallbacks( devicename, serialPortOpen, serialPortClose, serialPortWriteBuffer, serialPortRead );
+    if(h>=0) return h;//was success
+    h=smBDOpenWithCallbacks( devicename, OpenTCPPort, CloseTCPport, SendTCPBuf, PollTCPPort );
+    if(h>=0) return h;//was success
 #ifdef FTDI_D2XX_SUPPORT
-    //try to open FTDI bus by any name: FTDIn (n=index, 0 or greater) or device name (any string programmed in FTDI EEPROM)
-    else
-    {
-        BusDevice[handle].busDevicePointer=d2xxPortOpen( devicename, SMBusBaudrate, &success );
-            if( success==smfalse )
-        {
-            return -1; //failed to open
-        }
-            //setup callbacks
-        BusDevice[handle].busOpenCallback=d2xxPortOpen;
-        BusDevice[handle].busWriteCallback=d2xxPortWriteBuffer;
-        BusDevice[handle].busReadCallback=d2xxPortRead;
-        BusDevice[handle].busCloseCallback=d2xxPortClose;
-
-        BusDevice[handle].txBufferUsed=0;
-    }
-#else
-    else//no other bus types supproted yet
-    {
-        smDebug( -1, Low, "smBDOpen device name argument syntax didn't match any supported driver port name");
-        return -1;
-    }
+    h=smBDOpenWithCallbacks( devicename, d2xxPortOpen, d2xxPortClose, d2xxPortWriteBuffer, d2xxPortRead );
+    if(h>=0) return h;//was success
 #endif
 
-	//success
+    //none succeeded
+    //smDebug( -1, Low, "smBDOpen device name argument syntax didn't match any supported driver port name");
+    return -1;
+}
+
+
+
+smbusdevicehandle smBDOpenWithCallbacks(const char *devicename, BusdeviceOpen busOpenCallback, BusdeviceClose busCloseCallback , BusdeviceReadBuffer busReadCallback, BusdeviceWriteBuffer busWriteCallback)
+{
+    int handle;
+    smbool success;
+
+    //true on first call
+    if(bdInitialized==smfalse)
+        smBDinit();
+
+    //find free handle
+    for(handle=0;handle<SM_MAX_BUSES;handle++)
+    {
+        if(BusDevice[handle].opened==smfalse) break;//choose this
+    }
+
+    //all handles in use
+    if(handle>=SM_MAX_BUSES) return -1;
+
+    //setup callbacks
+    BusDevice[handle].busOpenCallback=busOpenCallback;
+    BusDevice[handle].busWriteCallback=busWriteCallback;
+    BusDevice[handle].busReadCallback=busReadCallback;
+    BusDevice[handle].busCloseCallback=busCloseCallback;
+
+    //try opening
+    BusDevice[handle].busOpenCallback( devicename, SMBusBaudrate, &success );
+    if( success==smfalse )
+    {
+        return -1; //failed to open
+    }
+
+    //success
+    BusDevice[handle].txBufferUsed=0;
     BusDevice[handle].cumulativeSmStatus=0;
-	BusDevice[handle].opened=smtrue;
-	return handle;
+    BusDevice[handle].opened=smtrue;
+    return handle;
 }
 
 smbool smIsBDHandleOpen( const smbusdevicehandle handle )
