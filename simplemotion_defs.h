@@ -480,6 +480,8 @@
     #define MOTOR_AC_VECTOR 3 /*3 phase ac or bldc */
 	//2 phase stepper
 	#define MOTOR_STEPPER_2PHA 4 /*2 phase stepper */
+	//linear 3 phase ac
+	#define MOTOR_LINEAR_3PH 5
 	//for drive internal use only:
 	#define _MOTOR_LAST 7
 
@@ -539,6 +541,8 @@
     #define FLAG_MECH_BRAKE_DURING_PHASING BV(15)
 	#define FLAG_LIMIT_SWITCHES_NORMALLY_OPEN_TYPE BV(16)
 	#define FLAG_ENABLE_MOTOR_SOUND_NOTIFICATIONS BV(17)
+	#define FLAG_FBD1_IS_LINEAR_ENCODER BV(18)
+	#define FLAG_FBD2_IS_LINEAR_ENCODER BV(19)
 #define SMP_MOTION_FAULT_THRESHOLD 568
 #define SMP_HV_VOLTAGE_HI_LIMIT 569
 #define SMP_HV_VOLTAGE_LOW_LIMIT 570
@@ -573,6 +577,12 @@
  * if HOMING_RESET_POS_AND_SETPOINT_TO_ABSOLUTE_FBD_READING is 1, then SMP_SERIAL_ENC_OFFSET will be added to the absolute feedback reading before resetting fb value and setpoint to it.
  */
 #define SMP_SERIAL_ENC_OFFSET 575
+
+/*
+ * defines linear encoder resolution in counts/100mm. must be set if FLAG_FBD1_IS_LINEAR_ENCODER is 1
+ */
+#define SMP_FBD1_LINEAR_ENC_RESOLUTION 576
+
 
 //primary feedback loop 200-299
 #define SMP_VEL_I 200
