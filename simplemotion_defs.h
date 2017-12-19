@@ -19,24 +19,26 @@
 
 /* SMV2 protocol change log:
  * Version 20:
- *   -V20 was introduced with Argon FW 1.0.0 and present at least until 1.4.0
+ *    - V20 was introduced with Argon FW 1.0.0 and present at least until 1.4.0
  * Version 25 (is backwards compatible in syntax but not in setpoint behavior, see details below):
- *   -V25 was introduced with IONI
- *   -setpoint calculation is different:
- *     now there is only one common setpoint and all ABS and INC commands (buffered & instant)
- *     change the same variable. In V20 there was separate setpoint variables for each stream
- *     (instant & buffered) and for INC and ABS separately and finally all setpoints were summed together.
- *     Formula for total setpoint is = SMV2setpoint+OptionalPhysicalSetpoint (step/dir, analog etc)
- *   -in buffered stream, only setpoint commands execute on timed pace. all others execute as fast as possible.
- *    this makes it possible to insert any parameter read/write commands in middle of buffered motion.
- *   -implemented watchdog functionality in new param SMP_FAULT_BEHAVIOR
- *   -added param SMP_ADDRESS_OFFSET
+ *    - V25 was introduced with IONI
+ *    - Setpoint calculation is different:
+ *      now there is only one common setpoint and all ABS and INC commands (buffered & instant)
+ *      change the same variable. In V20 there was separate setpoint variables for each stream
+ *      (instant & buffered) and for INC and ABS separately and finally all setpoints were summed together.
+ *      Formula for total setpoint is = SMV2setpoint+OptionalPhysicalSetpoint (step/dir, analog etc)
+ *    - In buffered stream, only setpoint commands execute on timed pace. all others execute as fast as possible.
+ *      this makes it possible to insert any parameter read/write commands in middle of buffered motion.
+ *    - Implemented watchdog functionality in new param SMP_FAULT_BEHAVIOR
+ *    - Added param SMP_ADDRESS_OFFSET
  * Version 26:
- *    - fast SM command added (actually is also present in late V25 too, but as unofficial feature)
- *    - watchdog timout now resets bitrate to default and aborts buffered motion
+ *    - Fast SM command added (actually is also present in late V25 too, but as unofficial feature)
+ *    - Watchdog timout now resets bitrate to default and aborts buffered motion
  * Version 27:
- *    - introduced new SMP_BUFFERED_MODE parameter and optional linear interpolation of buffered setpoints
- *    - introduced SMP_CB1_FORCE_ENABLE flag
+ *    - Introduced new SMP_BUFFERED_MODE parameter and optional linear interpolation of buffered setpoints. However don't expect it to support all modes, see "capabilities" feature of version 28 for auto-detecting supported interpolation modes
+ *    - Introduced SMP_CB1_FORCE_ENABLE flag
+ * Version 28:
+ *    - Devices implement SMP_DEVICE_CAPABILITIES1 and SMP_DEVICE_CAPABILITIES2 read-only bit fields. By checking the bits of these parameteters, SM application can determine the supported features of the target device.
  *
  */
 
@@ -874,6 +876,7 @@
 
 //read only bit field that is can be used to identify device capabilities
 //the list below is subject to extend
+//SMP_DEVICE_CAPABILITIES1 and SMP_DEVICE_CAPABILITIES2 are implemented on devices where SM protocol version is 28 or greater
 #define SMP_DEVICE_CAPABILITIES1 6006
 	#define DEVICE_CAPABILITY1_PMDC BV(0)
 	#define DEVICE_CAPABILITY1_PMAC BV(1)
@@ -896,9 +899,11 @@
 	#define DEVICE_CAPABILITY1_GEARING BV(18)
 	#define DEVICE_CAPABILITY1_AUTOSETUP_COMMUTATION_SENSOR BV(19)
 	#define DEVICE_CAPABILITY1_BUFFERED_MOTION_LINEAR_INTERPOLATION BV(20)
+	#define DEVICE_CAPABILITY1_MOTOR_DRIVE BV(21) //1 if device has motor drive capabilities, this flag is implemented on devices with SM protocol version 28 or greater
 
 //read only bit field that is can be used to identify device capabilities
 //the list below is subject to extend
+//SMP_DEVICE_CAPABILITIES1 and SMP_DEVICE_CAPABILITIES2 are implemented on devices where SM protocol version is 28 or greater
 #define SMP_DEVICE_CAPABILITIES2 6007
 	#define DEVICE_CAPABILITY2_RESTORE_SAVED_CONFIG BV(0)
 	#define DEVICE_CAPABILITY2_MEASURE_RL BV(1)
