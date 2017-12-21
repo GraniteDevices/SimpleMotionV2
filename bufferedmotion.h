@@ -20,11 +20,15 @@ typedef struct _BufferedMotionAxis {
     smint16 readParamAddr;
     smuint8 readParamLength;
     smint32 driveFlagsBeforeInit;
+    smbool driveFlagsModifiedAtInit;//true if deInit should restore driveFlagsBeforeInit
     smint32 driveAccelerationBeforeInit;
     smuint16 driveClock;//clock counter is updated at smBufferedRunAndSyncClocks only for the one axis that is used with that func. clock is running up at 10kHz count rate, meaning that it rolls over every 6.5536 secs
     smint32 bufferLength;//buffer lenght in bytes of the device. note this may be different in different devices types. so call smBufferedGetFree on the device that has the smallest buffer. however as of 2.2016 all GD drives have 2048 bytes buffers.
     smint32 bufferFreeBytes;//number of bytes free in buffer, updated at smBufferedGetFree
     smint32 bufferFill;//percentage of buffer fill, updated at smBufferedGetFree. this should stay above 50% to ensure gapless motion. if gaps occur, check SMV2USB adpater COM port latency setting (set to 1ms) or try lower samplerate.
+    smint32 smProtocolVersion;//version of SM protocol of the target device. some internal functionality of API may use this info.
+    smint32 deviceCapabilityFlags1;//value of SMP_DEVICE_CAPABILITIES1 if target device has SM protocol version 28 or later (if SM version<28, then value is 0)
+    smint32 deviceCapabilityFlags2;//value of SMP_DEVICE_CAPABILITIES2 if target device has SM protocol version 28 or later (if SM version<28, then value is 0)
 } BufferedMotionAxis;
 
 /** initialize buffered motion for one axis with address and samplerate (Hz) */

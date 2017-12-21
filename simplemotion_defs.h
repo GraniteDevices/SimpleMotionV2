@@ -19,21 +19,26 @@
 
 /* SMV2 protocol change log:
  * Version 20:
- *   -V20 was introduced with Argon FW 1.0.0 and present at least until 1.4.0
+ *    - V20 was introduced with Argon FW 1.0.0 and present at least until 1.4.0
  * Version 25 (is backwards compatible in syntax but not in setpoint behavior, see details below):
- *   -V25 was introduced with IONI
- *   -setpoint calculation is different:
- *     now there is only one common setpoint and all ABS and INC commands (buffered & instant)
- *     change the same variable. In V20 there was separate setpoint variables for each stream
- *     (instant & buffered) and for INC and ABS separately and finally all setpoints were summed together.
- *     Formula for total setpoint is = SMV2setpoint+OptionalPhysicalSetpoint (step/dir, analog etc)
- *   -in buffered stream, only setpoint commands execute on timed pace. all others execute as fast as possible.
- *    this makes it possible to insert any parameter read/write commands in middle of buffered motion.
- *   -implemented watchdog functionality in new param SMP_FAULT_BEHAVIOR
- *   -added param SMP_ADDRESS_OFFSET
+ *    - V25 was introduced with IONI
+ *    - Setpoint calculation is different:
+ *      now there is only one common setpoint and all ABS and INC commands (buffered & instant)
+ *      change the same variable. In V20 there was separate setpoint variables for each stream
+ *      (instant & buffered) and for INC and ABS separately and finally all setpoints were summed together.
+ *      Formula for total setpoint is = SMV2setpoint+OptionalPhysicalSetpoint (step/dir, analog etc)
+ *    - In buffered stream, only setpoint commands execute on timed pace. all others execute as fast as possible.
+ *      this makes it possible to insert any parameter read/write commands in middle of buffered motion.
+ *    - Implemented watchdog functionality in new param SMP_FAULT_BEHAVIOR
+ *    - Added param SMP_ADDRESS_OFFSET
  * Version 26:
- *    - fast SM command added (actually is also present in late V25 too, but as unofficial feature)
- *    - watchdog timout now resets bitrate to default and aborts buffered motion
+ *    - Fast SM command added (actually is also present in late V25 too, but as unofficial feature)
+ *    - Watchdog timout now resets bitrate to default and aborts buffered motion
+ * Version 27:
+ *    - Introduced new SMP_BUFFERED_MODE parameter and optional linear interpolation of buffered setpoints. However don't expect it to support all modes, see "capabilities" feature of version 28 for auto-detecting supported interpolation modes
+ *    - Introduced SMP_CB1_FORCE_ENABLE flag
+ * Version 28:
+ *    - Devices implement SMP_DEVICE_CAPABILITIES1 and SMP_DEVICE_CAPABILITIES2 read-only bit fields. By checking the bits of these parameteters, SM application can determine the supported features of the target device.
  *
  */
 
@@ -242,6 +247,25 @@
  * bits 18-32: reserved, always 0
  */
 #define SMP_FAULT_BEHAVIOR 15
+
+/* SMP_BUFFERED_MODE defines the behavior in buffered motion commands:
+ * bits 0-3 (LSB): setpoint interpolation mode.
+ * bits 4-31: reserved for future use.
+ *
+ * Setpoint interpolation modes:
+ * 0: apply nearest setpoint (default). If there are non-setpoint commands between setpoint commands,
+ *    these are executed in order with setpoint commands. Non-setpoint commands are executed without time delay to allow setpoint
+ *    commands to be executed at constant frequency.
+ * 1: linear interpolation between setpoints. If there are non-setpoint commands between setpoint commands,
+ *    these are executed one setpoit command in advance compared to a setpoint commands. This is a result from look-ahead buffering.
+ *    Non-setpoint commands are executed without time delay to allow setpoint commands to be executed at constant frequency.
+ *
+ * Note: this is present only in SM protocol version 27 and later.
+ */
+#define SMP_BUFFERED_MODE 16
+	#define BUFFERED_INTERPOLATION_MODE_MASK 0x0F
+	#define BUFFERED_INTERPOLATION_MODE_NEAREST 0
+	#define BUFFERED_INTERPOLATION_MODE_LINEAR 1
 
 
 
@@ -458,6 +482,8 @@
     #define MOTOR_AC_VECTOR 3 /*3 phase ac or bldc */
 	//2 phase stepper
 	#define MOTOR_STEPPER_2PHA 4 /*2 phase stepper */
+	//linear 3 phase ac
+	#define MOTOR_LINEAR_3PH 5
 	//for drive internal use only:
 	#define _MOTOR_LAST 7
 
@@ -517,6 +543,8 @@
     #define FLAG_MECH_BRAKE_DURING_PHASING BV(15)
 	#define FLAG_LIMIT_SWITCHES_NORMALLY_OPEN_TYPE BV(16)
 	#define FLAG_ENABLE_MOTOR_SOUND_NOTIFICATIONS BV(17)
+	#define FLAG_FBD1_IS_LINEAR_ENCODER BV(18)
+	#define FLAG_FBD2_IS_LINEAR_ENCODER BV(19)
 #define SMP_MOTION_FAULT_THRESHOLD 568
 #define SMP_HV_VOLTAGE_HI_LIMIT 569
 #define SMP_HV_VOLTAGE_LOW_LIMIT 570
@@ -546,6 +574,17 @@
  * 4 AMS SSI
  */
 #define SMP_SERIAL_ENC_BITS 574
+
+/*
+ * if HOMING_RESET_POS_AND_SETPOINT_TO_ABSOLUTE_FBD_READING is 1, then SMP_SERIAL_ENC_OFFSET will be added to the absolute feedback reading before resetting fb value and setpoint to it.
+ */
+#define SMP_SERIAL_ENC_OFFSET 575
+
+/*
+ * defines linear encoder resolution in counts/100mm. must be set if FLAG_FBD1_IS_LINEAR_ENCODER is 1
+ */
+#define SMP_FBD1_LINEAR_ENC_RESOLUTION 576
+
 
 //primary feedback loop 200-299
 #define SMP_VEL_I 200
@@ -652,14 +691,14 @@
 #define SMP_AXIS_SCALE 491
 //output unit 0=mm 1=um 2=inch 3=revolutions 4=degrees
 #define SMP_AXIS_UNITS 492
-//0=none 1=qei1 2=qei2 3=resolver 4=ssi 5=biss
+//0=none 1=qei1 2=qei2 3=resolver 4=digital hall sensors 5=serial data
 #define SMP_FB1_DEVICE_SELECTION 493
 	#define SMP_FBD_NONE 0
 	#define SMP_FBD_INCR1 1
 	#define SMP_FBD_INCR2 2
 	#define SMP_FBD_RESOLVER 3
-	#define SMP_FBD_SSI 4
-	#define SMP_FBD_BISS 5
+	#define SMP_FBD_HALLS 4
+	#define SMP_FBD_SERIALDATA 5
 	#define SMP_FBD_SINCOS16X 6
 	#define SMP_FBD_SINCOS64X 7
 	#define SMP_FBD_SINCOS256X 8
@@ -689,7 +728,8 @@
 	#define SMP_CB1_QUICKSTOP BV(2)//not implemented at the moment
 	#define SMP_CB1_USE_TRAJPLANNER BV(3)//not implemented at the moment
 	#define SMP_CB1_START_HOMING BV(4)//write 1 here to start homing //not implemented at the moment
-	#define SMP_STATIC_CBS1 (SMP_CB1_ENABLE|SMP_CB1_USE_TRAJPLANNER)
+	#define SMP_CB1_FORCE_ENABLE BV(5)//writing & holding value 1 here will override lack of phyiscal enable signal (SMP_CB2_ENABLE). User can force device go in enabled state when both SMP_CB1_ENABLE and aSMP_CB1_FORCE_ENABLE are set.
+	#define SMP_STATIC_CBS1 (SMP_CB1_ENABLE|SMP_CB1_USE_TRAJPLANNER|SMP_CB1_FORCE_ENABLE)
 
 #define SMP_CONTROL_BITS2 2534
 	//bitfiled values:
@@ -720,7 +760,8 @@
 	#define HOMING_HOME_AT_POWER_ON BV(5)
 	#define HOMING_FULL_SPEED_OFFSET_MOVE BV(6)
 	#define HOMING_ENABLED BV(7) /*if 0, homing cant be started */
-	#define _HOMING_CFG_MAX_VALUE 0x00ff
+	#define HOMING_RESET_POS_AND_SETPOINT_TO_ABSOLUTE_FBD_READING BV(8) /*if 1, init feedback & setpoint values froma absolute positions sensor + SMP_ABS_FBD_OFFSET. If enabled, this step is performed after index search. */
+	#define _HOMING_CFG_MAX_VALUE 0x01ff
 
 //defines from which direction & distance home switch will be approached for second time (eliminate switch hysteresis)
 #define SMP_TRAJ_PLANNER_HOMING_SECOND_APPROACH_DISTANCE 807
@@ -835,6 +876,7 @@
 
 //read only bit field that is can be used to identify device capabilities
 //the list below is subject to extend
+//SMP_DEVICE_CAPABILITIES1 and SMP_DEVICE_CAPABILITIES2 are implemented on devices where SM protocol version is 28 or greater
 #define SMP_DEVICE_CAPABILITIES1 6006
 	#define DEVICE_CAPABILITY1_PMDC BV(0)
 	#define DEVICE_CAPABILITY1_PMAC BV(1)
@@ -856,9 +898,12 @@
 	#define DEVICE_CAPABILITY1_FB_SINCOS BV(17)
 	#define DEVICE_CAPABILITY1_GEARING BV(18)
 	#define DEVICE_CAPABILITY1_AUTOSETUP_COMMUTATION_SENSOR BV(19)
+	#define DEVICE_CAPABILITY1_BUFFERED_MOTION_LINEAR_INTERPOLATION BV(20)
+	#define DEVICE_CAPABILITY1_MOTOR_DRIVE BV(21) //1 if device has motor drive capabilities, this flag is implemented on devices with SM protocol version 28 or greater
 
 //read only bit field that is can be used to identify device capabilities
 //the list below is subject to extend
+//SMP_DEVICE_CAPABILITIES1 and SMP_DEVICE_CAPABILITIES2 are implemented on devices where SM protocol version is 28 or greater
 #define SMP_DEVICE_CAPABILITIES2 6007
 	#define DEVICE_CAPABILITY2_RESTORE_SAVED_CONFIG BV(0)
 	#define DEVICE_CAPABILITY2_MEASURE_RL BV(1)
@@ -872,6 +917,9 @@
 	#define DEVICE_CAPABILITY2_SOUND_NOTIFICATIONS_FROM_MOTOR BV(9)
 	#define DEVICE_CAPABILITY2_ASSIGN_HOME_AND_AUX_IO BV(10)
 	#define DEVICE_CAPABILITY2_HOMING_SECOND_APPROACH BV(11)
+	#define DEVICE_CAPABILITY2_UTILIZE_ABSOLUTE_FBD BV(12) /*supports homing by absolute feedback device info & can use absolute fbd as commutation sensor */
+	#define DEVICE_CAPABILITY2_SUPPORT_DIGITAL_HALL_SENSOR_FBD BV(13)
+    #define DEVICE_CAPABILITY2_SUPPORT_FORCE_CONTROL BV(14)
 
 #define SMP_FIRMWARE_VERSION 6010
 #define SMP_FIRMWARE_BACKWARDS_COMP_VERSION 6011

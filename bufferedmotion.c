@@ -21,21 +21,38 @@ SM_STATUS smBufferedInit(BufferedMotionAxis *newAxis, smbus handle, smaddr devic
     newAxis->driveClock=0;
     newAxis->bufferFill=0;
     newAxis->numberOfPendingReadPackets=0;
+    newAxis->driveFlagsModifiedAtInit=smfalse;
+    newAxis->deviceCapabilityFlags1=0;
+    newAxis->deviceCapabilityFlags2=0;
 
     //discard any existing data in buffer, and to get correct reading of device buffer size
     smSetParameter( newAxis->bushandle, newAxis->deviceAddress, SMP_SYSTEM_CONTROL,SMP_SYSTEM_CONTROL_ABORTBUFFERED);
 
     //after abort, we can read the maximum size of data in device buffer
-    smRead1Parameter(newAxis->bushandle,newAxis->deviceAddress,SMP_BUFFER_FREE_BYTES,&newAxis->bufferLength);
+    smRead2Parameters(newAxis->bushandle,newAxis->deviceAddress,SMP_BUFFER_FREE_BYTES,&newAxis->bufferLength,SMP_SM_VERSION,&newAxis->smProtocolVersion);
     newAxis->bufferFreeBytes=newAxis->bufferLength;
 
-    //set input smoothing filter on [CIS] if samplerate is not maximum. with filter samplerates 250,500,750,1000,1250 etc run smooth.
-    if(sampleRate<2500)
-    {
-        if(smRead1Parameter(handle,deviceAddress,SMP_DRIVE_FLAGS,&newAxis->driveFlagsBeforeInit)!=SM_OK)
-            return getCumulativeStatus(handle);//if error happens in read, dont set the flags
+    if(smRead1Parameter(handle,deviceAddress,SMP_DRIVE_FLAGS,&newAxis->driveFlagsBeforeInit)!=SM_OK)
+        return getCumulativeStatus(handle);//if error happens in read, avoid altering the flag (later)
 
-        smSetParameter(handle,deviceAddress,SMP_DRIVE_FLAGS,newAxis->driveFlagsBeforeInit|FLAG_USE_INPUT_LP_FILTER);
+    if(newAxis->smProtocolVersion>=28)//V28 and later support device capability flags, so read them
+    {
+        smRead2Parameters(newAxis->bushandle,newAxis->deviceAddress,SMP_DEVICE_CAPABILITIES1,&newAxis->deviceCapabilityFlags1,SMP_DEVICE_CAPABILITIES2,&newAxis->deviceCapabilityFlags2);
+    }
+
+    //set linear interpolation mode if supported
+    if(newAxis->deviceCapabilityFlags1&DEVICE_CAPABILITY1_BUFFERED_MOTION_LINEAR_INTERPOLATION)
+    {
+        smSetParameter(handle,deviceAddress,SMP_BUFFERED_MODE,BUFFERED_INTERPOLATION_MODE_LINEAR);//enable interpolation of buffered setpoints
+    }
+    else//use traditional nearest neighbor setpoint mode
+    {
+        //set input smoothing filter on [CIS] if samplerate is not maximum. with filter samplerates 250,500,750,1000,1250 etc run smooth. needed only for old nearest neighbor setpoint "interpolation" mode
+        if(sampleRate<2500)
+        {
+            smSetParameter(handle,deviceAddress,SMP_DRIVE_FLAGS,newAxis->driveFlagsBeforeInit|FLAG_USE_INPUT_LP_FILTER);
+            newAxis->driveFlagsModifiedAtInit=smtrue;
+        }
     }
 
     //set buffer execution rate to max so init commands go fast
@@ -64,7 +81,8 @@ SM_STATUS smBufferedDeinit( BufferedMotionAxis *axis )
     if(axis->initialized==smtrue)
     {
         smSetParameter(axis->bushandle,axis->deviceAddress,SMP_TRAJ_PLANNER_ACCEL,axis->driveAccelerationBeforeInit);
-        smSetParameter(axis->bushandle,axis->deviceAddress,SMP_DRIVE_FLAGS,axis->driveFlagsBeforeInit);
+        if(axis->driveFlagsModifiedAtInit==smtrue)//if flags parameter modified, then restore the origianl value
+            smSetParameter(axis->bushandle,axis->deviceAddress,SMP_DRIVE_FLAGS,axis->driveFlagsBeforeInit);
     }
 
     axis->initialized=smfalse;

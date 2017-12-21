@@ -25,6 +25,11 @@
 #include <sys/types.h>
 #include <string.h>
 
+#if defined(__linux__)
+//needed for setting low latency
+#include <linux/serial.h>
+#endif
+
 #if defined(__APPLE__)
 #include <CoreFoundation/CoreFoundation.h>
 #include <IOKit/IOKitLib.h>
@@ -33,20 +38,25 @@
 #include <IOKit/IOBSD.h>
 #endif
 
-smint32 serialPortOpen(const char * port_device_name, smint32 baudrate_bps)
+smBusdevicePointer serialPortOpen(const char * port_device_name, smint32 baudrate_bps, smbool *success)
 {
     int port_handle;
     int err;
     int baudrateEnumValue;
     struct termios new_port_settings;
     int customBaudRate = 0;
+    *success=false;
+
+    //check if devicename is correct format
+    if( strncmp(port_device_name,"/dev/tty",8) != 0 && strncmp(port_device_name,"/dev/cu.",8) != 0)
+        return SMBUSDEVICE_RETURN_ON_OPEN_FAIL;
 
     port_handle = open(port_device_name, O_RDWR | O_NOCTTY | O_NONBLOCK);
 
     if(port_handle==-1)
     {
         smDebug(-1, Low, "Serial port error: port open failed");
-        return -1;
+        return SMBUSDEVICE_RETURN_ON_OPEN_FAIL;
     }
 
 
@@ -55,14 +65,14 @@ smint32 serialPortOpen(const char * port_device_name, smint32 baudrate_bps)
     if (ioctl(port_handle, TIOCEXCL) == -1) {
         smDebug(-1, Low, "Serial port error: error setting TIOCEXCL");
         close(port_handle);
-        return -1;
+        return SMBUSDEVICE_RETURN_ON_OPEN_FAIL;
     }
 
     // as the port is now open, clear O_NONBLOCK flag for subsequent I/O calls
     if (fcntl(port_handle, F_SETFL, 0) == -1) {
         smDebug(-1, Low, "Serial port error: error clearing O_NONBLOCK");
         close(port_handle);
-        return -1;
+        return SMBUSDEVICE_RETURN_ON_OPEN_FAIL;
     }
 
     switch(baudrate_bps)
@@ -135,7 +145,8 @@ smint32 serialPortOpen(const char * port_device_name, smint32 baudrate_bps)
     new_port_settings.c_lflag = 0;
     new_port_settings.c_cc[VMIN] = 0;      /* non blocking mode */
     new_port_settings.c_cc[VTIME] = readTimeoutMs/100;     /* timeout 100 ms steps */
-
+    if(new_port_settings.c_cc[VTIME]<1)//don't allow value 0ms
+        new_port_settings.c_cc[VTIME]=1;
 #if defined(_BSD_SOURCE)
     cfsetspeed(&new_port_settings, baudrateEnumValue);
 #else
@@ -149,7 +160,7 @@ smint32 serialPortOpen(const char * port_device_name, smint32 baudrate_bps)
     {
         close(port_handle);
         smDebug(-1, Low, "Serial port error: failed to set port parameters");
-        return -1;
+        return SMBUSDEVICE_RETURN_ON_OPEN_FAIL;
     }
 
     if(customBaudRate)
@@ -160,12 +171,12 @@ smint32 serialPortOpen(const char * port_device_name, smint32 baudrate_bps)
         {
             smDebug(-1, Low, "Serial port error: unsupported baudrate\n");
             close(port_handle);
-            return -1;
+            return SMBUSDEVICE_RETURN_ON_OPEN_FAIL;
         }
         #else
         smDebug(-1, Low, "Serial port error: unsupported baudrate\n");
         close(port_handle);
-        return -1;
+        return SMBUSDEVICE_RETURN_ON_OPEN_FAIL;
         #endif
     }
 
@@ -175,8 +186,22 @@ smint32 serialPortOpen(const char * port_device_name, smint32 baudrate_bps)
     if (ioctl(port_handle, IOSSDATALAT, &microsecs) == -1) {
         smDebug(-1, Low, "Serial port error: error setting read latency");
         close(port_handle);
-        return -1;
+        return SMBUSDEVICE_RETURN_ON_OPEN_FAIL;
     }
+    #endif
+    
+    #if defined(TIOCGSERIAL) && defined(ASYNC_LOW_LATENCY)
+    struct serial_struct serial; 
+    if(ioctl(port_handle, TIOCGSERIAL, &serial)!=-1)
+    {
+        serial.flags |= ASYNC_LOW_LATENCY;
+        if(ioctl(port_handle, TIOCSSERIAL, &serial) == -1 )
+        {
+            smDebug(-1, Low, "Serial port warning: unable to set low latency mode, maybe try running with root permissions.");
+        }
+    }
+    else
+        smDebug(-1, Low, "Serial port warning: unable to read TIOCGSERIAL for low latency mode, maybe try running with root permissions.");
     #endif
 
     //flush any stray bytes from device receive buffer that may reside in it
@@ -184,38 +209,33 @@ smint32 serialPortOpen(const char * port_device_name, smint32 baudrate_bps)
     usleep(100000);
     tcflush(port_handle,TCIOFLUSH);
 
-    return port_handle;
+    *success=true;
+    return (smBusdevicePointer)port_handle;
 }
 
 
-smint32 serialPortRead(smint32 serialport_handle, smuint8 *buf, smint32 size)
+smint32 serialPortRead(smBusdevicePointer busdevicePointer, smuint8 *buf, smint32 size)
 {
+    int serialport_handle=(int)busdevicePointer;
     smint32 n;
     if(size>4096)  size = 4096;
-    n = read(serialport_handle, buf, size);
+    n = read((int)serialport_handle, buf, size);
     return n;
 }
 
 
-smint32 serialPortWrite(smint32 serialport_handle, unsigned char byte)
+
+smint32 serialPortWriteBuffer(smBusdevicePointer busdevicePointer, unsigned char *buf, smint32 size)
 {
-    smint32 n;
-    n = write(serialport_handle, &byte, 1);
-    if(n<0)
-        return 1;
-    return 0;
+    int serialport_handle=(int)busdevicePointer;
+    return(write((int)serialport_handle, buf, size));
 }
 
 
-smint32 serialPortWriteBuffer(smint32 serialport_handle, unsigned char *buf, smint32 size)
+void serialPortClose(smBusdevicePointer busdevicePointer)
 {
-        return(write(serialport_handle, buf, size));
-}
-
-
-void serialPortClose(smint32 serialport_handle)
-{
-        close(serialport_handle);
+    int serialport_handle=(int)busdevicePointer;
+    close((int)serialport_handle);
 }
 
 #else   //windows: for API, see https://msdn.microsoft.com/en-us/library/ff802693.aspx
@@ -223,10 +243,15 @@ void serialPortClose(smint32 serialport_handle)
 #include <windows.h>
 #include <string.h>
 
-smint32 serialPortOpen(const char *port_device_name, smint32 baudrate_bps)
+smBusdevicePointer serialPortOpen(const char *port_device_name, smint32 baudrate_bps, smbool *success)
 {
     char port_def_string[64], port_name[32];
     HANDLE port_handle;
+    *success=smfalse;
+
+    //check port name
+    if(strncmp(port_device_name,"COM",3) != 0 )
+        return SMBUSDEVICE_RETURN_ON_OPEN_FAIL;
 
     sprintf(port_def_string,"baud=%d data=8 parity=N stop=1", (int)baudrate_bps);
     sprintf(port_name,"\\\\.\\%s",port_device_name);
@@ -236,7 +261,7 @@ smint32 serialPortOpen(const char *port_device_name, smint32 baudrate_bps)
     if(port_handle==INVALID_HANDLE_VALUE)
     {
         smDebug( -1, Low, "Serial port error: Unable to create serial port handle");
-        return -1;
+        return SMBUSDEVICE_RETURN_ON_OPEN_FAIL;
     }
 
     //fill DCB settings struct
@@ -248,14 +273,14 @@ smint32 serialPortOpen(const char *port_device_name, smint32 baudrate_bps)
     {
         smDebug( -1, Low, "Serial port error: Unable to build DCB settings\n");
         CloseHandle(port_handle);
-        return -1;
+        return SMBUSDEVICE_RETURN_ON_OPEN_FAIL;
     }
 
     if(!SetCommState(port_handle, &dcb))
     {
         smDebug( -1, Low, "Serial port error: Unable to set port settings\n");
         CloseHandle(port_handle);
-        return -1;
+        return SMBUSDEVICE_RETURN_ON_OPEN_FAIL;
     }
 
     //set timeout
@@ -270,18 +295,20 @@ smint32 serialPortOpen(const char *port_device_name, smint32 baudrate_bps)
     {
         smDebug( -1, Low, "Serial port error: Failed to set port timeout settings\n");
         CloseHandle(port_handle);
-        return(-1);
+        return(SMBUSDEVICE_RETURN_ON_OPEN_FAIL);
     }
 
     //flush any stray bytes from device receive buffer that may reside in it
     PurgeComm((HANDLE)port_handle,PURGE_RXABORT|PURGE_RXCLEAR|PURGE_TXABORT|PURGE_TXCLEAR);
 
-    return( (smint32)port_handle);
+    *success=smtrue;
+    return( (smBusdevicePointer)port_handle);
 }
 
 
-smint32 serialPortRead(smint32 serialport_handle, unsigned char *buf, smint32 size)
+smint32 serialPortRead(smBusdevicePointer busdevicePointer, unsigned char *buf, smint32 size)
 {
+    HANDLE serialport_handle=(HANDLE)busdevicePointer;
     smint32 n;
     if(size>4096)
         size = 4096;
@@ -290,18 +317,9 @@ smint32 serialPortRead(smint32 serialport_handle, unsigned char *buf, smint32 si
 }
 
 
-smint32 serialPortWriteByte(smint32 serialport_handle, unsigned char byte)
+smint32 serialPortWrite(smBusdevicePointer busdevicePointer, unsigned char *buf, smint32 size)
 {
-    smint32 n;
-    WriteFile((HANDLE)serialport_handle, &byte, 1, (LPDWORD)((void *)&n), NULL);
-    if(n<0)
-        return 1;
-    return 0;
-}
-
-
-smint32 serialPortWriteBuffer(smint32 serialport_handle, unsigned char *buf, smint32 size)
-{
+    HANDLE serialport_handle=(HANDLE)busdevicePointer;
     smint32 n;
     if(WriteFile((HANDLE)serialport_handle, buf, size, (LPDWORD)((void *)&n), NULL))
         return n;
@@ -309,9 +327,10 @@ smint32 serialPortWriteBuffer(smint32 serialport_handle, unsigned char *buf, smi
 }
 
 
-void serialPortClose(smint32 serialport_number)
+void serialPortClose(smBusdevicePointer busdevicePointer)
 {
-    CloseHandle((HANDLE)serialport_number);
+    HANDLE serialport_handle=(HANDLE)busdevicePointer;
+    CloseHandle((HANDLE)serialport_handle);
 }
 
 

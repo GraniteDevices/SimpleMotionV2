@@ -46,16 +46,32 @@ typedef int32_t smint32;
 typedef int16_t smint16;
 typedef int8_t smint8;
 typedef int8_t smbool;
+typedef smint32 smint;
 #define smtrue 1
 #define smfalse 0
 typedef int SM_STATUS;
 typedef smuint8 smaddr;
+typedef struct
+{
+    smbool is_simplemotion_device;//smtrue if usable in SM lib
+    char device_name[64];//name that should be fed to smOpenBus
+    char description[128];//such as "SimpleMotion USB"
+} SM_BUS_DEVICE_INFO;
+
 
 //comment out to disable, gives smaller & faster code
 #define ENABLE_DEBUG_PRINTS
 
 typedef enum _smVerbosityLevel {Off,Low,Mid,High,Trace} smVerbosityLevel;
 
+//define communication interface device driver callback types
+typedef void* smBusdevicePointer;
+typedef smBusdevicePointer (*BusdeviceOpen)(const char *port_device_name, smint32 baudrate_bps, smbool *success);
+typedef smint32 (*BusdeviceReadBuffer)(smBusdevicePointer busdevicePointer, unsigned char *buf, smint32 size);
+typedef smint32 (*BusdeviceWriteBuffer)(smBusdevicePointer busdevicePointer, unsigned char *buf, smint32 size);
+typedef void (*BusdeviceClose)(smBusdevicePointer busdevicePointer);
+//BusdeviceOpen callback should return this if port open fails (in addition to setting *success to smfalse):
+#define SMBUSDEVICE_RETURN_ON_OPEN_FAIL NULL
 
 
 //max number of simultaneously opened buses. change this and recompiple SMlib if
@@ -66,11 +82,22 @@ typedef enum _smVerbosityLevel {Off,Low,Mid,High,Trace} smVerbosityLevel;
 ///////////////////////////////////////////////////////////////////////////////////////
 
 /** Open SM RS485 communication bus. Parameters:
-    -devicename: "USB2VSD" or com port as "COMx" where x=1-n
-    -devicename for TCP/IP connection format is nnn.nnn.nnn.nnn:pppp where n is IP address numbers and p is port number for TCP/IP connection
+    -devicename: formatted string that depend on device type to attempt opening. Supported formats/drivers:
+    --Serial port device:
+    ---on Windows: COMn where n=port number, i.e. COM2
+    ---on Linux: /dev/ttyN where N=port name, i.e. /dev/ttyUSB0 or /dev/ttyS0
+    ---on macOS: /dev/tty.cuN where N=port name
+    --TCP/IP socket: format is nnn.nnn.nnn.nnn:pppp where n is IP address numbers and p is port number
+    --FTDI USB serial port (FTDI D2XX API, availablity depends whether library has been compiled with FTDI support enabled, see SimpleMotionV2.pri):
+    ---Opening by device index: FTDIn where n=index (0 or greater)
+    ---Opening by device description (programmed in FTDI EEPROM): raw name, i.e. USB-SMV2 or TTL232R (hint: name is displayed in Granity 1.14 or later)
+    ---Hint: D2XX driver supports listing available devices. See: smGetNumberOfDetectedBuses() and smGetBusDeviceDetails()
 	-return value: handle to be used with all other commands, -1 if fails
 	*/
 LIB smbus smOpenBus( const char * devicename );
+
+/** Same as smOpenBus but with user supplied port driver callbacks */
+LIB smbus smOpenBusWithCallbacks( const char *devicename, BusdeviceOpen busOpenCallback, BusdeviceClose busCloseCallback, BusdeviceReadBuffer busReadCallback, BusdeviceWriteBuffer busWriteCallback );
 
 /** Change baudrate of SM communication port. This does not affect already opened ports but the next smOpenBus will be opened at the new speed. 
 	Calling this is optional. By default SM bus and all slave devices operates at 460800 BPS speed.
@@ -91,7 +118,10 @@ LIB smbus smOpenBus( const char * devicename );
 LIB void smSetBaudrate( unsigned long pbs );
 
 /** Set timeout of how long to wait reply packet from bus. Must be set before smOpenBus and cannot be changed afterwards
- * max value 5000ms. In unix this is rounded to 100ms (rounding downwards), so 99 or less gives 0ms timeout.
+ * max value 5000ms. Range may depend on underyling OS / drivers. If supplied argument is lower than minimum supported by drivers,
+ * then driver minimum is used without notice (return SM_OK).
+ *
+ * In unix PC serial port minimum is 100ms, on Windows serial port recommended minimum is 30ms and with FTDI driver 10ms. On TCP/IP: TBD.
  *
  *This is the only function that returns SM_STATUS which doesn't accumulate status bits to be read with getCumulativeStatus because it has no bus handle
  */
@@ -146,6 +176,28 @@ LIB SM_STATUS smGetBufferClock( const smbus handle, const smaddr targetaddr, smu
 /** smFastUpdateCycle uses special SimpleMotion command to perform fast turaround communication. May be used with cyclic real time control. Parameter & return data
  *content are application specific and defined . */
 LIB SM_STATUS smFastUpdateCycle( smbus handle, smuint8 nodeAddress, smuint16 write1, smuint16 write2, smuint16 *read1, smuint16 *read2);
+
+/** Return number of bus devices found. details of each device may be consequently fetched by smGetBusDeviceDetails() */
+LIB smint smGetNumberOfDetectedBuses();
+
+/** Fetch information of detected bus nodes at certain index. Example:
+
+    smint num=smGetNumberOfDetectedBuses();
+    for(int i=0;i<num;i++)
+    {
+        SM_BUS_DEVICE_INFO info;
+        SM_STATUS s=smGetBusDeviceDetails(i,&info);
+        if(s==SM_OK)
+        {
+            ...do something with info...
+        }
+        else
+        {
+            ...report error...
+        }
+    }
+*/
+LIB SM_STATUS smGetBusDeviceDetails( smint index, SM_BUS_DEVICE_INFO *info );
 
 #ifdef __cplusplus
 }
