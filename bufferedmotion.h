@@ -27,6 +27,8 @@ typedef struct _BufferedMotionAxis {
     smint32 bufferFreeBytes;//number of bytes free in buffer, updated at smBufferedGetFree
     smint32 bufferFill;//percentage of buffer fill, updated at smBufferedGetFree. this should stay above 50% to ensure gapless motion. if gaps occur, check SMV2USB adpater COM port latency setting (set to 1ms) or try lower samplerate.
     smint32 smProtocolVersion;//version of SM protocol of the target device. some internal functionality of API may use this info.
+    smint32 deviceCapabilityFlags1;//value of SMP_DEVICE_CAPABILITIES1 if target device has SM protocol version 28 or later (if SM version<28, then value is 0)
+    smint32 deviceCapabilityFlags2;//value of SMP_DEVICE_CAPABILITIES2 if target device has SM protocol version 28 or later (if SM version<28, then value is 0)
 } BufferedMotionAxis;
 
 /** initialize buffered motion for one axis with address and samplerate (Hz) */
