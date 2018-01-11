@@ -173,8 +173,16 @@ LIB SM_STATUS smSetParameter( const smbus handle, const smaddr nodeAddress, cons
 
 LIB SM_STATUS smGetBufferClock( const smbus handle, const smaddr targetaddr, smuint16 *clock );
 
-/** smFastUpdateCycle uses special SimpleMotion command to perform fast turaround communication. May be used with cyclic real time control. Parameter & return data
- *content are application specific and defined . */
+/** smFastUpdateCycle uses special SimpleMotion command to perform fast turaround communication. May be used with cyclic real time control.
+ * smFastUpdateCycle has been desniged to have lowest possible response time.
+ * Typically the worst case response is 50 microseconds, which makes it to achieve up to 20kHz call rate. This may be useful especially when using external
+ * closed loop and controlling motor torque or velocity in real time.
+ * Parameters write1, write2, read1 and read2 are firmware and mode specific. Currently by default, they are:
+ -write1=absolute setpoint (lowest 16 bits of SMP_ABSOLUTE_SETPOINT)
+ -write2=unused (write 0)
+ -read1=position feedback value (lowest 16 bits of SMP_ACTUAL_POSITION_FB)
+ -read2=status bits (SMP_STATUS)
+*/
 LIB SM_STATUS smFastUpdateCycle( smbus handle, smuint8 nodeAddress, smuint16 write1, smuint16 write2, smuint16 *read1, smuint16 *read2);
 
 /** Return number of bus devices found. details of each device may be consequently fetched by smGetBusDeviceDetails() */
