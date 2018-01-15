@@ -225,7 +225,7 @@ smint32 serialPortRead(smBusdevicePointer busdevicePointer, smuint8 *buf, smint3
 
 
 
-smint32 serialPortWriteBuffer(smBusdevicePointer busdevicePointer, unsigned char *buf, smint32 size)
+smint32 serialPortWrite(smBusdevicePointer busdevicePointer, unsigned char *buf, smint32 size)
 {
     int serialport_handle=(int)busdevicePointer;
     return(write((int)serialport_handle, buf, size));
