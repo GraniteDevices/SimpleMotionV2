@@ -35,8 +35,11 @@ greaterThan(INCLUDE_BUILT_IN_DRIVERS, 0+)  {
         macx:LIBS += $$PWD/drivers/ftdi_d2xx/third_party/osx/libftd2xx.a -framework CoreFoundation #mac will needs insetalling some FTDI helper tool & reboot to make port open to work. see d2xx downloads page from ftdi.
         win32:LIBS += $$PWD/drivers/ftdi_d2xx/third_party/win_32bit/ftd2xx.lib
         unix|linux{
-            equals(QMAKE_HOST.arch,"x86_64"): LIBS += $$PWD/drivers/ftdi_d2xx/third_party/linux64/libftd2xx.a
-            equals(QMAKE_HOST.arch,"x86"):    LIBS += $$PWD/drivers/ftdi_d2xx/third_party/linux32/libftd2xx.a
+            equals(QMAKE_HOST.arch,"x86_64"){
+                LIBS += $$PWD/drivers/ftdi_d2xx/third_party/linux64/libftd2xx.a
+            } else {
+                LIBS += $$PWD/drivers/ftdi_d2xx/third_party/linux32/libftd2xx.a
+            }
         }
         DEFINES += FTDI_D2XX_SUPPORT
     }
