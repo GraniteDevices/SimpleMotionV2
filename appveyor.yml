@@ -1,0 +1,10 @@
+image: Visual Studio 2015
+
+platform:
+  - x86
+  - x64
+
+build_script:
+  - if "%platform%" == "x86" call "%VS140COMNTOOLS%\..\..\VC\vcvarsall.bat" x86
+  - if "%platform%" == "x64" call "%VS140COMNTOOLS%\..\..\VC\vcvarsall.bat" amd64
+  - nmake /f makefile.nmake
