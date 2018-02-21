@@ -1,0 +1,11 @@
+language: c
+
+script: make
+
+matrix:
+  include:
+    - compiler: gcc
+      os: linux
+
+    - compiler: clang
+      os: osx
