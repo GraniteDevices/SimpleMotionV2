@@ -1,3 +1,5 @@
+# This is a Makefile for Travis CI, not tested for other purposes
+
 SOURCES = $(wildcard *.c) \
 	drivers/serial/pcserialport.c \
 	drivers/tcpip/tcpclient.c
