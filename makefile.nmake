@@ -1,15 +1,22 @@
 CFLAGS = /I. /DNOGDI=true /D_CRT_SECURE_NO_WARNINGS /DWIN32_MEAN_AND_LEAN \
     /W4 /NOLOGO
 
+
 OBJS = \
     bufferedmotion.obj \
     busdevice.obj \
     devicedeployment.obj \
-    drivers/serial/pcserialport.obj \
-    drivers/tcpip/tcpclient.obj \
+    pcserialport.obj \
+    tcpclient.obj \
     simplemotion.obj \
     sm_consts.obj
 
 simplemotionv2.lib: $(OBJS)
     if exist simplemotionv2.lib del simplemotionv2.lib
     lib /out:simplemotionv2.lib $(OBJS)
+
+tcpclient.obj: drivers/tcpip/tcpclient.c
+	cl $(CFLAGS) -c drivers/tcpip/tcpclient.c
+
+pcserialport.obj: drivers/serial/pcserialport.c
+	cl $(CFLAGS) -c drivers/serial/pcserialport.c
