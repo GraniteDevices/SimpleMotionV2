@@ -70,9 +70,10 @@ typedef struct
     double offset;
 } Parameter;
 
+#define maxLineLen 100
+
 smbool parseParameter( const smuint8 *drcData, const int drcDataLen, int idx, Parameter *param )
 {
-    const int maxLineLen=100;
     char line[maxLineLen];
     char scanline[maxLineLen];
     smbool gotaddr=smfalse,gotvalue=smfalse, gotreadonly=smfalse, gotscale=smfalse,gotoffset=smfalse;

@@ -45,7 +45,7 @@ smBusdevicePointer serialPortOpen(const char * port_device_name, smint32 baudrat
     int baudrateEnumValue;
     struct termios new_port_settings;
     int customBaudRate = 0;
-    *success=false;
+    *success=smfalse;
 
     //check if devicename is correct format
     if( strncmp(port_device_name,"/dev/tty",8) != 0 && strncmp(port_device_name,"/dev/cu.",8) != 0)
@@ -209,7 +209,7 @@ smBusdevicePointer serialPortOpen(const char * port_device_name, smint32 baudrat
     usleep(100000);
     tcflush(port_handle,TCIOFLUSH);
 
-    *success=true;
+    *success=smtrue;
     return (smBusdevicePointer)port_handle;
 }
 
@@ -225,7 +225,7 @@ smint32 serialPortRead(smBusdevicePointer busdevicePointer, smuint8 *buf, smint3
 
 
 
-smint32 serialPortWriteBuffer(smBusdevicePointer busdevicePointer, unsigned char *buf, smint32 size)
+smint32 serialPortWrite(smBusdevicePointer busdevicePointer, unsigned char *buf, smint32 size)
 {
     int serialport_handle=(int)busdevicePointer;
     return(write((int)serialport_handle, buf, size));

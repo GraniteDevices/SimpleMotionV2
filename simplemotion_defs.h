@@ -900,6 +900,7 @@
 	#define DEVICE_CAPABILITY1_AUTOSETUP_COMMUTATION_SENSOR BV(19)
 	#define DEVICE_CAPABILITY1_BUFFERED_MOTION_LINEAR_INTERPOLATION BV(20)
 	#define DEVICE_CAPABILITY1_MOTOR_DRIVE BV(21) //1 if device has motor drive capabilities, this flag is implemented on devices with SM protocol version 28 or greater
+	#define DEVICE_CAPABILITY1_FAULT_INFO_VALUES BV(22) //1 if device supports parameters 8112 and 8113
 
 //read only bit field that is can be used to identify device capabilities
 //the list below is subject to extend
@@ -958,8 +959,14 @@
 #define SMP_DEBUGPARAM4 8103
 #define SMP_DEBUGPARAM5 8104
 #define SMP_DEBUGPARAM6 8105
-#define SMP_FAULT_LOCATION1  8110 //this is for GraniteCore side
-#define SMP_FAULT_LOCATION2  8111 //this is for Argon IO side
+#define SMP_FAULT_LOCATION1  8110 //this is the error code of main CPU of the device (i.e. main GranteCore CPU).
+#define SMP_FAULT_LOCATION2  8111 //this is the error code for second CPU (i.e. Argon IO side CPU). always 0 on devices where there is no second CPU.
+//Following two parameters 8112 and 8113 can be printed in formatted error messages string based on SMP_FAULT_LOCATION1 like
+//"Undervoltage fault, measured %1 VDC was below the limit of %2 VDC" where %1
+//and %2 are substituted by SMP_FAULT_LOCATION1_INFO_VALUE1 and SMP_FAULT_LOCATION1_INFO_VALUE2.
+//Before using them, check that device has DEVICE_CAPABILITY1_FAULT_INFO_VALUES set.
+#define SMP_FAULT_LOCATION1_INFO_VALUE1 8112 //additional info for fault of SMP_FAULT_LOCATION1.
+#define SMP_FAULT_LOCATION1_INFO_VALUE2 8113 //additional info for fault of SMP_FAULT_LOCATION1
 #define SMP_OVERRIDE_PARAM_ADDR_1 8120
 #define SMP_OVERRIDE_PARAM_ADDR_2 8121
 #define SMP_OVERRIDE_PARAM_ADDR_3 8122
