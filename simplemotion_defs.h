@@ -287,6 +287,14 @@
  */
 #define SMP_AUX_OUTPUT_SOURCE_SELECT 101
 
+/* used only for device production testing, not recommended for normal operation, therefore not publicly documented */
+#define SMP_GPIO_LOW_LEVEL_ACCESS 102
+	#define SMP_GPIO_LOW_LEVEL_ACCESS_SET_PIN_MODE 0
+	#define SMP_GPIO_LOW_LEVEL_ACCESS_WRITE_PIN_OUTPUT 1
+	#define SMP_GPIO_LOW_LEVEL_ACCESS_READ_PIN_INPUT 2
+/* used only for device production testing, not recommended for normal operation, therefore not publicly documented */
+#define SMP_GPIO_LOW_LEVEL_INPUT_VALUE 103
+
 //each DIGITAL variable holds one bit for each physical digital input
 /*SMP_DIGITAL_IN_VALUES_1 on GD motor drives:
  * bit	physical input
@@ -921,6 +929,7 @@
 	#define DEVICE_CAPABILITY2_UTILIZE_ABSOLUTE_FBD BV(12) /*supports homing by absolute feedback device info & can use absolute fbd as commutation sensor */
 	#define DEVICE_CAPABILITY2_SUPPORT_DIGITAL_HALL_SENSOR_FBD BV(13)
     #define DEVICE_CAPABILITY2_SUPPORT_FORCE_CONTROL BV(14)
+	#define DEVICE_CAPABILITY2_LOW_LEVEL_GPIO BV(15)
 
 #define SMP_FIRMWARE_VERSION 6010
 #define SMP_FIRMWARE_BACKWARDS_COMP_VERSION 6011
