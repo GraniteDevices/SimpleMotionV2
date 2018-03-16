@@ -267,6 +267,32 @@
 	#define BUFFERED_INTERPOLATION_MODE_NEAREST 0
 	#define BUFFERED_INTERPOLATION_MODE_LINEAR 1
 
+/* Sets the data format of input & output parameters of SM API smFastUpdateCycle function.
+ * smFastUpdateCycle has 2x16 bit inputs and 2x16 bit outputs. The value of SMP_FAST_UPDATE_CYCLE_FORMAT
+ * sets what the actual data means.
+ *
+ *
+ * format 0 (default):
+ *  write1=absolute setpoint value
+ *  write2=not used (set 0)
+ *  read1=lowest 16 bits of position feedback value
+ *  read2=first 16 bits of SMP_STATUS
+ *
+ * format 1:
+ *  write1=absolute setpoint value
+ *  write2=not used (set 0)
+ *  read1=lowest 16 bits of position feedback value
+ *  read2=bit nr 16 = STAT_SERVO_READY, bit nr 15=STAT_FAULTSTOP, bits 0-14=upper bits of position feedback value (pos FB bits 17-30)
+ *
+ * Note:
+ * Before reading/writing this, check if device supports this by checking capability flag DEVICE_CAPABILITY1_SELECTABLE_FAST_UPDATE_CYCLE_FORMAT.
+ *
+ * Also before setting check the maximum value this parameter supports because all modes might not be implemented in your firmware
+ * version. For more info, see https://granitedevices.com/wiki/SimpleMotion_parameter_valid_value_range
+ */
+#define SMP_FAST_UPDATE_CYCLE_FORMAT 17
+	#define FAST_UPDATE_CYCLE_FORMAT_DEFAULT 0
+	#define FAST_UPDATE_CYCLE_FORMAT_30BIT_FB 1
 
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -909,6 +935,7 @@
 	#define DEVICE_CAPABILITY1_BUFFERED_MOTION_LINEAR_INTERPOLATION BV(20)
 	#define DEVICE_CAPABILITY1_MOTOR_DRIVE BV(21) //1 if device has motor drive capabilities, this flag is implemented on devices with SM protocol version 28 or greater
 	#define DEVICE_CAPABILITY1_FAULT_INFO_VALUES BV(22) //1 if device supports parameters 8112 and 8113
+	#define DEVICE_CAPABILITY1_SELECTABLE_FAST_UPDATE_CYCLE_FORMAT BV(23) //1 if device supports parameter SMP_FAST_UPDATE_CYCLE_FORMAT
 
 //read only bit field that is can be used to identify device capabilities
 //the list below is subject to extend
