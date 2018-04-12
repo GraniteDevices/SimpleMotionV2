@@ -456,6 +456,13 @@
 	#define STAT_INITIALIZED BV(12)
 	#define STAT_VOLTAGES_OK BV(13)
 	#define STAT_PERMANENT_STOP BV(15)//outputs disabled until reset
+	/*STAT_STANDING_STILL is true in following conditions:
+	 * Measured velocity has been less than 5% of [CVL] +1 raw velocity count for at least 0.03 seconds, and
+	 * in velocity and position control modes additionally motor has zero velocity target.
+	 *
+	 * Note: not all firmware versions support this. Check DEVICE_CAPABILITY1_SUPPORTS_STAT_STANDING_STILL bit. If it's 0, then STAT_STANDING_STILL always reads 0.
+	 */
+	#define STAT_STANDING_STILL BV(16)
 
 #define SMP_SYSTEM_CONTROL 554 //writing 1 initiates settings save to flash, writing 2=device restart, 4=abort buffered motion
 	//possible values listed
@@ -759,23 +766,29 @@
 	//CB1 & CB2 enables must be 1 to have drive enabled
 	//Control bits 1 are controlled by host software
 	#define SMP_CB1_ENABLE BV(0)//software enable
-	#define SMP_CB1_CLEARFAULTS BV(1)//Note: not all drive firmware versions support this. to check whether it's supported, verify that bit DEVICE_CAPABILITY1_CB1_VERSION2 is set in SMP_DEVICE_CAPABILITIES1 parameter
+	#define SMP_CB1_CLEARFAULTS BV(1)//Note: not all drive firmware versions support this. to check whether it's supported, verify that bit DEVICE_CAPABILITY1_CONTROL_BITS1_VERSION2 is set in SMP_DEVICE_CAPABILITIES1 parameter
 	/*QUICKSTOP:
 	 * SMP_CB1_QUICKSTOP_SET drive will attempt to stop motor as soon as possible.
 	 *  - in velocity and position control modes, drive uses SMP_TRAJ_PLANNER_STOP_DECEL deceration
 	 *    ramp to reduce velocity setpoint to zero.
 	 *  - in torque mode, drive will set torq setpoint to zero and activate motor dynamic braking.
+	 *  - after quick stop has completed, setpoint will be automatically modified so that no motion
+	 *    should occur on QUICKSTOP_RELEASE event (except if user has ongoing buffered motion commands that
+	 *    may constantly may alter setpoint)
 	 *
 	 * SMP_CB1_QUICKSTOP_RELEASE will restore normal running state after above SET.
 	 *  - in position and velocity modes, drive speed will ramp-up at current user settable acceleration limit or at SMP_TRAJ_PLANNER_STOP_DECEL whichever is smaller.
 	 *  - if SMP_CB1_QUICKSTOP_SET is 1 simultaneously, it overrides the release CB.
 	 *
-	 * Note: not all drive firmware versions support this. to check whether it's supported,
-	 * check DEVICE_CAPABILITY1_CB1_VERSION2.
+ 	 * Notes:
+	 * - not all drive firmware versions support this. to check whether it's supported,
+	 *    check DEVICE_CAPABILITY1_CONTROL_BITSB1_VERSION2.
+	 * - one may check whether motor has been stopped by polling STAT_STANDING_STILL
+	 * - quickstop will abort homing if it was active
 	 */
 	#define SMP_CB1_QUICKSTOP_SET BV(2)//see above comment
 	#define SMP_CB1_QUICKSTOP_RELEASE BV(6)//see above comment
-	#define SMP_CB1_BYPASS_TRAJPLANNER BV(3)//when 1, drive will not obey acceration limit (equals setting acceleration limit to max, useful when external trajectory planner is used). Note: not all drive firmware versions support this. to check whether it's supported, verify that bit DEVICE_CAPABILITY1_CB1_VERSION2 is set in SMP_DEVICE_CAPABILITIES1 parameter
+	#define SMP_CB1_BYPASS_TRAJPLANNER BV(3)//when 1, drive will not obey acceration limit (equals setting acceleration limit to max, useful when external trajectory planner is used). Note: not all drive firmware versions support this. to check whether it's supported, verify that bit DEVICE_CAPABILITY1_CONTROL_BITS1_VERSION2 is set in SMP_DEVICE_CAPABILITIES1 parameter
 	#define SMP_CB1_START_HOMING BV(4)//write 1 here to start homing //not implemented at the moment
 	#define SMP_CB1_FORCE_ENABLE BV(5)//writing & holding value 1 here will override lack of phyiscal enable signal (SMP_CB2_ENABLE). User can force device go in enabled state when both SMP_CB1_ENABLE and aSMP_CB1_FORCE_ENABLE are set.
 	#define SMP_STATIC_CBS1 (SMP_CB1_ENABLE|SMP_CB1_BYPASS_TRAJPLANNER|SMP_CB1_FORCE_ENABLE)//list of controbits that are static by nature (not edge triggered functions)
@@ -951,7 +964,8 @@
 	#define DEVICE_CAPABILITY1_MOTOR_DRIVE BV(21) //1 if device has motor drive capabilities, this flag is implemented on devices with SM protocol version 28 or greater
 	#define DEVICE_CAPABILITY1_FAULT_INFO_VALUES BV(22) //1 if device supports parameters 8112 and 8113
 	#define DEVICE_CAPABILITY1_SELECTABLE_FAST_UPDATE_CYCLE_FORMAT BV(23) //1 if device supports parameter SMP_FAST_UPDATE_CYCLE_FORMAT
-	#define DEVICE_CAPABILITY1_CB1_VERSION2 BV(24) //drive implements CB1_QUICKSTOP_SET, CB1_QUICKSTOP_RELEASE, CB1_CLEARFAULTS, CB1_BYPASS_TRAJPLANNER bits in SMP_CONTROL_BITS1
+	#define DEVICE_CAPABILITY1_CONTROL_BITS1_VERSION2 BV(24) //drive implements CB1_QUICKSTOP_SET, CB1_QUICKSTOP_RELEASE, CB1_CLEARFAULTS, CB1_BYPASS_TRAJPLANNER bits in SMP_CONTROL_BITS1
+	#define DEVICE_CAPABILITY1_SUPPORTS_STAT_STANDING_STILL BV(25) //drive implements STAT_STANDING_STILL status bit
 
 //read only bit field that is can be used to identify device capabilities
 //the list below is subject to extend
