@@ -457,7 +457,7 @@
 	#define STAT_VOLTAGES_OK BV(13)
 	#define STAT_PERMANENT_STOP BV(15)//outputs disabled until reset
 	/*STAT_STANDING_STILL is true in following conditions:
-	 * Measured velocity has been less than 5% of [CVL] +1 raw velocity count for at least 0.03 seconds, and
+	 * Measured velocity has been less than 5% of overspeed fault [FEV] for at least 0.03 seconds, and
 	 * in velocity and position control modes additionally motor has zero velocity target.
 	 *
 	 * Note: not all firmware versions support this. Check DEVICE_CAPABILITY1_SUPPORTS_STAT_STANDING_STILL bit. If it's 0, then STAT_STANDING_STILL always reads 0.
