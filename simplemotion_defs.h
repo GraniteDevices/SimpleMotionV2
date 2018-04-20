@@ -561,7 +561,8 @@
 #define SMP_ABS_IN_SCALER 564
 
 //FB1 device resolution, pulses per rev
-#define SMP_ENCODER_PPR 565
+#define SMP_ENCODER_PPR 565 //note this is not used if DEVICE_CAPABILITY1_ENCODER_INTERFACE_V2 is set, see SMP_FBD1_COUNTS_PER_POLEPAIR instead
+#define SMP_FBD1_COUNTS_PER_POLEPAIR 579//note this is supported only if if DEVICE_CAPABILITY1_ENCODER_INTERFACE_V2 is set
 //motor polepairs, not used with DC motor
 #define SMP_MOTOR_POLEPAIRS 566
 
@@ -615,7 +616,8 @@
  * 3 SSI gray
  * 4 AMS SSI
  */
-#define SMP_SERIAL_ENC_BITS 574
+#define SMP_FBD1_SERIAL_ENC_BITS 574
+#define SMP_FBD2_SERIAL_ENC_BITS 578 // supported only if DEVICE_CAPABILITY1_ENCODER_INTERFACE_V2 is set
 
 /*
  * if HOMING_RESET_POS_AND_SETPOINT_TO_ABSOLUTE_FBD_READING is 1, then SMP_SERIAL_ENC_OFFSET will be added to the absolute feedback reading before resetting fb value and setpoint to it.
@@ -626,6 +628,7 @@
  * defines linear encoder resolution in counts/100mm. must be set if FLAG_FBD1_IS_LINEAR_ENCODER is 1
  */
 #define SMP_FBD1_LINEAR_ENC_RESOLUTION 576
+#define SMP_FBD2_LINEAR_ENC_RESOLUTION 577 // supported only if DEVICE_CAPABILITY1_ENCODER_INTERFACE_V2 is set
 
 
 //primary feedback loop 200-299
@@ -720,12 +723,19 @@
  * bits 0-15 LSB: commutation sensor offset 0-65535 represents commutation angle offset 0-360 electical degrees
  * bit 16: invert sensor count direction
  * bit 17: enable commutation sensor
- * bits 18-31: reserved, always 0
+ * bit 18-19: commutation sensor source, choices (supported only if DEVICE_CAPABILITY1_ENCODER_INTERFACE_V2 is set)
+ * 	00=Hall sensor
+ * 	01=Absoute sensor on FBD1
+ * 	10=Absolute sensor on FBD2
+ * 	11=reserved
+ * bits 20-31: reserved, always 0
  */
 #define SMP_COMMUTATION_SENSOR_CONFIG 482
 	#define SMP_COMMUTATION_SENSOR_CONFIG_ANGLE_MASK 0xFFFF
 	#define SMP_COMMUTATION_SENSOR_CONFIG_INVERT_MASK 0x10000
 	#define SMP_COMMUTATION_SENSOR_CONFIG_ENABLE_MASK 0x20000
+	#define SMP_COMMUTATION_SENSOR_SOURCE 0xC0000
+
 //low pass filter selector, value 0=100Hz, 9=3300Hz, 10=4700Hz, 11=unlimited (see Granity for all options):
 #define SMP_TORQUE_LPF_BANDWIDTH 490
 
@@ -966,6 +976,7 @@
 	#define DEVICE_CAPABILITY1_SELECTABLE_FAST_UPDATE_CYCLE_FORMAT BV(23) //1 if device supports parameter SMP_FAST_UPDATE_CYCLE_FORMAT
 	#define DEVICE_CAPABILITY1_CONTROL_BITS1_VERSION2 BV(24) //drive implements CB1_QUICKSTOP_SET, CB1_QUICKSTOP_RELEASE, CB1_CLEARFAULTS, CB1_BYPASS_TRAJPLANNER bits in SMP_CONTROL_BITS1
 	#define DEVICE_CAPABILITY1_SUPPORTS_STAT_STANDING_STILL BV(25) //drive implements STAT_STANDING_STILL status bit
+	#define DEVICE_CAPABILITY1_ENCODER_INTERFACE_V2
 
 //read only bit field that is can be used to identify device capabilities
 //the list below is subject to extend
