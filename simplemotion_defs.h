@@ -616,8 +616,8 @@
  * 3 SSI gray
  * 4 AMS SSI
  */
-#define SMP_FBD1_SERIAL_ENC_BITS 574
-#define SMP_FBD2_SERIAL_ENC_BITS 578 // supported only if DEVICE_CAPABILITY1_ENCODER_INTERFACE_V2 is set
+#define SMP_SERIAL_ENC_BITS 574
+#define SMP_SERIAL_ENC2_BITS 578 // supported only if DEVICE_CAPABILITY1_HAS_SECOND_SERIAL_ENCODER_PORT is set
 
 /*
  * if HOMING_RESET_POS_AND_SETPOINT_TO_ABSOLUTE_FBD_READING is 1, then SMP_SERIAL_ENC_OFFSET will be added to the absolute feedback reading before resetting fb value and setpoint to it.
@@ -743,17 +743,19 @@
 #define SMP_AXIS_SCALE 491
 //output unit 0=mm 1=um 2=inch 3=revolutions 4=degrees
 #define SMP_AXIS_UNITS 492
-//0=none 1=qei1 2=qei2 3=resolver 4=digital hall sensors 5=serial data
+
 #define SMP_FB1_DEVICE_SELECTION 493
 	#define SMP_FBD_NONE 0
 	#define SMP_FBD_INCR1 1
 	#define SMP_FBD_INCR2 2
 	#define SMP_FBD_RESOLVER 3
 	#define SMP_FBD_HALLS 4
-	#define SMP_FBD_SERIALDATA 5
+	#define SMP_FBD_SERIALDATA 5 /*configured with SMP_SERIAL_ENC_BITS */
 	#define SMP_FBD_SINCOS16X 6
 	#define SMP_FBD_SINCOS64X 7
 	#define SMP_FBD_SINCOS256X 8
+	#define SMP_FBD_RESERVED 9
+	#define SMP_FBD_SERIALDATA_PORT2 10 /* configured with SMP_SERIAL_ENC2_BITS */
 #define SMP_FB2_DEVICE_SELECTION 494
 
 //in 1/2500 seconds.
@@ -953,16 +955,16 @@
 	#define DEVICE_CAPABILITY1_PMDC BV(0)
 	#define DEVICE_CAPABILITY1_PMAC BV(1)
 	#define DEVICE_CAPABILITY1_STEPPER BV(2)
-	#define DEVICE_CAPABILITY1_TORQUE BV(3)
-	#define DEVICE_CAPABILITY1_POSITIONING BV(4)
-	#define DEVICE_CAPABILITY1_VELOCITY BV(5)
-	#define DEVICE_CAPABILITY1_TRAJ_PLANNER BV(6)
-	#define DEVICE_CAPABILITY1_HALLS BV(7)
-	#define DEVICE_CAPABILITY1_INDEXER BV(8)
-	#define DEVICE_CAPABILITY1_HOMING BV(9)
-	#define DEVICE_CAPABILITY1_REF_PULSETRAIN BV(10)
-	#define DEVICE_CAPABILITY1_REF_PWM BV(11)
-	#define DEVICE_CAPABILITY1_REF_ANALOG BV(12)
+	#define DEVICE_CAPABILITY1_TORQUE BV(3) /* true if device supports torque control  */
+	#define DEVICE_CAPABILITY1_POSITIONING BV(4) /* true if device supports position control  */
+	#define DEVICE_CAPABILITY1_VELOCITY BV(5) /* true if device supports velocity control  */
+	#define DEVICE_CAPABILITY1_TRAJ_PLANNER BV(6) /* true if device has trajectory planner feature  */
+	#define DEVICE_CAPABILITY1_HALLS BV(7) /* true if device supports hall sensor input */
+	#define DEVICE_CAPABILITY1_INDEXER BV(8) /* true if device supports indexed (preprogrammed stored motion) feature */
+	#define DEVICE_CAPABILITY1_HOMING BV(9) /* true if device supports homing function */
+	#define DEVICE_CAPABILITY1_REF_PULSETRAIN BV(10) /* true if device has pulse & dir setpoint input */
+	#define DEVICE_CAPABILITY1_REF_PWM BV(11) /* true if device has pwm setpoint input */
+	#define DEVICE_CAPABILITY1_REF_ANALOG BV(12) /* true if device has analog setpoint input */
 	#define DEVICE_CAPABILITY1_REF_QUADRATURE BV(13)
 	#define DEVICE_CAPABILITY1_FB_QUADRATURE BV(14)
 	#define DEVICE_CAPABILITY1_FB_SSI BV(15)
@@ -971,12 +973,13 @@
 	#define DEVICE_CAPABILITY1_GEARING BV(18)
 	#define DEVICE_CAPABILITY1_AUTOSETUP_COMMUTATION_SENSOR BV(19)
 	#define DEVICE_CAPABILITY1_BUFFERED_MOTION_LINEAR_INTERPOLATION BV(20)
-	#define DEVICE_CAPABILITY1_MOTOR_DRIVE BV(21) //1 if device has motor drive capabilities, this flag is implemented on devices with SM protocol version 28 or greater
-	#define DEVICE_CAPABILITY1_FAULT_INFO_VALUES BV(22) //1 if device supports parameters 8112 and 8113
-	#define DEVICE_CAPABILITY1_SELECTABLE_FAST_UPDATE_CYCLE_FORMAT BV(23) //1 if device supports parameter SMP_FAST_UPDATE_CYCLE_FORMAT
-	#define DEVICE_CAPABILITY1_CONTROL_BITS1_VERSION2 BV(24) //drive implements CB1_QUICKSTOP_SET, CB1_QUICKSTOP_RELEASE, CB1_CLEARFAULTS, CB1_BYPASS_TRAJPLANNER bits in SMP_CONTROL_BITS1
-	#define DEVICE_CAPABILITY1_SUPPORTS_STAT_STANDING_STILL BV(25) //drive implements STAT_STANDING_STILL status bit
-	#define DEVICE_CAPABILITY1_ENCODER_INTERFACE_V2
+	#define DEVICE_CAPABILITY1_MOTOR_DRIVE BV(21) /*1 if device has motor drive capabilities, this flag is implemented on devices with SM protocol version 28 or greater */
+	#define DEVICE_CAPABILITY1_FAULT_INFO_VALUES BV(22) /*1 if device supports parameters 8112 and 8113 */
+	#define DEVICE_CAPABILITY1_SELECTABLE_FAST_UPDATE_CYCLE_FORMAT BV(23) /*1 if device supports parameter SMP_FAST_UPDATE_CYCLE_FORMAT */
+	#define DEVICE_CAPABILITY1_CONTROL_BITS1_VERSION2 BV(24) /*drive implements CB1_QUICKSTOP_SET, CB1_QUICKSTOP_RELEASE, CB1_CLEARFAULTS, CB1_BYPASS_TRAJPLANNER bits in SMP_CONTROL_BITS1 */
+	#define DEVICE_CAPABILITY1_SUPPORTS_STAT_STANDING_STILL BV(25) /*drive implements STAT_STANDING_STILL status bit */
+	#define DEVICE_CAPABILITY1_ENCODER_INTERFACE_V2 BV(26)
+	#define DEVICE_CAPABILITY1_HAS_SECOND_SERIAL_ENCODER_PORT BV(27) /*true if device has two serial encoder inputs */
 
 //read only bit field that is can be used to identify device capabilities
 //the list below is subject to extend
