@@ -562,9 +562,33 @@
 
 //FB1 device resolution, pulses per rev
 #define SMP_ENCODER_PPR 565 //note this is not used if DEVICE_CAPABILITY1_ENCODER_INTERFACE_V2 is set, see SMP_FBD1_COUNTS_PER_POLEPAIR instead
-#define SMP_FBD1_COUNTS_PER_POLEPAIR 579//note this is supported only if if DEVICE_CAPABILITY1_ENCODER_INTERFACE_V2 is set
-//motor polepairs, not used with DC motor
-#define SMP_MOTOR_POLEPAIRS 566
+
+/*
+ * defines encoder resolutions:
+ * -if rotary encoder, then it's counts per revolution (if FLAG_FBDx_IS_LINEAR_ENCODER is 0)
+ * -if linear encoder, then it's counts/100mm (if FLAG_FBDx_IS_LINEAR_ENCODER is 1)
+ * note: supported only if DEVICE_CAPABILITY1_ENCODER_INTERFACE_V2 is set
+ */
+#define SMP_FBD1_RESOLUTION 576
+#define SMP_FBD2_RESOLUTION 577
+
+/*
+ * if using linear motor, defines pole pair length in micrometers
+ * note: supported only if DEVICE_CAPABILITY1_ENCODER_INTERFACE_V2 is set
+ */
+#define SMP_LINEAR_MOTOR_POLE_PAIR_PITCH 578
+
+/*
+ * AC motor pole configuration
+ *
+ * function depends on motor type:
+ * -dc motor - no effect
+ * -AC/bldc motor, number of polepairs
+ * -linear motor (FLAG_IS_LINEAR_MOTOR is set), then this defines motor pole pair pitch in micrometers
+ *  note: linear motor mode supported only if DEVICE_CAPABILITY1_ENCODER_INTERFACE_V2 is set
+ */
+#define SMP_MOTOR_POLEPAIRS 566 /*old name kept for compatibility*/
+#define SMP_AC_MOTOR_POLE_CONFIG 566 /*new name*/
 
 
 //flag bits & general
@@ -588,6 +612,7 @@
 	#define FLAG_ENABLE_MOTOR_SOUND_NOTIFICATIONS BV(17)
 	#define FLAG_FBD1_IS_LINEAR_ENCODER BV(18)
 	#define FLAG_FBD2_IS_LINEAR_ENCODER BV(19)
+	#define FLAG_IS_LINEAR_MOTOR BV(20) /* true if linear motor, changes effect of SMP_MOTOR_POLEPAIRS. supported if DEVICE_CAPABILITY1_ENCODER_INTERFACE_V2 is set */
 #define SMP_MOTION_FAULT_THRESHOLD 568
 #define SMP_HV_VOLTAGE_HI_LIMIT 569
 #define SMP_HV_VOLTAGE_LOW_LIMIT 570
@@ -624,11 +649,6 @@
  */
 #define SMP_SERIAL_ENC_OFFSET 575
 
-/*
- * defines linear encoder resolution in counts/100mm. must be set if FLAG_FBD1_IS_LINEAR_ENCODER is 1
- */
-#define SMP_FBD1_LINEAR_ENC_RESOLUTION 576
-#define SMP_FBD2_LINEAR_ENC_RESOLUTION 577 // supported only if DEVICE_CAPABILITY1_ENCODER_INTERFACE_V2 is set
 
 
 //primary feedback loop 200-299
