@@ -148,9 +148,11 @@ smbool smBDWrite(const smbusdevicehandle handle, const smuint8 byte )
         //append to buffer
         BusDevice[handle].txBuffer[BusDevice[handle].txBufferUsed]=byte;
         BusDevice[handle].txBufferUsed++;
+        smDebug(handle, High, "  Sending byte %02x\n",byte);
         return smtrue;
     }
 
+    smDebug(handle, High, "  Sending byte %02x failed, TX buffer overflown\n",byte);
     return smfalse;
 }
 
@@ -180,8 +182,16 @@ smbool smBDRead( const smbusdevicehandle handle, smuint8 *byte )
 
     int n;
     n=BusDevice[handle].busReadCallback(BusDevice[handle].busDevicePointer, byte, 1);
-    if( n!=1 ) return smfalse;
-    else return smtrue;
+    if( n!=1 )
+    {
+        smDebug(handle, High, "  Reading a byte from bus failed\n");
+        return smfalse;
+    }
+    else
+    {
+        smDebug(handle, High, "  Got byte %02x \n",*byte);
+        return smtrue;
+    }
 }
 
 //BUS DEVICE INFO FETCH FUNCTIONS:

@@ -317,11 +317,6 @@ smbool smWriteByte( const smbus handle, const smuint8 byte, smuint16 *crc )
     if(crc!=NULL)
         *crc = calcCRC16(byte,*crc);
 
-    if(success==smtrue)
-        smDebug(handle, High, "  sent byte %02x\n",byte);
-    else
-        smDebug(handle, High, "  sending byte %02x failed\n",byte);
-
     return success;
 }
 
@@ -547,7 +542,7 @@ SM_STATUS smTransmitReceiveCommandQueue( const smbus bushandle, const smaddr tar
     smBus[bushandle].cmd_send_queue_bytes=0;
     smBus[bushandle].cmd_recv_queue_bytes=0;//counted upwards at every smGetQueued.. and compared to payload size
 
-    if(smBus[bushandle].transmitBufFull!=smtrue)//dont send/receive commands if queue was overflowed by user error
+    if(smBus[bushandle].transmitBufFull!=smtrue && targetaddress!=0)//dont send/receive commands if queue was overflowed by user error, or if target is broadcast address (0) where no slave will respond and it's ok
     {
         stat=smReceiveReturnPacket(bushandle);//blocking wait & receive return values from bus
         if(stat!=SM_OK) return recordStatus(bushandle,stat); //maybe timeouted
@@ -679,12 +674,7 @@ SM_STATUS smReceiveReturnPacket( smbus bushandle )
         if(succ==smfalse)
         {
             smReceiveErrorHandler(bushandle,smfalse);
-            smDebug(bushandle, High, "  smRawCommand RX read byte failed\n");
             return recordStatus(bushandle,SM_ERR_COMMUNICATION);
-        }
-        else
-        {
-            smDebug(bushandle, High, "  got byte %02x \n",ret);
         }
 
         stat=smParseReturnData( bushandle, ret );
@@ -946,7 +936,8 @@ SM_STATUS smSetParameter( const smbus handle, const smaddr nodeAddress, const sm
 
     smStat|=smAppendSetParamCommandToQueue( handle, paramId, paramVal );
     smStat|=smExecuteCommandQueue(handle,nodeAddress);
-    smStat|=smGetQueuedSetParamReturnValue(  handle, &nul );
+    if(nodeAddress!=0)//don't anttempt to read if target address was broadcast address where no slave device will respond
+        smStat|=smGetQueuedSetParamReturnValue(  handle, &nul );
 
     return recordStatus(handle,smStat);
 }
