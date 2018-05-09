@@ -198,7 +198,7 @@ LIB LoadConfigurationStatus smLoadConfigurationFromBuffer( const smbus smhandle,
     if(getCumulativeStatus( smhandle )!=SM_OK )
         return CFGCommunicationError;
 
-    smDebug(smhandle,Low,"Setting parameters\n");
+    smDebug(smhandle,SMDebugLow,"Setting parameters\n");
 
     int i=1;
     smbool readOk;
@@ -239,7 +239,7 @@ LIB LoadConfigurationStatus smLoadConfigurationFromBuffer( const smbus smhandle,
                     {
                         SM_STATUS stat=getCumulativeStatus(smhandle);
                         setErrors++;
-                        smDebug(smhandle,Low,"Failed to write parameter value %d to address %d (status: %d %d %d)\n",configFileValue,param.address,(int)stat,cmdSetAddressStatus,cmdSetValueStatus);
+                        smDebug(smhandle,SMDebugLow,"Failed to write parameter value %d to address %d (status: %d %d %d)\n",configFileValue,param.address,(int)stat,cmdSetAddressStatus,cmdSetValueStatus);
                     }
 
                     changed++;
@@ -248,7 +248,7 @@ LIB LoadConfigurationStatus smLoadConfigurationFromBuffer( const smbus smhandle,
             else//device doesn't have such parameter. perhaps wrong model or fw version.
             {
                 ignoredCount++;
-                smDebug(smhandle,Low,"Ignoring parameter parameter value %d to address %d\n",configFileValue,param.address);
+                smDebug(smhandle,SMDebugLow,"Ignoring parameter parameter value %d to address %d\n",configFileValue,param.address);
             }
         }
 
@@ -266,14 +266,14 @@ LIB LoadConfigurationStatus smLoadConfigurationFromBuffer( const smbus smhandle,
 
     if(mode&CONFIGMODE_CLEAR_FAULTS_AFTER_CONFIG )
     {
-        smDebug(smhandle,Low,"Restting faults\n");
+        smDebug(smhandle,SMDebugLow,"Restting faults\n");
         smSetParameter( smhandle, smaddress, SMP_FAULTS, 0 );//reset faults
     }
 
     //re-enable drive
     if(mode&CONFIGMODE_DISABLE_DURING_CONFIG)
     {
-        smDebug(smhandle,Low,"Restoring CONTROL_BITS1 to value 0x%x\n",CB1Value);
+        smDebug(smhandle,SMDebugLow,"Restoring CONTROL_BITS1 to value 0x%x\n",CB1Value);
         smSetParameter( smhandle, smaddress, SMP_CONTROL_BITS1, CB1Value );//restore controbits1 (enable if it was enabled before)
     }
 
@@ -283,7 +283,7 @@ LIB LoadConfigurationStatus smLoadConfigurationFromBuffer( const smbus smhandle,
     //restart drive if necessary or if forced
     if( (statusbits&STAT_PERMANENT_STOP) || (mode&CONFIGMODE_ALWAYS_RESTART_TARGET) )
     {
-        smDebug(smhandle,Low,"Restarting device\n");
+        smDebug(smhandle,SMDebugLow,"Restarting device\n");
         smSetParameter( smhandle, smaddress, SMP_SYSTEM_CONTROL, SMP_SYSTEM_CONTROL_RESTART );
         sleep_ms(2000);//wait power-on
     }

@@ -12,6 +12,9 @@ DEPENDPATH += $$PWD
 
 DEFINES += SIMPLEMOTIONV2_LIBRARY
 
+#define ENABLE_DEBUG_PRINTS to enable SM debug printing (enabling it may slow down & grow binary significantly especially on MCU systems)
+#DEFINES += ENABLE_DEBUG_PRINTS
+
 SOURCES += $$PWD/sm_consts.c $$PWD/simplemotion.c $$PWD/busdevice.c \
     $$PWD/bufferedmotion.c $$PWD/devicedeployment.c
 

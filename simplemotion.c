@@ -65,7 +65,7 @@ smuint16 readTimeoutMs=SM_READ_TIMEOUT;
 smbool smInitialized=smfalse;
 
 //if debug message has priority this or above will be printed to debug stream
-smVerbosityLevel smDebugThreshold=Trace;
+smVerbosityLevel smDebugThreshold=SMDebugTrace;
 
 #ifdef ENABLE_DEBUG_PRINTS
 void smDebug( smbus handle, smVerbosityLevel verbositylevel, char *format, ...)
@@ -89,8 +89,6 @@ void smDebug( smbus handle, smVerbosityLevel verbositylevel, char *format, ...)
             fprintf(smDebugOut,"SMLib: %s",buffer);//no handle given
     }
 }
-#else
-#define smDebug(...)
 #endif
 
 void smResetSM485variables(smbus handle)
@@ -341,31 +339,31 @@ SM_STATUS smSendSMCMD( smbus handle, smuint8 cmdid, smuint8 addr, smuint8 datale
 
     sendcrc=SM485_CRCINIT;
 
-    smDebug(handle, Mid, "> %s (id=%d, addr=%d, payload=%d)\n",cmdidToStr(cmdid),cmdid,
+    smDebug(handle, SMDebugHigh, "> %s (id=%d, addr=%d, payload=%d)\n",cmdidToStr(cmdid),cmdid,
             addr,
             datalen);
 
 
-    smDebug(handle,High,"ID ");
+    smDebug(handle,SMDebugHigh,"ID ");
     if( smWriteByte(handle,cmdid, &sendcrc) != smtrue ) return recordStatus(handle,SM_ERR_BUS);
 
     if(cmdid&SMCMD_MASK_N_PARAMS)
     {
-        smDebug(handle,High,"Nparams ");
+        smDebug(handle,SMDebugHigh,"Nparams ");
         if( smWriteByte(handle,datalen, &sendcrc) != smtrue ) return recordStatus(handle,SM_ERR_BUS);
     }
 
-    smDebug(handle,High,"ADDR ");
+    smDebug(handle,SMDebugHigh,"ADDR ");
     if( smWriteByte(handle,addr, &sendcrc) != smtrue ) return recordStatus(handle,SM_ERR_BUS);
 
     for(i=0;i<datalen;i++)
     {
-        smDebug(handle,High,"DATA ");
+        smDebug(handle,SMDebugHigh,"DATA ");
         if( smWriteByte(handle,cmddata[i], &sendcrc) != smtrue ) return recordStatus(handle,SM_ERR_BUS);
     }
-    smDebug(handle,High,"CRC ");
+    smDebug(handle,SMDebugHigh,"CRC ");
     if( smWriteByte(handle,sendcrc>>8, NULL)  != smtrue ) return recordStatus(handle,SM_ERR_BUS);
-    smDebug(handle,High,"CRC ");
+    smDebug(handle,SMDebugHigh,"CRC ");
     if( smWriteByte(handle,sendcrc&0xff,NULL) != smtrue ) return recordStatus(handle,SM_ERR_BUS);
 
     //transmit bytes to bus that were written in buffer by smWriteByte calls
@@ -380,7 +378,7 @@ SM_STATUS smFastUpdateCycle( smbus handle, smuint8 nodeAddress, smuint16 write1,
     //check if bus handle is valid & opened
     if(smIsHandleOpen(handle)==smfalse) return SM_ERR_NODEVICE;
 
-    smDebug(handle, Mid, "> %s (addr=%d, w1=%d, w2=%d)\n",cmdidToStr(SMCMD_FAST_UPDATE_CYCLE),
+    smDebug(handle, SMDebugHigh, "> %s (addr=%d, w1=%d, w2=%d)\n",cmdidToStr(SMCMD_FAST_UPDATE_CYCLE),
             nodeAddress,
             write1,write2);
 
@@ -402,7 +400,7 @@ SM_STATUS smFastUpdateCycle( smbus handle, smuint8 nodeAddress, smuint16 write1,
     }
     smTransmitBuffer(handle);//this sends the bytes entered with smWriteByte
 
-    smDebug(handle, High, "  Reading reply packet\n");
+    smDebug(handle, SMDebugHigh, "  Reading reply packet\n");
     for(i=0;i<6;i++)
     {
         smbool success;
@@ -410,12 +408,17 @@ SM_STATUS smFastUpdateCycle( smbus handle, smuint8 nodeAddress, smuint16 write1,
         success=smBDRead(smBus[handle].bdHandle,&rx);
         cmd[i]=rx;
         if(success!=smtrue)
+        {
+            smDebug(handle,SMDebugLow,"Not enough data received on smFastUpdateCycle");
             return recordStatus(handle,SM_ERR_BUS|SM_ERR_LENGTH);//no enough data received
+        }
     }
 
     //parse
-    if( cmd[5]!=calcCRC8Buf(cmd,5,0x52) || cmd[0]!=SMCMD_FAST_UPDATE_CYCLE_RET )
+    smuint8 localCRC=calcCRC8Buf(cmd,5,0x52);
+    if( cmd[5]!=localCRC|| cmd[0]!=SMCMD_FAST_UPDATE_CYCLE_RET )
     {
+        smDebug(handle,SMDebugLow,"Corrupt data received on smFastUpdateCycle. RX CRC %02x (expected %02x), RX ID %02x, (expected %02x)\n",cmd[5],localCRC,cmd[0],SMCMD_FAST_UPDATE_CYCLE_RET);
         return recordStatus(handle,SM_ERR_COMMUNICATION);//packet error
     }
     if(read1!=NULL)
@@ -424,7 +427,7 @@ SM_STATUS smFastUpdateCycle( smbus handle, smuint8 nodeAddress, smuint16 write1,
         *read2=bufget16bit(cmd,3);
 
     //return data read complete
-    smDebug(handle,Mid, "< %s (id=%d, r1=%d, r2=%d)\n",
+    smDebug(handle,SMDebugHigh, "< %s (id=%d, r1=%d, r2=%d)\n",
             cmdidToStr( cmd[0] ),
             cmd[0],*read1,*read2);
 
@@ -589,7 +592,7 @@ SM_STATUS smGetQueuedSMCommandReturnValue(  const smbus bushandle, smint32 *retV
     if(smBus[bushandle].cmd_recv_queue_bytes>=smBus[bushandle].recv_payloadsize)
     {
 
-        smDebug(bushandle,Trace, "Packet receive error, return data coudn't be parsed\n");
+        smDebug(bushandle,SMDebugTrace, "Packet receive error, return data coudn't be parsed\n");
 
         //return 0
         if(retValue!=NULL) *retValue=0;//check every time if retValue is set NULL by caller -> don't store anything to it if its NULL
@@ -610,7 +613,7 @@ SM_STATUS smGetQueuedSMCommandReturnValue(  const smbus bushandle, smint32 *retV
         smuint8 *readBuf=(smuint8*)&read;
         readBuf[1]=rxbyte;
         readBuf[0]=bufget8bit(smBus[bushandle].recv_rsbuf, smBus[bushandle].cmd_recv_queue_bytes++);
-        smDebug(bushandle,Trace,"RET16B: %d\n",read.retData);
+        smDebug(bushandle,SMDebugTrace,"  RET16B: %d\n",read.retData);
 
         if(retValue!=NULL) *retValue=read.retData;
         return recordStatus(bushandle,SM_OK);
@@ -623,7 +626,7 @@ SM_STATUS smGetQueuedSMCommandReturnValue(  const smbus bushandle, smint32 *retV
         readBuf[2]=rxbyte;
         readBuf[1]=bufget8bit(smBus[bushandle].recv_rsbuf, smBus[bushandle].cmd_recv_queue_bytes++);
         readBuf[0]=bufget8bit(smBus[bushandle].recv_rsbuf, smBus[bushandle].cmd_recv_queue_bytes++);
-        smDebug(bushandle,Trace,"RET24B: %d\n",read.retData);
+        smDebug(bushandle,SMDebugTrace,"  RET24B: %d\n",read.retData);
 
         if(retValue!=NULL) *retValue=read.retData;
         return recordStatus(bushandle,SM_OK);
@@ -637,7 +640,7 @@ SM_STATUS smGetQueuedSMCommandReturnValue(  const smbus bushandle, smint32 *retV
         readBuf[2]=bufget8bit(smBus[bushandle].recv_rsbuf, smBus[bushandle].cmd_recv_queue_bytes++);
         readBuf[1]=bufget8bit(smBus[bushandle].recv_rsbuf, smBus[bushandle].cmd_recv_queue_bytes++);
         readBuf[0]=bufget8bit(smBus[bushandle].recv_rsbuf, smBus[bushandle].cmd_recv_queue_bytes++);
-        smDebug(bushandle,Trace,"RET32B: %d\n",read.retData);
+        smDebug(bushandle,SMDebugTrace,"  RET32B: %d\n",read.retData);
 
         if(retValue!=NULL) *retValue=read.retData;
         return recordStatus(bushandle,SM_OK);
@@ -648,7 +651,7 @@ SM_STATUS smGetQueuedSMCommandReturnValue(  const smbus bushandle, smint32 *retV
         SMPayloadCommandRet8 read;
         smuint8 *readBuf=(smuint8*)&read;
         readBuf[0]=rxbyte;
-        smDebug(bushandle,Trace,"RET_OTHER: %d\n",read.retData);
+        smDebug(bushandle,SMDebugTrace,"  RET_OTHER: %d\n",read.retData);
 
         if(retValue!=NULL) *retValue=read.retData;
         return recordStatus(bushandle,SM_OK);
@@ -663,7 +666,7 @@ SM_STATUS smReceiveReturnPacket( smbus bushandle )
     //check if bus handle is valid & opened
     if(smIsHandleOpen(bushandle)==smfalse) return SM_ERR_NODEVICE;
 
-    smDebug(bushandle, High, "  Reading reply packet\n");
+    smDebug(bushandle, SMDebugHigh, "  Reading reply packet\n");
     do
     {
         smuint8 ret;
@@ -682,7 +685,7 @@ SM_STATUS smReceiveReturnPacket( smbus bushandle )
     } while(smBus[bushandle].receiveComplete==smfalse); //loop until complete packaget has been read
 
     //return data read complete
-    smDebug(bushandle,Mid, "< %s (id=%d, addr=%d, payload=%d)\n",
+    smDebug(bushandle,SMDebugHigh, "< %s (id=%d, addr=%d, payload=%d)\n",
             cmdidToStr( smBus[bushandle].recv_cmdid ),
             smBus[bushandle].recv_cmdid,
             smBus[bushandle].recv_addr,
@@ -871,6 +874,8 @@ SM_STATUS smGetBufferClock( const smbus handle, const smaddr targetaddr, smuint1
 {
     SM_STATUS stat;
 
+    smDebug(handle,SMDebugMid,"smGetBufferClock: target SM address %d.\n",(int)targetaddr);
+
     //check if bus handle is valid & opened
     if(smIsHandleOpen(handle)==smfalse) return recordStatus(handle,SM_ERR_NODEVICE);
 
@@ -894,9 +899,16 @@ SM_STATUS smRead1Parameter( const smbus handle, const smaddr nodeAddress, const 
 {
     SM_STATUS smStat=0;
 
+    smDebug(handle,SMDebugMid,"smRead1Parameter: reading parameter address %hu from SM address %d.\n",(unsigned short)paramId1,(int)nodeAddress);
+
     smStat|=smAppendGetParamCommandToQueue(handle,paramId1);
     smStat|=smExecuteCommandQueue(handle,nodeAddress);
     smStat|=smGetQueuedGetParamReturnValue(handle,paramVal1);
+
+    smDebug(handle,SMDebugMid,"  ^^ got value %d\n",(int)*paramVal1);
+
+    if(smStat!=SM_OK)
+        smDebug(handle,SMDebugLow,"smRead1Parameter failed (SM_STATUS=%d)",(int)smStat);
 
     return recordStatus(handle,smStat);
 }
@@ -905,11 +917,18 @@ SM_STATUS smRead2Parameters( const smbus handle, const smaddr nodeAddress, const
 {
     SM_STATUS smStat=0;
 
+    smDebug(handle,SMDebugMid,"smRead2Parameters: reading parameter addresses %hu and %hu from SM address %d.\n",(unsigned short)paramId1,(unsigned short)paramId2,(int)nodeAddress);
+
     smStat|=smAppendGetParamCommandToQueue(handle,paramId1);
     smStat|=smAppendGetParamCommandToQueue(handle,paramId2);
     smStat|=smExecuteCommandQueue(handle,nodeAddress);
     smStat|=smGetQueuedGetParamReturnValue(handle,paramVal1);
     smStat|=smGetQueuedGetParamReturnValue(handle,paramVal2);
+
+    smDebug(handle,SMDebugMid,"  ^^ got values %d and %d\n",(int)*paramVal1,(int)*paramVal2);
+
+    if(smStat!=SM_OK)
+        smDebug(handle,SMDebugLow,"smRead2Parameters failed (SM_STATUS=%d).",(int)smStat);
 
     return recordStatus(handle,smStat);
 }
@@ -917,6 +936,8 @@ SM_STATUS smRead2Parameters( const smbus handle, const smaddr nodeAddress, const
 SM_STATUS smRead3Parameters( const smbus handle, const smaddr nodeAddress, const smint16 paramId1, smint32 *paramVal1,const smint16 paramId2, smint32 *paramVal2 ,const smint16 paramId3, smint32 *paramVal3 )
 {
     SM_STATUS smStat=0;
+
+    smDebug(handle,SMDebugMid,"smRead3Parameters: reading parameter addresses %hu, %hu and %hu from SM address %d.\n",(unsigned short)paramId1,(unsigned short)paramId2,(unsigned short)paramId3,(int)nodeAddress);
 
     smStat|=smAppendGetParamCommandToQueue(handle,paramId1);
     smStat|=smAppendGetParamCommandToQueue(handle,paramId2);
@@ -926,6 +947,11 @@ SM_STATUS smRead3Parameters( const smbus handle, const smaddr nodeAddress, const
     smStat|=smGetQueuedGetParamReturnValue(handle,paramVal2);
     smStat|=smGetQueuedGetParamReturnValue(handle,paramVal3);
 
+    smDebug(handle,SMDebugMid,"  ^^ got values %d, %d and %d\n",(int)*paramVal1,(int)*paramVal2,(int)*paramVal3);
+
+    if(smStat!=SM_OK)
+        smDebug(handle,SMDebugLow,"smRead3Parameters failed (SM_STATUS=%d). ",(int)smStat);
+
     return recordStatus(handle,smStat);
 }
 
@@ -934,15 +960,18 @@ SM_STATUS smSetParameter( const smbus handle, const smaddr nodeAddress, const sm
     smint32 nul;
     SM_STATUS smStat=0;
 
+    smDebug(handle,SMDebugMid,"smSetParameter: writing parameter [%hu]=%d into SM address %d.\n",(unsigned short)paramId,(int)paramVal,(int)nodeAddress);
+
     smStat|=smAppendSetParamCommandToQueue( handle, paramId, paramVal );
     smStat|=smExecuteCommandQueue(handle,nodeAddress);
     if(nodeAddress!=0)//don't anttempt to read if target address was broadcast address where no slave device will respond
         smStat|=smGetQueuedSetParamReturnValue(  handle, &nul );
 
+    if(smStat!=SM_OK)
+        smDebug(handle,SMDebugLow,"smSetParameter failed (SM_STATUS=%d).",(int)smStat);
+
     return recordStatus(handle,smStat);
 }
-
-
 
 
 //accumulates status to internal variable by ORing the bits. returns same value that is fed as paramter
@@ -951,7 +980,11 @@ SM_STATUS recordStatus( const smbus handle, const SM_STATUS stat )
     //check if bus handle is valid & opened
     if(smIsHandleOpen(handle)==smfalse) return SM_ERR_NODEVICE;
 
+    if(smBus[handle].cumulativeSmStatus!=stat && stat!=SM_OK)//if status changed and new status is not SM_OK
+        smDebug(handle,SMDebugLow,"Previous SM call failed and changed the SM_STATUS value obtainable with getCumulativeStatus(). Status before failure was %d, and new error flag valued %d has been now set.\n",(int)smBus[handle].cumulativeSmStatus,(int)stat);
+
     smBus[handle].cumulativeSmStatus|=stat;
+
     return stat;
 }
 
@@ -968,6 +1001,8 @@ SM_STATUS getCumulativeStatus( const smbus handle )
 SM_STATUS resetCumulativeStatus( const smbus handle )
 {
     if(smIsHandleOpen(handle)==smfalse) return SM_ERR_NODEVICE;
+
+    smDebug(handle,SMDebugMid,"resetCumulativeStatus called.\n");
 
     smBus[handle].cumulativeSmStatus=0;
 

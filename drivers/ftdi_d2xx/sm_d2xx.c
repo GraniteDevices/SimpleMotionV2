@@ -65,7 +65,7 @@ smBusdevicePointer d2xxPortOpen(const char *port_device_name, smint32 baudrate_b
     {
         if(FT_ResetDevice(h)!=FT_OK)
         {
-            smDebug( -1, Low, "FTDI port error: failed to reset USB chip\n");
+            smDebug( -1, SMDebugLow, "FTDI port error: failed to reset USB chip\n");
             goto error;
         }
 
@@ -73,57 +73,57 @@ smBusdevicePointer d2xxPortOpen(const char *port_device_name, smint32 baudrate_b
         s=FT_SetBaudRate(h,baudrate_bps);
         if(s!=FT_OK)
         {
-            smDebug( -1, Low, "FTDI port error: failed to set baud rate\n");
+            smDebug( -1, SMDebugLow, "FTDI port error: failed to set baud rate\n");
             goto error;
         }
 
         if(FT_SetLatencyTimer(h,1)!=FT_OK)//API doc says 2ms is minimum but 1 seem to work too
         {
-            smDebug( -1, Low, "FTDI port error: failed to set latency\n");
+            smDebug( -1, SMDebugLow, "FTDI port error: failed to set latency\n");
             goto error;
         }
 
         if(FT_SetFlowControl(h,FT_FLOW_NONE,0,0)!=FT_OK)
         {
-            smDebug( -1, Low, "FTDI port error: failed to set flow control\n");
+            smDebug( -1, SMDebugLow, "FTDI port error: failed to set flow control\n");
             goto error;
         }
 
         if(FT_SetDataCharacteristics(h,FT_BITS_8,FT_STOP_BITS_1,FT_PARITY_NONE)!=FT_OK)
         {
-            smDebug( -1, Low, "FTDI port error: failed to set data characteristics\n");
+            smDebug( -1, SMDebugLow, "FTDI port error: failed to set data characteristics\n");
             goto error;
         }
 
         if(FT_SetTimeouts(h,readTimeoutMs,readTimeoutMs)!=FT_OK)
         {
-            smDebug( -1, Low, "FTDI port error: failed to set timeout\n");
+            smDebug( -1, SMDebugLow, "FTDI port error: failed to set timeout\n");
             goto error;
         }
 
         if(FT_Purge(h,FT_PURGE_RX|FT_PURGE_TX)!=FT_OK)
         {
-            smDebug( -1, Low, "FTDI port error: failed to set purge\n");
+            smDebug( -1, SMDebugLow, "FTDI port error: failed to set purge\n");
             goto error;
         }
 
-        smDebug( -1, Mid, "FTDI port opened\n");
+        smDebug( -1, SMDebugMid, "FTDI port opened\n");
         *success=smtrue;
         return (smBusdevicePointer)h;
 
-        smDebug( -1, Low, "FTDI port error: all handles taken, too many ports open\n");
+        smDebug( -1, SMDebugLow, "FTDI port error: all handles taken, too many ports open\n");
         goto error;
     }
     else
     {
         if(ftdiIndexParseOk==smtrue)
         {
-            smDebug( -1, Low, "FTDI port error: FT_Open with name %s (index %d) failed\n", port_device_name, ftdiIndex);
+            smDebug( -1, SMDebugLow, "FTDI port error: FT_Open with name %s (index %d) failed\n", port_device_name, ftdiIndex);
         }
         else
         {
-            smDebug( -1, Low, "FTDI port error: FT_OpenEx with device description %s failed.\n", port_device_name);
-            smDebug( -1, Low, "FTDI port error additional info: FTDI D2XX port open attempt was made by device description because smOpenBus() argument format was not FTDIn where index number (0 or greater), or any other supported port name format.\n");
+            smDebug( -1, SMDebugLow, "FTDI port error: FT_OpenEx with device description %s failed.\n", port_device_name);
+            smDebug( -1, SMDebugLow, "FTDI port error additional info: FTDI D2XX port open attempt was made by device description because smOpenBus() argument format was not FTDIn where index number (0 or greater), or any other supported port name format.\n");
         }
     }
 
@@ -143,7 +143,7 @@ smint32 d2xxPortRead(smBusdevicePointer busdevicepointer, unsigned char *buf, sm
     if(s!=FT_OK)
     {
         //failed
-        smDebug( -1, Low, "FTDI port error: failed to receive data from port\n");
+        smDebug( -1, SMDebugLow, "FTDI port error: failed to receive data from port\n");
     }
 
     return BytesReceived;
@@ -160,7 +160,7 @@ smint32 d2xxPortWrite(smBusdevicePointer busdevicepointer, unsigned char *buf, s
     if(s!=FT_OK)
     {
         //failed
-        smDebug( -1, Low, "FTDI port error: failed to write data to port\n");
+        smDebug( -1, SMDebugLow, "FTDI port error: failed to write data to port\n");
     }
 
     return BytesWritten;
@@ -174,7 +174,7 @@ void d2xxPortClose(smBusdevicePointer busdevicepointer)
     if(FT_Close(handle)!=FT_OK)
     {
         //failed
-        smDebug( -1, Low, "FTDI port error: failed to close port\n");
+        smDebug( -1, SMDebugLow, "FTDI port error: failed to close port\n");
     }
 }
 

@@ -260,7 +260,7 @@ smBusdevicePointer serialPortOpen(const char *port_device_name, smint32 baudrate
 
     if(port_handle==INVALID_HANDLE_VALUE)
     {
-        smDebug( -1, Low, "Serial port error: Unable to create serial port handle");
+        smDebug( -1, SMDebugLow, "Serial port error: Unable to create serial port handle");
         return SMBUSDEVICE_RETURN_ON_OPEN_FAIL;
     }
 
@@ -271,14 +271,14 @@ smBusdevicePointer serialPortOpen(const char *port_device_name, smint32 baudrate
 
     if(!BuildCommDCBA(port_def_string, &dcb))
     {
-        smDebug( -1, Low, "Serial port error: Unable to build DCB settings\n");
+        smDebug( -1, SMDebugLow, "Serial port error: Unable to build DCB settings\n");
         CloseHandle(port_handle);
         return SMBUSDEVICE_RETURN_ON_OPEN_FAIL;
     }
 
     if(!SetCommState(port_handle, &dcb))
     {
-        smDebug( -1, Low, "Serial port error: Unable to set port settings\n");
+        smDebug( -1, SMDebugLow, "Serial port error: Unable to set port settings\n");
         CloseHandle(port_handle);
         return SMBUSDEVICE_RETURN_ON_OPEN_FAIL;
     }
@@ -293,7 +293,7 @@ smBusdevicePointer serialPortOpen(const char *port_device_name, smint32 baudrate
 
     if(!SetCommTimeouts(port_handle, &port_timeouts))
     {
-        smDebug( -1, Low, "Serial port error: Failed to set port timeout settings\n");
+        smDebug( -1, SMDebugLow, "Serial port error: Failed to set port timeout settings\n");
         CloseHandle(port_handle);
         return(SMBUSDEVICE_RETURN_ON_OPEN_FAIL);
     }
