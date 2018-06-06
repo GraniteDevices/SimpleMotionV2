@@ -1,4 +1,5 @@
 #include "busdevice.h"
+#include "user_options.h"
 
 #include "drivers/serial/pcserialport.h"
 #include "drivers/tcpip/tcpclient.h"

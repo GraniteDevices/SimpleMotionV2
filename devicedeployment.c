@@ -1,4 +1,5 @@
 #include "devicedeployment.h"
+#include "user_options.h"
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>

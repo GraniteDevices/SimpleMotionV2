@@ -12,6 +12,7 @@
 
 
 #include "pcserialport.h"
+#include "user_options.h"
 #include "simplemotion_private.h" //needed for timeout variable
 
 #if defined(__unix__) || defined(__APPLE__)

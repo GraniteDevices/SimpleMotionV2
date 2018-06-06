@@ -5,6 +5,7 @@
 #include <string.h>
 
 #include "busdevice.h"
+#include "user_options.h"
 #include "sm485.h"
 #include <stdarg.h>
 

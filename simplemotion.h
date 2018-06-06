@@ -59,8 +59,6 @@ typedef struct
 } SM_BUS_DEVICE_INFO;
 
 
-//comment out to disable, gives smaller & faster code
-//#define ENABLE_DEBUG_PRINTS
 
 /* Set debug verbosity level with smSetDebugOutput
  * SMDebugOff=no debug prints (default)

@@ -1,5 +1,6 @@
 #include "simplemotion_private.h"
 #include "tcpclient.h"
+#include "user_options.h"
 #include <stdio.h>
 #include <ctype.h>
 #include <string.h>

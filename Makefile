@@ -6,6 +6,8 @@ SOURCES = $(wildcard *.c) \
 
 OBJECTS = $(SOURCES:%.c=%.o)
 
+#user optionsare the ones starting with -D below
+#be sure to check also user_options.h for more
 CPPFLAGS = -I. -DENABLE_BUILT_IN_DRIVERS
 CFLAGS = -Wall -Wextra -DENABLE_BUILT_IN_DRIVERS
 

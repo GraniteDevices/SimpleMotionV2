@@ -10,9 +10,6 @@
 #include <stdio.h>
 
 #define SM_VERSION 0x020700
-//max number of simultaneously opened buses. change this and recompiple SMlib if
-//necessary (to increase channels or reduce to save memory)
-#define SM_MAX_BUSES 10
 
 //bus device types
 #define BUSDEV_NONE 0
