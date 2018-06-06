@@ -17,7 +17,7 @@ void tcpipPortClose(smBusdevicePointer busdevicePointer);
 //accepted TCP/IP address format is nnn.nnn.nnn.nnn:pppp where n is IP address numbers and p is port number
 int validateIpAddress(const char *s, const char **pip_end,
                              const char **pport_start);
-int parseIpAddress(const char *s, char *ip, size_t ipsize, unsigned short *port);
+int parseIpAddress(const char *s, char *ip, unsigned short *port);
 
 
 #ifdef __cplusplus
