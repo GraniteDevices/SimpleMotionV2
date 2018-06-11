@@ -7,6 +7,7 @@
 
 #include "simplemotion.h"
 #include "busdevice.h"
+#include "user_options.h"
 #include <stdio.h>
 
 #define SM_VERSION 0x020700

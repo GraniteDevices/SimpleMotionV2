@@ -65,7 +65,7 @@ smBusdevicePointer tcpipPortOpen(const char * devicename, smint32 baudrate_bps, 
 
     if (validateIpAddress(devicename, NULL, NULL) != 0)
     {
-        smDebug(-1,Low,"TCP/IP: device name '%s' does not appear to be IP address, skipping TCP/IP open attempt (note: this is normal if opening a non-TCP/IP port)\n");
+        smDebug(-1,SMDebugLow,"TCP/IP: device name '%s' does not appear to be IP address, skipping TCP/IP open attempt (note: this is normal if opening a non-TCP/IP port)\n");
         return SMBUSDEVICE_RETURN_ON_OPEN_FAIL;
     }
 
@@ -73,18 +73,18 @@ smBusdevicePointer tcpipPortOpen(const char * devicename, smint32 baudrate_bps, 
     unsigned short port = 4001;
     if (parseIpAddress(devicename, ip_addr, &port) < 0)
     {
-        smDebug(-1,Low,"TCP/IP: IP address parse failed\n");
+        smDebug(-1,SMDebugLow,"TCP/IP: IP address parse failed\n");
         return SMBUSDEVICE_RETURN_ON_OPEN_FAIL;
     }
 
 
     if(baudrate_bps!=SM_BAUDRATE)
     {
-        smDebug(-1,Low,"TCP/IP: Non-default baudrate not supported by TCP/IP protocol\n");
+        smDebug(-1,SMDebugLow,"TCP/IP: Non-default baudrate not supported by TCP/IP protocol\n");
         return SMBUSDEVICE_RETURN_ON_OPEN_FAIL;
     }
 
-    smDebug(-1,Low,"TCP/IP: Attempting to connect to %s:%d\n",ip_addr,port);
+    smDebug(-1,SMDebugLow,"TCP/IP: Attempting to connect to %s:%d\n",ip_addr,port);
 
 #if defined(_WIN32)
     initwsa();
@@ -94,7 +94,7 @@ smBusdevicePointer tcpipPortOpen(const char * devicename, smint32 baudrate_bps, 
     sockfd = socket(AF_INET , SOCK_STREAM , IPPROTO_TCP);
     if (sockfd == -1)
     {
-        smDebug(-1,Low,"TCP/IP: Socket open failed\n");
+        smDebug(-1,SMDebugLow,"TCP/IP: Socket open failed\n");
         return SMBUSDEVICE_RETURN_ON_OPEN_FAIL;
     }
 
@@ -132,19 +132,19 @@ smBusdevicePointer tcpipPortOpen(const char * devicename, smint32 baudrate_bps, 
                 getsockopt(sockfd, SOL_SOCKET, SO_ERROR, (void*)(&valopt), &lon);
                 if (valopt)
                 {
-                    smDebug(-1,Low,"TCP/IP: Setting socket properties failed\n");
+                    smDebug(-1,SMDebugLow,"TCP/IP: Setting socket properties failed\n");
                     return SMBUSDEVICE_RETURN_ON_OPEN_FAIL;
                 }
             }
             else
             {
-               smDebug(-1,Low,"TCP/IP: Setting socket properties failed\n");
+               smDebug(-1,SMDebugLow,"TCP/IP: Setting socket properties failed\n");
                return SMBUSDEVICE_RETURN_ON_OPEN_FAIL;
             }
         }
         else
         {
-            smDebug(-1,Low,"TCP/IP: Connecting socket failed\n");
+            smDebug(-1,SMDebugLow,"TCP/IP: Connecting socket failed\n");
             return SMBUSDEVICE_RETURN_ON_OPEN_FAIL;
         }
     }
