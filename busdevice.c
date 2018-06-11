@@ -68,7 +68,7 @@ smbusdevicehandle smBDOpen( const char *devicename )
     if(h>=0) return h;//was success
 #endif
 #else
-    smDebug( -1, High, "smBDOpen ENABLE_BUILT_IN_DRIVERS is not defined during SM library compile time. smOpenBus not supported in this case, see README.md.");
+    smDebug( -1, SMDebugHigh, "smBDOpen ENABLE_BUILT_IN_DRIVERS is not defined during SM library compile time. smOpenBus not supported in this case, see README.md.");
 #endif
 
     //none succeeded
