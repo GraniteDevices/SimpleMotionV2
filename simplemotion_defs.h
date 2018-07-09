@@ -784,13 +784,13 @@
 #define SMP_OVERSPEED_FAULT_LIMIT 496
 //0=min 6=max
 #define SMP_OVERCURRENT_FAULT_SENSITIVITY 497
-//when hit limt switch, do: 0=nothing, 1=disable torque, 2=fault stop, 3=servoed stop
+//when hit limt switch, do: 0=nothing, 1=disable torque, 2=fault stop, 3=dynamic braking beyond limits
 #define SMP_LIMIT_SW_FUNCTION 498
 		//choices:
         #define SMP_LIMIT_SW_DISABLED 0
         #define SMP_LIMIT_SW_NOTORQUE 1
         #define SMP_LIMIT_SW_FAULTSTOP 2
-        #define SMP_LIMIT_SW_SERVOSTOP 3
+        #define SMP_LIMIT_SW_DYNAMIC_BRAKING 3
         #define _SMP_LIMIT_SW_LAST 3
 
 /*parameter to configure activation of SMP_LIMIT_SW_FUNCTION.
