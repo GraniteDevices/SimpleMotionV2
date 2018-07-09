@@ -793,6 +793,16 @@
         #define SMP_LIMIT_SW_SERVOSTOP 3
         #define _SMP_LIMIT_SW_LAST 3
 
+/*parameter to configure activation of SMP_LIMIT_SW_FUNCTION.
+ * by default (0) limit switch function will perform when a physical limit switch OR soft travel limit is exceeded.
+ * optionally with value (1) limit switch function can be made to activate only on physical limit switch.
+ * this is useful if user want's to have soft limits and hardware limit switches as backup.
+ */
+#define SMP_LIMIT_SW_FUNCTION_SOURCE 499
+		//choices
+		#define SMP_LIMIT_SW_FUNCTION_SOURCE_SOFT_AND_HARD_LIMITS 0
+		#define SMP_LIMIT_SW_FUNCTION_SOURCE_HARD_LIMITS_ONLY 1
+
 #define SMP_CONTROL_BITS1 2533
 	//bitfiled values:
 	//CB1 & CB2 enables must be 1 to have drive enabled
@@ -1021,6 +1031,7 @@
 	#define DEVICE_CAPABILITY2_SUPPORT_DIGITAL_HALL_SENSOR_FBD BV(13)
     #define DEVICE_CAPABILITY2_SUPPORT_FORCE_CONTROL BV(14)
 	#define DEVICE_CAPABILITY2_LOW_LEVEL_GPIO BV(15)
+	#define DEVICE_CAPABILITY2_HAS_SMP_LIMIT_SW_FUNCTION_SOURCE BV(16) /*true if device supports parameter SMP_LIMIT_SW_FUNCTION_SOURCE*/
 
 #define SMP_FIRMWARE_VERSION 6010
 #define SMP_FIRMWARE_BACKWARDS_COMP_VERSION 6011
