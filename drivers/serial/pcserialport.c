@@ -56,7 +56,7 @@ smBusdevicePointer serialPortOpen(const char * port_device_name, smint32 baudrat
 
     if(port_handle==-1)
     {
-        smDebug(-1, Low, "Serial port error: port open failed");
+        smDebug(-1, SMDebugLow, "Serial port error: port open failed");
         return SMBUSDEVICE_RETURN_ON_OPEN_FAIL;
     }
 
@@ -64,14 +64,14 @@ smBusdevicePointer serialPortOpen(const char * port_device_name, smint32 baudrat
     // open() follows POSIX semantics: multiple open() calls to the same file will succeed
     // unless the TIOCEXCL ioctl is issued (except for root)
     if (ioctl(port_handle, TIOCEXCL) == -1) {
-        smDebug(-1, Low, "Serial port error: error setting TIOCEXCL");
+        smDebug(-1, SMDebugLow, "Serial port error: error setting TIOCEXCL");
         close(port_handle);
         return SMBUSDEVICE_RETURN_ON_OPEN_FAIL;
     }
 
     // as the port is now open, clear O_NONBLOCK flag for subsequent I/O calls
     if (fcntl(port_handle, F_SETFL, 0) == -1) {
-        smDebug(-1, Low, "Serial port error: error clearing O_NONBLOCK");
+        smDebug(-1, SMDebugLow, "Serial port error: error clearing O_NONBLOCK");
         close(port_handle);
         return SMBUSDEVICE_RETURN_ON_OPEN_FAIL;
     }
@@ -160,7 +160,7 @@ smBusdevicePointer serialPortOpen(const char * port_device_name, smint32 baudrat
     if(err==-1)
     {
         close(port_handle);
-        smDebug(-1, Low, "Serial port error: failed to set port parameters");
+        smDebug(-1, SMDebugLow, "Serial port error: failed to set port parameters");
         return SMBUSDEVICE_RETURN_ON_OPEN_FAIL;
     }
 
@@ -170,12 +170,12 @@ smBusdevicePointer serialPortOpen(const char * port_device_name, smint32 baudrat
         speed_t bps = baudrate_bps;
         if (ioctl(port_handle, IOSSIOSPEED, &bps) == -1)
         {
-            smDebug(-1, Low, "Serial port error: unsupported baudrate\n");
+            smDebug(-1, SMDebugLow, "Serial port error: unsupported baudrate\n");
             close(port_handle);
             return SMBUSDEVICE_RETURN_ON_OPEN_FAIL;
         }
         #else
-        smDebug(-1, Low, "Serial port error: unsupported baudrate\n");
+        smDebug(-1, SMDebugLow, "Serial port error: unsupported baudrate\n");
         close(port_handle);
         return SMBUSDEVICE_RETURN_ON_OPEN_FAIL;
         #endif
@@ -198,11 +198,11 @@ smBusdevicePointer serialPortOpen(const char * port_device_name, smint32 baudrat
         serial.flags |= ASYNC_LOW_LATENCY;
         if(ioctl(port_handle, TIOCSSERIAL, &serial) == -1 )
         {
-            smDebug(-1, Low, "Serial port warning: unable to set low latency mode, maybe try running with root permissions.");
+            smDebug(-1, SMDebugLow, "Serial port warning: unable to set low latency mode, maybe try running with root permissions.");
         }
     }
     else
-        smDebug(-1, Low, "Serial port warning: unable to read TIOCGSERIAL for low latency mode, maybe try running with root permissions.");
+        smDebug(-1, SMDebugLow, "Serial port warning: unable to read TIOCGSERIAL for low latency mode, maybe try running with root permissions.");
     #endif
 
     //flush any stray bytes from device receive buffer that may reside in it
