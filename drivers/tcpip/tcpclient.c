@@ -1,5 +1,6 @@
 #include "simplemotion_private.h"
 #include "tcpclient.h"
+#include "user_options.h"
 #include <stdio.h>
 #include <ctype.h>
 #include <string.h>
@@ -63,16 +64,27 @@ smBusdevicePointer tcpipPortOpen(const char * devicename, smint32 baudrate_bps, 
     *success=smfalse;
 
     if (validateIpAddress(devicename, NULL, NULL) != 0)
+    {
+        smDebug(-1,SMDebugLow,"TCP/IP: device name '%s' does not appear to be IP address, skipping TCP/IP open attempt (note: this is normal if opening a non-TCP/IP port)\n");
         return SMBUSDEVICE_RETURN_ON_OPEN_FAIL;
+    }
 
-    char ip_addr[128];
+    char ip_addr[16];
     unsigned short port = 4001;
-    if (parseIpAddress(devicename, ip_addr, sizeof(devicename), &port) < 0)
+    if (parseIpAddress(devicename, ip_addr, &port) < 0)
+    {
+        smDebug(-1,SMDebugLow,"TCP/IP: IP address parse failed\n");
         return SMBUSDEVICE_RETURN_ON_OPEN_FAIL;
+    }
 
 
     if(baudrate_bps!=SM_BAUDRATE)
+    {
+        smDebug(-1,SMDebugLow,"TCP/IP: Non-default baudrate not supported by TCP/IP protocol\n");
         return SMBUSDEVICE_RETURN_ON_OPEN_FAIL;
+    }
+
+    smDebug(-1,SMDebugLow,"TCP/IP: Attempting to connect to %s:%d\n",ip_addr,port);
 
 #if defined(_WIN32)
     initwsa();
@@ -82,6 +94,7 @@ smBusdevicePointer tcpipPortOpen(const char * devicename, smint32 baudrate_bps, 
     sockfd = socket(AF_INET , SOCK_STREAM , IPPROTO_TCP);
     if (sockfd == -1)
     {
+        smDebug(-1,SMDebugLow,"TCP/IP: Socket open failed\n");
         return SMBUSDEVICE_RETURN_ON_OPEN_FAIL;
     }
 
@@ -119,16 +132,19 @@ smBusdevicePointer tcpipPortOpen(const char * devicename, smint32 baudrate_bps, 
                 getsockopt(sockfd, SOL_SOCKET, SO_ERROR, (void*)(&valopt), &lon);
                 if (valopt)
                 {
+                    smDebug(-1,SMDebugLow,"TCP/IP: Setting socket properties failed\n");
                     return SMBUSDEVICE_RETURN_ON_OPEN_FAIL;
                 }
             }
             else
             {
+               smDebug(-1,SMDebugLow,"TCP/IP: Setting socket properties failed\n");
                return SMBUSDEVICE_RETURN_ON_OPEN_FAIL;
             }
         }
         else
         {
+            smDebug(-1,SMDebugLow,"TCP/IP: Connecting socket failed\n");
             return SMBUSDEVICE_RETURN_ON_OPEN_FAIL;
         }
     }
@@ -198,6 +214,7 @@ void tcpipPortClose(smBusdevicePointer busdevicePointer)
 
 
 //accepted TCP/IP address format is nnn.nnn.nnn.nnn:pppp where n is IP address numbers and p is port number
+//params: s=whole ip address with port number with from user, pip_end=output pointer pointint to end of ip address part of s, pport_stasrt pointing to start of port number in s
 int validateIpAddress(const char *s, const char **pip_end,
                              const char **pport_start)
 {
@@ -278,7 +295,8 @@ int validateIpAddress(const char *s, const char **pip_end,
     return 0;
 }
 
-int parseIpAddress(const char *s, char *ip, size_t ipsize, unsigned short *port)
+//params: s=whole ip:port string, ip=output for ip number only, port=output for port number integer
+int parseIpAddress(const char *s, char *ip, unsigned short *port)
 {
     const char *ip_end, *port_start;
 
@@ -286,15 +304,12 @@ int parseIpAddress(const char *s, char *ip, size_t ipsize, unsigned short *port)
     if (validateIpAddress(s, &ip_end, &port_start) == -1)
         return -1;
 
-    // If ip=NULL, we just report that the parsing was ok
-    if (!ip)
-        return 0;
-
-    if (ipsize < (size_t)(ip_end - s + 1))
+    int IPAddrLen=ip_end - s;
+    if(IPAddrLen<7 || IPAddrLen>15 )//check length before writing to *ip
         return -1;
 
-    memcpy(ip, s, ip_end - s);
-    ip[ip_end - s] = '\0';
+    memcpy(ip, s, IPAddrLen);
+    ip[IPAddrLen] = '\0';
 
     if (port_start)
     {
@@ -308,3 +323,4 @@ int parseIpAddress(const char *s, char *ip, size_t ipsize, unsigned short *port)
 
     return 0;
 }
+

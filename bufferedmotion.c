@@ -1,4 +1,5 @@
 #include "simplemotion.h"
+#include "user_options.h"
 #include "simplemotion_private.h"
 #include "bufferedmotion.h"
 #include "sm485.h"

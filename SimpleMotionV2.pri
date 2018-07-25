@@ -1,4 +1,5 @@
 #User options
+#be sure to check also user_options.h for more
 
 #if 0, then compile bare SM library without comm interface device drivers (user should then open bus with smOpenBusWithCallbacks and write custom port driver callbacks)
 INCLUDE_BUILT_IN_DRIVERS = 1
@@ -12,12 +13,16 @@ DEPENDPATH += $$PWD
 
 DEFINES += SIMPLEMOTIONV2_LIBRARY
 
+#define ENABLE_DEBUG_PRINTS to enable SM debug printing (enabling it may slow down & grow binary significantly especially on MCU systems)
+#DEFINES += ENABLE_DEBUG_PRINTS
+
 SOURCES += $$PWD/sm_consts.c $$PWD/simplemotion.c $$PWD/busdevice.c \
     $$PWD/bufferedmotion.c $$PWD/devicedeployment.c
 
 HEADERS += $$PWD/simplemotion_private.h\
     $$PWD/busdevice.h  $$PWD/simplemotion.h $$PWD/sm485.h $$PWD/simplemotion_defs.h \
-    $$PWD/bufferedmotion.h $$PWD/devicedeployment.h
+    $$PWD/bufferedmotion.h $$PWD/devicedeployment.h \
+    $$PWD/user_options.h
 
 
 greaterThan(INCLUDE_BUILT_IN_DRIVERS, 0+)  {

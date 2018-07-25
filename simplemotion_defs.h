@@ -267,6 +267,33 @@
 	#define BUFFERED_INTERPOLATION_MODE_NEAREST 0
 	#define BUFFERED_INTERPOLATION_MODE_LINEAR 1
 
+/* Sets the data format of input & output parameters of SM API smFastUpdateCycle function.
+ * smFastUpdateCycle has 2x16 bit inputs and 2x16 bit outputs. The value of SMP_FAST_UPDATE_CYCLE_FORMAT
+ * sets what the actual data means.
+ *
+ *
+ * format 0 (default):
+ *  write1=absolute setpoint value
+ *  write2=not used (set 0)
+ *  read1=lowest 16 bits of position feedback value
+ *  read2=first 16 bits of SMP_STATUS
+ *
+ * format 1 (ALT1):
+ *  description: this type has 28 bits absolute setpoint and 30 bits absolute feedback value + 4 output bits for control + 2 input bits for status
+ *  write1=lowest 16 bits absolute setpoint value
+ *  write2=bits 0-11: upper 12 bits of absolute setpoint value, bits 12-15: these bits are written as bits 0-3 of SMP_CONTROL_BITS_1. See SMP_CB1_nn for functions. So write2 bit 15=bypass trajplanner 14=set quickstop 13=clear faults 12=enable.
+ *  read1=lowest 16 bits of position feedback value
+ *  read2=bit nr 16 = STAT_SERVO_READY, bit nr 15=STAT_FAULTSTOP, bits 0-14=upper bits of position feedback value (pos FB bits 17-30)
+ *
+ * Note:
+ * Before reading/writing this, check if device supports this by checking capability flag DEVICE_CAPABILITY1_SELECTABLE_FAST_UPDATE_CYCLE_FORMAT.
+ *
+ * Also before setting check the maximum value this parameter supports because all modes might not be implemented in your firmware
+ * version. For more info, see https://granitedevices.com/wiki/SimpleMotion_parameter_valid_value_range
+ */
+#define SMP_FAST_UPDATE_CYCLE_FORMAT 17
+	#define FAST_UPDATE_CYCLE_FORMAT_DEFAULT 0
+	#define FAST_UPDATE_CYCLE_FORMAT_ALT1 1
 
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -286,6 +313,14 @@
  * 1		constant 1 (default)
  */
 #define SMP_AUX_OUTPUT_SOURCE_SELECT 101
+
+/* used only for device production testing, not recommended for normal operation, therefore not publicly documented */
+#define SMP_GPIO_LOW_LEVEL_ACCESS 102
+	#define SMP_GPIO_LOW_LEVEL_ACCESS_SET_PIN_MODE 0
+	#define SMP_GPIO_LOW_LEVEL_ACCESS_WRITE_PIN_OUTPUT 1
+	#define SMP_GPIO_LOW_LEVEL_ACCESS_READ_PIN_INPUT 2
+/* used only for device production testing, not recommended for normal operation, therefore not publicly documented */
+#define SMP_GPIO_LOW_LEVEL_INPUT_VALUE 103
 
 //each DIGITAL variable holds one bit for each physical digital input
 /*SMP_DIGITAL_IN_VALUES_1 on GD motor drives:
@@ -421,6 +456,13 @@
 	#define STAT_INITIALIZED BV(12)
 	#define STAT_VOLTAGES_OK BV(13)
 	#define STAT_PERMANENT_STOP BV(15)//outputs disabled until reset
+	/*STAT_STANDING_STILL is true in following conditions:
+	 * Measured velocity (low pass filtered version of it) has been equal or less than 1% of overspeed fault [FEV], and
+	 * in velocity and position control modes additionally motor has zero velocity target.
+	 *
+	 * Note: not all firmware versions support this. Check DEVICE_CAPABILITY1_SUPPORTS_STAT_STANDING_STILL bit. If it's 0, then STAT_STANDING_STILL always reads 0.
+	 */
+	#define STAT_STANDING_STILL BV(16)
 
 #define SMP_SYSTEM_CONTROL 554 //writing 1 initiates settings save to flash, writing 2=device restart, 4=abort buffered motion
 	//possible values listed
@@ -519,9 +561,34 @@
 #define SMP_ABS_IN_SCALER 564
 
 //FB1 device resolution, pulses per rev
-#define SMP_ENCODER_PPR 565
-//motor polepairs, not used with DC motor
-#define SMP_MOTOR_POLEPAIRS 566
+#define SMP_ENCODER_PPR 565 //note this is not used if DEVICE_CAPABILITY1_ENCODER_INTERFACE_V2 is set, see SMP_FBD1_COUNTS_PER_POLEPAIR instead
+
+/*
+ * defines encoder resolutions:
+ * -if rotary encoder, then it's counts per revolution (if FLAG_FBDx_IS_LINEAR_ENCODER is 0)
+ * -if linear encoder, then it's counts/100mm (if FLAG_FBDx_IS_LINEAR_ENCODER is 1)
+ * note: supported only if DEVICE_CAPABILITY1_ENCODER_INTERFACE_V2 is set
+ */
+#define SMP_FBD1_RESOLUTION 576
+#define SMP_FBD2_RESOLUTION 577
+
+/*
+ * if using linear motor, defines pole pair length in micrometers
+ * note: supported only if DEVICE_CAPABILITY1_ENCODER_INTERFACE_V2 is set
+ */
+#define SMP_LINEAR_MOTOR_POLE_PAIR_PITCH 578
+
+/*
+ * AC motor pole configuration
+ *
+ * function depends on motor type:
+ * -dc motor - no effect
+ * -AC/bldc motor, number of polepairs
+ * -linear motor (FLAG_IS_LINEAR_MOTOR is set), then this defines motor pole pair pitch in micrometers
+ *  note: linear motor mode supported only if DEVICE_CAPABILITY1_ENCODER_INTERFACE_V2 is set
+ */
+#define SMP_MOTOR_POLEPAIRS 566 /*old name kept for compatibility*/
+#define SMP_AC_MOTOR_POLE_CONFIG 566 /*new name*/
 
 
 //flag bits & general
@@ -545,6 +612,7 @@
 	#define FLAG_ENABLE_MOTOR_SOUND_NOTIFICATIONS BV(17)
 	#define FLAG_FBD1_IS_LINEAR_ENCODER BV(18)
 	#define FLAG_FBD2_IS_LINEAR_ENCODER BV(19)
+	#define FLAG_IS_LINEAR_MOTOR BV(20) /* true if linear motor, changes effect of SMP_MOTOR_POLEPAIRS. supported if DEVICE_CAPABILITY1_ENCODER_INTERFACE_V2 is set */
 #define SMP_MOTION_FAULT_THRESHOLD 568
 #define SMP_HV_VOLTAGE_HI_LIMIT 569
 #define SMP_HV_VOLTAGE_LOW_LIMIT 570
@@ -574,16 +642,13 @@
  * 4 AMS SSI
  */
 #define SMP_SERIAL_ENC_BITS 574
+#define SMP_SERIAL_ENC2_BITS 578 // supported only if DEVICE_CAPABILITY1_HAS_SECOND_SERIAL_ENCODER_PORT is set
 
 /*
  * if HOMING_RESET_POS_AND_SETPOINT_TO_ABSOLUTE_FBD_READING is 1, then SMP_SERIAL_ENC_OFFSET will be added to the absolute feedback reading before resetting fb value and setpoint to it.
  */
 #define SMP_SERIAL_ENC_OFFSET 575
 
-/*
- * defines linear encoder resolution in counts/100mm. must be set if FLAG_FBD1_IS_LINEAR_ENCODER is 1
- */
-#define SMP_FBD1_LINEAR_ENC_RESOLUTION 576
 
 
 //primary feedback loop 200-299
@@ -678,12 +743,19 @@
  * bits 0-15 LSB: commutation sensor offset 0-65535 represents commutation angle offset 0-360 electical degrees
  * bit 16: invert sensor count direction
  * bit 17: enable commutation sensor
- * bits 18-31: reserved, always 0
+ * bit 18-19: commutation sensor source, choices (supported only if DEVICE_CAPABILITY1_ENCODER_INTERFACE_V2 is set)
+ * 	00=Hall sensor
+ * 	01=Absoute sensor on FBD1
+ * 	10=Absolute sensor on FBD2
+ * 	11=reserved
+ * bits 20-31: reserved, always 0
  */
 #define SMP_COMMUTATION_SENSOR_CONFIG 482
 	#define SMP_COMMUTATION_SENSOR_CONFIG_ANGLE_MASK 0xFFFF
 	#define SMP_COMMUTATION_SENSOR_CONFIG_INVERT_MASK 0x10000
 	#define SMP_COMMUTATION_SENSOR_CONFIG_ENABLE_MASK 0x20000
+	#define SMP_COMMUTATION_SENSOR_SOURCE 0xC0000
+
 //low pass filter selector, value 0=100Hz, 9=3300Hz, 10=4700Hz, 11=unlimited (see Granity for all options):
 #define SMP_TORQUE_LPF_BANDWIDTH 490
 
@@ -691,17 +763,19 @@
 #define SMP_AXIS_SCALE 491
 //output unit 0=mm 1=um 2=inch 3=revolutions 4=degrees
 #define SMP_AXIS_UNITS 492
-//0=none 1=qei1 2=qei2 3=resolver 4=digital hall sensors 5=serial data
+
 #define SMP_FB1_DEVICE_SELECTION 493
 	#define SMP_FBD_NONE 0
 	#define SMP_FBD_INCR1 1
 	#define SMP_FBD_INCR2 2
 	#define SMP_FBD_RESOLVER 3
 	#define SMP_FBD_HALLS 4
-	#define SMP_FBD_SERIALDATA 5
+	#define SMP_FBD_SERIALDATA 5 /*configured with SMP_SERIAL_ENC_BITS */
 	#define SMP_FBD_SINCOS16X 6
 	#define SMP_FBD_SINCOS64X 7
 	#define SMP_FBD_SINCOS256X 8
+	#define SMP_FBD_RESERVED 9
+	#define SMP_FBD_SERIALDATA_PORT2 10 /* configured with SMP_SERIAL_ENC2_BITS */
 #define SMP_FB2_DEVICE_SELECTION 494
 
 //in 1/2500 seconds.
@@ -710,26 +784,56 @@
 #define SMP_OVERSPEED_FAULT_LIMIT 496
 //0=min 6=max
 #define SMP_OVERCURRENT_FAULT_SENSITIVITY 497
-//when hit limt switch, do: 0=nothing, 1=disable torque, 2=fault stop, 3=servoed stop
+//when hit limt switch, do: 0=nothing, 1=disable torque, 2=fault stop, 3=dynamic braking beyond limits
 #define SMP_LIMIT_SW_FUNCTION 498
 		//choices:
         #define SMP_LIMIT_SW_DISABLED 0
         #define SMP_LIMIT_SW_NOTORQUE 1
         #define SMP_LIMIT_SW_FAULTSTOP 2
-        #define SMP_LIMIT_SW_SERVOSTOP 3
+        #define SMP_LIMIT_SW_DYNAMIC_BRAKING 3
         #define _SMP_LIMIT_SW_LAST 3
+
+/*parameter to configure activation of SMP_LIMIT_SW_FUNCTION.
+ * by default (0) limit switch function will perform when a physical limit switch OR soft travel limit is exceeded.
+ * optionally with value (1) limit switch function can be made to activate only on physical limit switch.
+ * this is useful if user want's to have soft limits and hardware limit switches as backup.
+ */
+#define SMP_LIMIT_SW_FUNCTION_SOURCE 499
+		//choices
+		#define SMP_LIMIT_SW_FUNCTION_SOURCE_SOFT_AND_HARD_LIMITS 0
+		#define SMP_LIMIT_SW_FUNCTION_SOURCE_HARD_LIMITS_ONLY 1
 
 #define SMP_CONTROL_BITS1 2533
 	//bitfiled values:
 	//CB1 & CB2 enables must be 1 to have drive enabled
 	//Control bits 1 are controlled by host software
 	#define SMP_CB1_ENABLE BV(0)//software enable
-	#define SMP_CB1_CLEARFAULTS BV(1)
-	#define SMP_CB1_QUICKSTOP BV(2)//not implemented at the moment
-	#define SMP_CB1_USE_TRAJPLANNER BV(3)//not implemented at the moment
+	#define SMP_CB1_CLEARFAULTS BV(1)//Note: not all drive firmware versions support this. to check whether it's supported, verify that bit DEVICE_CAPABILITY1_CONTROL_BITS1_VERSION2 is set in SMP_DEVICE_CAPABILITIES1 parameter
+	/*QUICKSTOP:
+	 * SMP_CB1_QUICKSTOP_SET drive will attempt to stop motor as soon as possible.
+	 *  - in velocity and position control modes, drive uses SMP_TRAJ_PLANNER_STOP_DECEL deceration
+	 *    ramp to reduce velocity setpoint to zero.
+	 *  - in torque mode, drive will set torq setpoint to zero and activate motor dynamic braking.
+	 *  - after quick stop has completed, setpoint will be automatically modified so that no motion
+	 *    should occur on QUICKSTOP_RELEASE event (except if user has ongoing buffered motion commands that
+	 *    may constantly may alter setpoint)
+	 *
+	 * SMP_CB1_QUICKSTOP_RELEASE will restore normal running state after above SET.
+	 *  - in position and velocity modes, drive speed will ramp-up at current user settable acceleration limit or at SMP_TRAJ_PLANNER_STOP_DECEL whichever is smaller.
+	 *  - if SMP_CB1_QUICKSTOP_SET is 1 simultaneously, it overrides the release CB.
+	 *
+ 	 * Notes:
+	 * - not all drive firmware versions support this. to check whether it's supported,
+	 *    check DEVICE_CAPABILITY1_CONTROL_BITSB1_VERSION2.
+	 * - one may check whether motor has been stopped by polling STAT_STANDING_STILL
+	 * - quickstop will abort homing if it was active
+	 */
+	#define SMP_CB1_QUICKSTOP_SET BV(2)//see above comment
+	#define SMP_CB1_QUICKSTOP_RELEASE BV(6)//see above comment
+	#define SMP_CB1_BYPASS_TRAJPLANNER BV(3)//when 1, drive will not obey acceration limit (equals setting acceleration limit to max, useful when external trajectory planner is used). Note: not all drive firmware versions support this. to check whether it's supported, verify that bit DEVICE_CAPABILITY1_CONTROL_BITS1_VERSION2 is set in SMP_DEVICE_CAPABILITIES1 parameter
 	#define SMP_CB1_START_HOMING BV(4)//write 1 here to start homing //not implemented at the moment
 	#define SMP_CB1_FORCE_ENABLE BV(5)//writing & holding value 1 here will override lack of phyiscal enable signal (SMP_CB2_ENABLE). User can force device go in enabled state when both SMP_CB1_ENABLE and aSMP_CB1_FORCE_ENABLE are set.
-	#define SMP_STATIC_CBS1 (SMP_CB1_ENABLE|SMP_CB1_USE_TRAJPLANNER|SMP_CB1_FORCE_ENABLE)
+	#define SMP_STATIC_CBS1 (SMP_CB1_ENABLE|SMP_CB1_BYPASS_TRAJPLANNER|SMP_CB1_FORCE_ENABLE)//list of controbits that are static by nature (not edge triggered functions)
 
 #define SMP_CONTROL_BITS2 2534
 	//bitfiled values:
@@ -881,16 +985,16 @@
 	#define DEVICE_CAPABILITY1_PMDC BV(0)
 	#define DEVICE_CAPABILITY1_PMAC BV(1)
 	#define DEVICE_CAPABILITY1_STEPPER BV(2)
-	#define DEVICE_CAPABILITY1_TORQUE BV(3)
-	#define DEVICE_CAPABILITY1_POSITIONING BV(4)
-	#define DEVICE_CAPABILITY1_VELOCITY BV(5)
-	#define DEVICE_CAPABILITY1_TRAJ_PLANNER BV(6)
-	#define DEVICE_CAPABILITY1_HALLS BV(7)
-	#define DEVICE_CAPABILITY1_INDEXER BV(8)
-	#define DEVICE_CAPABILITY1_HOMING BV(9)
-	#define DEVICE_CAPABILITY1_REF_PULSETRAIN BV(10)
-	#define DEVICE_CAPABILITY1_REF_PWM BV(11)
-	#define DEVICE_CAPABILITY1_REF_ANALOG BV(12)
+	#define DEVICE_CAPABILITY1_TORQUE BV(3) /* true if device supports torque control  */
+	#define DEVICE_CAPABILITY1_POSITIONING BV(4) /* true if device supports position control  */
+	#define DEVICE_CAPABILITY1_VELOCITY BV(5) /* true if device supports velocity control  */
+	#define DEVICE_CAPABILITY1_TRAJ_PLANNER BV(6) /* true if device has trajectory planner feature  */
+	#define DEVICE_CAPABILITY1_HALLS BV(7) /* true if device supports hall sensor input */
+	#define DEVICE_CAPABILITY1_INDEXER BV(8) /* true if device supports indexed (preprogrammed stored motion) feature */
+	#define DEVICE_CAPABILITY1_HOMING BV(9) /* true if device supports homing function */
+	#define DEVICE_CAPABILITY1_REF_PULSETRAIN BV(10) /* true if device has pulse & dir setpoint input */
+	#define DEVICE_CAPABILITY1_REF_PWM BV(11) /* true if device has pwm setpoint input */
+	#define DEVICE_CAPABILITY1_REF_ANALOG BV(12) /* true if device has analog setpoint input */
 	#define DEVICE_CAPABILITY1_REF_QUADRATURE BV(13)
 	#define DEVICE_CAPABILITY1_FB_QUADRATURE BV(14)
 	#define DEVICE_CAPABILITY1_FB_SSI BV(15)
@@ -899,8 +1003,13 @@
 	#define DEVICE_CAPABILITY1_GEARING BV(18)
 	#define DEVICE_CAPABILITY1_AUTOSETUP_COMMUTATION_SENSOR BV(19)
 	#define DEVICE_CAPABILITY1_BUFFERED_MOTION_LINEAR_INTERPOLATION BV(20)
-	#define DEVICE_CAPABILITY1_MOTOR_DRIVE BV(21) //1 if device has motor drive capabilities, this flag is implemented on devices with SM protocol version 28 or greater
-	#define DEVICE_CAPABILITY1_FAULT_INFO_VALUES BV(22) //1 if device supports parameters 8112 and 8113
+	#define DEVICE_CAPABILITY1_MOTOR_DRIVE BV(21) /*1 if device has motor drive capabilities, this flag is implemented on devices with SM protocol version 28 or greater */
+	#define DEVICE_CAPABILITY1_FAULT_INFO_VALUES BV(22) /*1 if device supports parameters 8112 and 8113 */
+	#define DEVICE_CAPABILITY1_SELECTABLE_FAST_UPDATE_CYCLE_FORMAT BV(23) /*1 if device supports parameter SMP_FAST_UPDATE_CYCLE_FORMAT */
+	#define DEVICE_CAPABILITY1_CONTROL_BITS1_VERSION2 BV(24) /*drive implements CB1_QUICKSTOP_SET, CB1_QUICKSTOP_RELEASE, CB1_CLEARFAULTS, CB1_BYPASS_TRAJPLANNER bits in SMP_CONTROL_BITS1 */
+	#define DEVICE_CAPABILITY1_SUPPORTS_STAT_STANDING_STILL BV(25) /*drive implements STAT_STANDING_STILL status bit */
+	#define DEVICE_CAPABILITY1_ENCODER_INTERFACE_V2 BV(26)
+	#define DEVICE_CAPABILITY1_HAS_SECOND_SERIAL_ENCODER_PORT BV(27) /*true if device has two serial encoder inputs */
 
 //read only bit field that is can be used to identify device capabilities
 //the list below is subject to extend
@@ -921,6 +1030,8 @@
 	#define DEVICE_CAPABILITY2_UTILIZE_ABSOLUTE_FBD BV(12) /*supports homing by absolute feedback device info & can use absolute fbd as commutation sensor */
 	#define DEVICE_CAPABILITY2_SUPPORT_DIGITAL_HALL_SENSOR_FBD BV(13)
     #define DEVICE_CAPABILITY2_SUPPORT_FORCE_CONTROL BV(14)
+	#define DEVICE_CAPABILITY2_LOW_LEVEL_GPIO BV(15)
+	#define DEVICE_CAPABILITY2_HAS_SMP_LIMIT_SW_FUNCTION_SOURCE BV(16) /*true if device supports parameter SMP_LIMIT_SW_FUNCTION_SOURCE*/
 
 #define SMP_FIRMWARE_VERSION 6010
 #define SMP_FIRMWARE_BACKWARDS_COMP_VERSION 6011

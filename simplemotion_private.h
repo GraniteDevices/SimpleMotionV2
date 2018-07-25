@@ -7,12 +7,10 @@
 
 #include "simplemotion.h"
 #include "busdevice.h"
+#include "user_options.h"
 #include <stdio.h>
 
 #define SM_VERSION 0x020700
-//max number of simultaneously opened buses. change this and recompiple SMlib if
-//necessary (to increase channels or reduce to save memory)
-#define SM_MAX_BUSES 10
 
 //bus device types
 #define BUSDEV_NONE 0
@@ -33,11 +31,15 @@ extern const smuint8 table_crc8[];
 extern FILE *smDebugOut; //such as stderr or file handle. if NULL, debug info disbled
 extern smuint16 readTimeoutMs;
 
-//smDebug: prints debug info to smDebugOut stream. If no handle availab, set it to -1.
+//smDebug: prints debug info to smDebugOut stream. If no handle available, set it to -1.
 //set verbositylevel according to frequency of prints made.
-//I.e Low=low frequency, so it gets displayed when global verbosity level is set to at least Low or set it to Trace which gets filtered
-//out if global verbisity level is set less than Trace
+//I.e SMDebugLow=low frequency, so it gets displayed when global verbosity level is set to at least Low or set it to Trace which gets filtered
+//out if global verbisity level is set less than SMDebugTrace
+#ifdef ENABLE_DEBUG_PRINTS
 void smDebug( smbus handle, smVerbosityLevel verbositylevel, char *format, ...);
+#else
+#define smDebug(...) {}
+#endif
 //accumulates status to internal variable by ORing the bits. returns same value that is fed as paramter
 SM_STATUS recordStatus( const smbus handle, const SM_STATUS stat );
 

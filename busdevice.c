@@ -1,4 +1,5 @@
 #include "busdevice.h"
+#include "user_options.h"
 
 #include "drivers/serial/pcserialport.h"
 #include "drivers/tcpip/tcpclient.h"
@@ -67,7 +68,7 @@ smbusdevicehandle smBDOpen( const char *devicename )
     if(h>=0) return h;//was success
 #endif
 #else
-    smDebug( -1, High, "smBDOpen ENABLE_BUILT_IN_DRIVERS is not defined during SM library compile time. smOpenBus not supported in this case, see README.md.");
+    smDebug( -1, SMDebugHigh, "smBDOpen ENABLE_BUILT_IN_DRIVERS is not defined during SM library compile time. smOpenBus not supported in this case, see README.md.");
 #endif
 
     //none succeeded
@@ -148,9 +149,11 @@ smbool smBDWrite(const smbusdevicehandle handle, const smuint8 byte )
         //append to buffer
         BusDevice[handle].txBuffer[BusDevice[handle].txBufferUsed]=byte;
         BusDevice[handle].txBufferUsed++;
+        smDebug(handle, SMDebugTrace, "  Sending byte %02x\n",byte);
         return smtrue;
     }
 
+    smDebug(handle, SMDebugMid, "  Sending byte %02x failed, TX buffer overflown\n",byte);
     return smfalse;
 }
 
@@ -180,8 +183,16 @@ smbool smBDRead( const smbusdevicehandle handle, smuint8 *byte )
 
     int n;
     n=BusDevice[handle].busReadCallback(BusDevice[handle].busDevicePointer, byte, 1);
-    if( n!=1 ) return smfalse;
-    else return smtrue;
+    if( n!=1 )
+    {
+        smDebug(handle, SMDebugMid, "  Reading a byte from bus failed\n");
+        return smfalse;
+    }
+    else
+    {
+        smDebug(handle, SMDebugTrace, "  Got byte %02x \n",*byte);
+        return smtrue;
+    }
 }
 
 //BUS DEVICE INFO FETCH FUNCTIONS:

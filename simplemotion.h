@@ -59,10 +59,15 @@ typedef struct
 } SM_BUS_DEVICE_INFO;
 
 
-//comment out to disable, gives smaller & faster code
-#define ENABLE_DEBUG_PRINTS
 
-typedef enum _smVerbosityLevel {Off,Low,Mid,High,Trace} smVerbosityLevel;
+/* Set debug verbosity level with smSetDebugOutput
+ * SMDebugOff=no debug prints (default)
+ * SMDebugLow=only some excepetion/errors printed
+ * SMDebugMid=some common function calls printed
+ * SMDebugHigh=more details of function calls/bus communication printed
+ * SMDebugTrace=print all raw RX/TX data and parsed read values of RX data
+ */
+typedef enum _smVerbosityLevel {SMDebugOff,SMDebugLow,SMDebugMid,SMDebugHigh,SMDebugTrace} smVerbosityLevel;
 
 //define communication interface device driver callback types
 typedef void* smBusdevicePointer;
@@ -138,7 +143,18 @@ Ie V 2.5.1 would be 0x020501 and 1.2.33 0x010233 */
 LIB smuint32 smGetVersion();
 
 
-/** Set stream where debug output is written. By default nothing is written. */
+/** Set stream where debug output is written. By default nothing is written.
+smVerbosityLevel:
+ * SMDebugOff=no debug prints (default)
+ * SMDebugLow=only some excepetion/errors printed
+ * SMDebugMid=some common function calls printed
+ * SMDebugHigh=more details of function calls/bus communication printed
+ * SMDebugTrace=print all raw RX/TX data and parsed read values of RX data
+ *
+ * NOTE: for debug prints to work, SM library must be compiled with ENABLE_DEBUG_PRINTS defined (i.e. uncomment
+ * that definition from simplemotion.h or define it application wide with compiler flag, i.e. -DENABLE_DEBUG_PRINTS).
+ * Enabling it may slow down & grow binary significantly especially on MCU systems.
+ */
 LIB void smSetDebugOutput( smVerbosityLevel level, FILE *stream );
 
 /** This function returns all occurred SM_STATUS bits after smOpenBus or resetCumulativeStatus call*/
