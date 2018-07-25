@@ -185,7 +185,7 @@ smBusdevicePointer serialPortOpen(const char * port_device_name, smint32 baudrat
     #if defined(IOSSDATALAT)
     unsigned long microsecs = 1000UL;
     if (ioctl(port_handle, IOSSDATALAT, &microsecs) == -1) {
-        smDebug(-1, Low, "Serial port error: error setting read latency");
+        smDebug(-1, SMDebugLow, "Serial port error: error setting read latency");
         close(port_handle);
         return SMBUSDEVICE_RETURN_ON_OPEN_FAIL;
     }
