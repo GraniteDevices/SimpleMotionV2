@@ -113,12 +113,9 @@ LIB smbus smOpenBusWithCallbacks( const char *devicename, BusdeviceOpen busOpenC
 	- then close port with smCloseBus
 	- then call smSetBaudrate(N)
 	- then open bus again with smOpenBus
-	
-	Note that in upcoming SM device firmware versions, bitrate will be reset to default (460800) if device side SM bus watchdog timer has been enabled, and it timeouts.
-	This allows re-establishing connection at defautl speed if connection breaks up and SM bus watchdog timeout gets exceeded. To identify is device supports this, 
-	read parameter SMP_SM_VERSION. Values above 25 support this feature. Value 25 and below will not reset baudrate.
-	
-	Note also that SMP_BUS_SPEED will not be saved in device flash memory - it will reset to default at every reset & power on.
+
+    The above method does not utilize very useful SM watchog feature that allows securely re-connecting in case of lost connection to the target devices.
+    For defails, see example at https://granitedevices.com/wiki/Changing_SimpleMotion_baud_rate
 	*/
 LIB void smSetBaudrate( unsigned long pbs );
 
