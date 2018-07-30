@@ -319,6 +319,7 @@
 	#define SMP_GPIO_LOW_LEVEL_ACCESS_SET_PIN_MODE 0
 	#define SMP_GPIO_LOW_LEVEL_ACCESS_WRITE_PIN_OUTPUT 1
 	#define SMP_GPIO_LOW_LEVEL_ACCESS_READ_PIN_INPUT 2
+	#define SMP_GPIO_LOW_LEVEL_ACCESS_READ_ADC_PIN_INPUT 3
 /* used only for device production testing, not recommended for normal operation, therefore not publicly documented */
 #define SMP_GPIO_LOW_LEVEL_INPUT_VALUE 103
 
@@ -790,6 +791,7 @@
         #define SMP_LIMIT_SW_DISABLED 0
         #define SMP_LIMIT_SW_NOTORQUE 1
         #define SMP_LIMIT_SW_FAULTSTOP 2
+		#define SMP_LIMIT_SW_SERVOSTOP 3 /*this is obsolete definition, kept for backwards compatibility, use new SMP_LIMIT_SW_DYNAMIC_BRAKING instead */
         #define SMP_LIMIT_SW_DYNAMIC_BRAKING 3
         #define _SMP_LIMIT_SW_LAST 3
 
