@@ -127,6 +127,13 @@ typedef struct {
         unsigned long ID:2; //MSB 2 bits. when serailzied to bytestream byte4 must be transmitted first to contain ID
 } PACKED SMPayloadCommandRet8;
 
+typedef union
+{
+    smuint8 U8[4];
+    smuint16 U16[2];
+    smuint32 U32;
+} UnionOf4Bytes;
+
 /*Workaround to have packed structs that compile on GCC and MSVC*/
 #ifdef __GNUC__
 #else/*Assuming MSVC*/

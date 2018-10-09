@@ -1,5 +1,6 @@
 #include "devicedeployment.h"
 #include "user_options.h"
+#include "crc.h"
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -316,54 +317,236 @@ smbool smGetDeviceFirmwareUniqueID( smbus smhandle, int deviceaddress, smuint32 
         return smfalse;
 }
 
+/* local helper functions to get 8, 16 or 32 bit value from data buffer.
+ * these will increment *buf pointer on each call.
+ *
+ * FYI: motivation of using these, is that simple pointer cast to various sizes
+ * might not work on all CPU architectures due to data alignment restrictions.
+*/
+
+
+smuint8 bufferGet8( smuint8 **buf )
+{
+    smuint8 ret=(*buf)[0];
+    *buf++;
+    return ret;
+}
+
+smuint16 bufferGet16( smuint8 **buf )
+{
+    UnionOf4Bytes d;
+    d.U8[0]=(*buf)[0];
+    d.U8[1]=(*buf)[1];
+
+    smuint16 ret=d.U16[0];
+
+    *buf+=2;
+    return ret;
+}
+
+smuint32 bufferGet32( smuint8 **buf )
+{
+    UnionOf4Bytes d;
+    d.U8[0]=(*buf)[0];
+    d.U8[1]=(*buf)[1];
+    d.U8[2]=(*buf)[2];
+    d.U8[3]=(*buf)[3];
+
+    smuint32 ret=d.U32;
+
+    *buf+=4;
+    return ret;
+}
+
+
 FirmwareUploadStatus verifyFirmwareData(smuint8 *data, smuint32 numbytes, int connectedDeviceTypeId,
                                         smuint32 *primaryMCUDataOffset, smuint32 *primaryMCUDataLenth,
                                         smuint32 *secondaryMCUDataOffset,smuint32 *secondaryMCUDataLength )
 {
-    //see http://granitedevices.com/wiki/Argon_firmware_file_format
+    //see https://granitedevices.com/wiki/Firmware_file_format_(.gdf)
 
     smuint32 filetype;
     filetype=((smuint32*)data)[0];
     if(filetype!=0x57464447) //check header string "GDFW"
         return FWInvalidFile;
 
-    smuint16 filever, deviceid;
-    smuint32 primaryMCUSize, secondaryMCUSize;
+    smuint32 filever, deviceid;
 
     filever=((smuint16*)data)[2];
-    deviceid=((smuint16*)data)[3];
-    primaryMCUSize=((smuint32*)data)[2];
-    secondaryMCUSize=((smuint32*)data)[3];
-    if(secondaryMCUSize==0xffffffff)
-        secondaryMCUSize=0;//it is not present
 
-    if(filever!=300)
-        return FWIncompatibleFW;
-
-    if(deviceid/1000!=connectedDeviceTypeId/1000)//compare only device and model family. AABBCC so AAB is compared value, ARGON=004 IONI=011
-        return FWIncompatibleFW;
-
-    //get checksum and check it
-    smuint32 cksum,cksumcalc=0;
-    smuint32 i;
-    smuint32 cksumOffset=4+2+2+4+4+primaryMCUSize+secondaryMCUSize;
-    if(cksumOffset>numbytes-4)
-        return FWInvalidFile;
-    cksum=((smuint32*)(data+cksumOffset))[0];
-
-    for(i=0;i< numbytes-4;i++)
+    if(filever==300)//handle GDF version 300 here
     {
-        cksumcalc+=data[i];
+        smuint32 primaryMCUSize, secondaryMCUSize;
+
+        deviceid=((smuint16*)data)[3];
+        primaryMCUSize=((smuint32*)data)[2];
+        secondaryMCUSize=((smuint32*)data)[3];
+        if(secondaryMCUSize==0xffffffff)
+            secondaryMCUSize=0;//it is not present
+
+        if(deviceid/1000!=connectedDeviceTypeId/1000)//compare only device and model family. AABBCC so AAB is compared value, ARGON=004 IONI=011
+            return FWIncompatibleFW;
+
+        //get checksum and check it
+        smuint32 cksum,cksumcalc=0;
+        smuint32 i;
+        smuint32 cksumOffset=4+2+2+4+4+primaryMCUSize+secondaryMCUSize;
+        if(cksumOffset>numbytes-4)
+            return FWInvalidFile;
+        cksum=((smuint32*)(data+cksumOffset))[0];
+
+        for(i=0;i< numbytes-4;i++)
+        {
+            cksumcalc+=data[i];
+        }
+
+        if(cksum!=cksumcalc)
+            return FWIncompatibleFW;
+
+        //let caller know where the firmware data is located in buffer
+        *primaryMCUDataOffset=4+2+2+4+4;
+        *primaryMCUDataLenth=primaryMCUSize;
+        *secondaryMCUDataOffset=*primaryMCUDataOffset+*primaryMCUDataLenth;
+        *secondaryMCUDataLength=secondaryMCUSize;
     }
+    else if(filever>=400 && filever<500)//handle GDF versions 400-499 here
+    {
+        /* GDF version 400 format
+         * ----------------------
+         *
+         * Note: GDF v400 is not limited to firmware files any more,
+         * it can be used as general purpose data container for up to 4GB data chunks.
+         *
+         * Binary file contents
+         * --------------------
+         *
+         * bytes  meaning:
+         *
+         * 4	ASCII string = "GDFW"
+         * 2	GDF version = 400
+         * 2	GDF backwards compatible version = 400
+         * 4	number of data chunks in file = N
+         *
+         * repeat N times:
+         * 4	data chunk descriptive name string length in bytes = L
+         * L	data chunk descriptive name string in UTF8
+         * 4	data chunk type
+         * 4	data chunk option bits
+         * 4	data chunk size in bytes=S
+         * S	data
+         * end of repeat
+         *
+         * 4	file's CRC-32
+         *
+         * data chunk types
+         * ----------------
+         * 0=target device name, UTF8
+         * 1=firmware name, UTF8
+         * 2=firmware version string, UTF8
+         * 3=remarks, UTF8
+         * 4=manufacturer, UTF8
+         * 5=copyright, UTF8
+         * 6=license, UTF8
+         * 7=disclaimer, UTF8
+         * 8=circulation, UTF8 (i.e. customer name)
+         * 20=unix timestamp, S=4
+         * 50=target device type ID and mask, S=8
+         *   first 4 bytes are target device ID, i.e. 11000=IONI
+         *   second 4 bytes are mask/divider for type comparison, must be >0
+         *   file is compatible if following eq is true: floor(readID/divider) == floor(targetID/divider)
+         * 100=main MCU FW binary, S=any
+         * 101=main MCU FW unique identifier number, S=4
+         * 102=main MCU FW required HW feature bits, S=4
+         *     helps to determine whether FW works on target
+         *     device version when compared to a value readable from the device.
+         *     0 means no requirements, works on all target ID devices.
+         * 200=secondary MCU FW binary, S=any
+         *
+         * note: firmware may contain many combinations of above chunks. in basic case, it contains just chunk type 100 and nothing else.
+         *
+         * data chunk option bits
+         * ----------------------
+         * bit 0: if 1, GDF loading application must support/understand the chunk type to use this file
+         * bits 1-31: reserved
+         *
+         */
+        smuint8 *dataPtr=&data[6];//start at byte 6 because first 6 bytes are already read
+        smuint8 *dataCRCPtr=&data[numbytes-4];
+        smuint16 backwardsCompVersion;
+        smuint32 numOfChunks;
+        smuint32 targetFW_ID_Divider;
+        smuint32 chunkType;
+        smuint32 chunkTypeStringLen;
+        smuint32 chunkSize;
+        smuint16 chunkOptions;
+        smuint32 i;
+        smuint32 primaryMCU_FW_UID;
 
-    if(cksum!=cksumcalc)
-        return FWIncompatibleFW;
+        //check file compatibility
+        backwardsCompVersion=bufferGet16(&dataPtr);
+        if(backwardsCompVersion!=400)
+            return FWIncompatibleFW;//this version of library requires file that is backwards compatible with version 400
 
-    //let caller know where the firmware data is located in buffer
-    *primaryMCUDataOffset=4+2+2+4+4;
-    *primaryMCUDataLenth=primaryMCUSize;
-    *secondaryMCUDataOffset=*primaryMCUDataOffset+*primaryMCUDataLenth;
-    *secondaryMCUDataLength=secondaryMCUSize;
+        //check file CRC
+        crcInit();
+        crc calculatedCRC=crcFast((const unsigned char*)data, numbytes-4);
+        crc fileCRC=bufferGet32(&dataCRCPtr);
+        if(calculatedCRC!=fileCRC)
+            return FWInvalidFile;//CRC mismatch
+
+        //read data chunks
+        numOfChunks=bufferGet32(&dataPtr);
+        for( i=0; i<numOfChunks; i++ )
+        {
+            chunkTypeStringLen=bufferGet32(&dataPtr);
+            dataPtr+=chunkTypeStringLen;//skip type string, we don't use it for now
+            chunkType=bufferGet32(&dataPtr);
+            chunkOptions=bufferGet32(&dataPtr);
+            chunkSize=bufferGet32(&dataPtr);
+
+            //handle chunk
+            if(chunkType==50 && chunkSize==8)
+            {
+                //check target device type
+                deviceid=bufferGet32(&dataPtr);
+                targetFW_ID_Divider=bufferGet32(&dataPtr);
+
+                if(targetFW_ID_Divider<1)
+                    return FWInvalidFile;//invalid file
+                if(deviceid/targetFW_ID_Divider!=connectedDeviceTypeId/targetFW_ID_Divider)//if divider=1000, compare only device and model family. AABBCC so AAB is compared value, ARGON=004 IONI=011
+                    return FWUnsupportedTargetDevice;
+            }
+            else if(chunkType==100)//main MCU FW
+            {
+                *primaryMCUDataOffset=(smuint32)(dataPtr-data);
+                *primaryMCUDataLenth=chunkSize;
+                dataPtr+=chunkSize;//skip to next chunk
+            }
+            else if(chunkType==200)//secondary MCU FW
+            {
+                *secondaryMCUDataOffset=(smuint32)(dataPtr-data);
+                *secondaryMCUDataLength=chunkSize;
+                dataPtr+=chunkSize;//skip to next chunk
+            }
+            else if(chunkType==101 && chunkSize==4)//main MCU FW unique identifier
+            {
+                primaryMCU_FW_UID=bufferGet32(&dataPtr);
+            }
+            else if(chunkOptions&1) //bit nr 0 is 1, which means we should be able to handle this chunk to support the GDF file, so as we don't know what chunk it is, this is an error
+            {
+                return FWIncompatibleFW;
+            }
+            else //unsupported chunk that we can skip
+            {
+                dataPtr+=chunkSize;//skip to next chunk
+            }
+        }
+
+        if((smuint32)(dataPtr-data)!=numbytes-4)//check if chunks total size match file size
+            return FWInvalidFile;
+    }
+    else
+        return FWIncompatibleFW;//unsupported file version
 
     return FWComplete;
 }

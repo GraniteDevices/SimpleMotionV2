@@ -7,7 +7,7 @@ INCLUDE_BUILT_IN_DRIVERS = 1
 #requires FTDI D2XX driver & library. benefit of this support is automatic detection of correct device and automatic low latency setting for FTDI USB serial converters
 SUPPORT_FTDI_D2XX_DRIVER = 1
 
-INCLUDEPATH += $$PWD
+INCLUDEPATH += $$PWD $$PWD/utils
 DEPENDPATH += $$PWD
 
 
@@ -17,12 +17,12 @@ DEFINES += SIMPLEMOTIONV2_LIBRARY
 #DEFINES += ENABLE_DEBUG_PRINTS
 
 SOURCES += $$PWD/sm_consts.c $$PWD/simplemotion.c $$PWD/busdevice.c \
-    $$PWD/bufferedmotion.c $$PWD/devicedeployment.c
+    $$PWD/bufferedmotion.c $$PWD/devicedeployment.c $$PWD/utils/crc.c
 
 HEADERS += $$PWD/simplemotion_private.h\
     $$PWD/busdevice.h  $$PWD/simplemotion.h $$PWD/sm485.h $$PWD/simplemotion_defs.h \
     $$PWD/bufferedmotion.h $$PWD/devicedeployment.h \
-    $$PWD/user_options.h
+    $$PWD/user_options.h $$PWD/utils/crc.h
 
 
 greaterThan(INCLUDE_BUILT_IN_DRIVERS, 0+)  {
