@@ -359,7 +359,7 @@ smuint32 bufferGet32( smuint8 **buf )
 }
 
 
-FirmwareUploadStatus verifyFirmwareData(smuint8 *data, smuint32 numbytes, int connectedDeviceTypeId,
+FirmwareUploadStatus verifyFirmwareData(smuint8 *data, smuint32 numbytes, smuint32 connectedDeviceTypeId,
                                         smuint32 *primaryMCUDataOffset, smuint32 *primaryMCUDataLenth,
                                         smuint32 *secondaryMCUDataOffset,smuint32 *secondaryMCUDataLength )
 {
@@ -550,6 +550,35 @@ FirmwareUploadStatus verifyFirmwareData(smuint8 *data, smuint32 numbytes, int co
 
     return FWComplete;
 }
+
+/**
+ * @brief smFirmwareUploadStatusToString converts FirmwareUploadStatus enum to string.
+ * @param string user supplied pointer where string will be stored. must have writable space for at least 100 characters.
+ * @return void
+ */
+void smFirmwareUploadStatusToString(const FirmwareUploadStatus FWUploadStatus, char *string )
+{
+    int i;
+    const int count=sizeof(FirmwareUploadStatusToString)/sizeof(FirmwareUploadStatusToStringType);
+
+    for(i=0;i<count;i++)
+    {
+        if(FirmwareUploadStatusToString[i].FWUSEnum==FWUploadStatus)
+        {
+            strcpy(string,FirmwareUploadStatusToString[i].string);
+            return;
+        }
+    }
+
+    if((int)FWUploadStatus>=0 && (int)FWUploadStatus<=99 )
+    {
+        snprintf( string, 100, "Firmware install %d%% done", (int)FWUploadStatus);
+        return;
+    }
+
+    snprintf( string, 100, "SimpleMotion lib error: unknown FW uload state (%d), please check input or report a bug", (int)FWUploadStatus);
+}
+
 
 smbool loadBinaryFile( const char *filename, smuint8 **data, int *numbytes )
 {

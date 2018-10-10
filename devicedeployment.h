@@ -42,8 +42,29 @@ typedef enum
     FWConnectionLoss=-4,
     FWUnsupportedTargetDevice=-5,
     FWFileNotReadable=-6,
-    FWConnectingDFUModeFailed=-7
+    FWConnectingDFUModeFailed=-7,
+    FWAlreadyInstalled=-8
 } FirmwareUploadStatus;
+
+typedef struct
+{
+    FirmwareUploadStatus FWUSEnum;
+    const char *string;
+} FirmwareUploadStatusToStringType;
+
+/* table for converting enums to strings */
+const FirmwareUploadStatusToStringType FirmwareUploadStatusToString[]=
+{
+    {FWComplete,"FW install complete or given FW was already installed"},
+    {FWInvalidFile,"Invalid FW file"},
+    {FWConnectionError,"Connection error"},
+    {FWIncompatibleFW,"Incompatible FW file"},
+    {FWConnectionLoss,"Connection loss during upgrade"},
+    {FWUnsupportedTargetDevice,"Unsupported target device"},
+    {FWFileNotReadable,"FW file not readable"},
+    {FWConnectingDFUModeFailed,"Failed to connect in device DFU mode"},
+    {FWAlreadyInstalled,"Given firmware already installed in the target device"},
+};
 
 /**
  * @brief smFirmwareUpload Sets drive in firmware upgrade mode if necessary and uploads a new firmware. Call this many until it returns value 100 (complete) or a negative value (error).
@@ -53,6 +74,14 @@ typedef enum
  * @return Enum FirmwareUploadStatus that indicates errors or Complete status. Typecast to integer to get progress value 0-100.
  */
 LIB FirmwareUploadStatus smFirmwareUpload(const smbus smhandle, const int smaddress, const char *firmware_filename );
+
+
+/**
+ * @brief smFirmwareUploadStatusToString converts FirmwareUploadStatus enum to string.
+ * @param string user supplied pointer where string will be stored. must have writable space for at least 100 characters.
+ * @return void
+ */
+LIB void smFirmwareUploadStatusToString(const FirmwareUploadStatus FWUploadStatus, char *string );
 
 /**
  * @brief smFirmwareUpload Sets drive in firmware upgrade mode if necessary and uploads a new firmware. Call this many until it returns value 100 (complete) or a negative value (error).
