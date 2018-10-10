@@ -425,6 +425,7 @@ FirmwareUploadStatus verifyFirmwareData(smuint8 *data, smuint32 numbytes, int co
          * 4	ASCII string = "GDFW"
          * 2	GDF version = 400
          * 2	GDF backwards compatible version = 400
+         * 4	File category = 100 for firmware files  (value range <2^31 is reserved and managed by GD, range from 2^31 to 2^32-1 are free for use by anyone for any purpose)
          * 4	number of data chunks in file = N
          *
          * repeat N times:
@@ -449,11 +450,10 @@ FirmwareUploadStatus verifyFirmwareData(smuint8 *data, smuint32 numbytes, int co
          * 6=license, UTF8
          * 7=disclaimer, UTF8
          * 8=circulation, UTF8 (i.e. customer name)
-         * 20=unix timestamp, S=4
-         * 50=target device type ID and mask, S=8
-         *   first 4 bytes are target device ID, i.e. 11000=IONI
-         *   second 4 bytes are mask/divider for type comparison, must be >0
-         *   file is compatible if following eq is true: floor(readID/divider) == floor(targetID/divider)
+         * 20=unix timestamp divided by 4, S=4
+         * 50=target device type ID range, S=8
+         *   first 4 bytes are lowest supported target device ID, i.e. 11000=IONI
+         *   second 4 bytes are highest supported target device ID's, i.e. 11200=IONI PRO HC
          * 100=main MCU FW binary, S=any
          * 101=main MCU FW unique identifier number, S=4
          * 102=main MCU FW required HW feature bits, S=4
@@ -472,9 +472,8 @@ FirmwareUploadStatus verifyFirmwareData(smuint8 *data, smuint32 numbytes, int co
          */
         smuint8 *dataPtr=&data[6];//start at byte 6 because first 6 bytes are already read
         smuint8 *dataCRCPtr=&data[numbytes-4];
-        smuint16 backwardsCompVersion;
         smuint32 numOfChunks;
-        smuint32 targetFW_ID_Divider;
+        smuint32 deviceid_max;
         smuint32 chunkType;
         smuint32 chunkTypeStringLen;
         smuint32 chunkSize;
@@ -483,9 +482,12 @@ FirmwareUploadStatus verifyFirmwareData(smuint8 *data, smuint32 numbytes, int co
         smuint32 primaryMCU_FW_UID;
 
         //check file compatibility
-        backwardsCompVersion=bufferGet16(&dataPtr);
-        if(backwardsCompVersion!=400)
+        if(bufferGet16(&dataPtr)!=400)
             return FWIncompatibleFW;//this version of library requires file that is backwards compatible with version 400
+
+        //check file category (100=firmware file)
+        if(bufferGet32(&dataPtr)!=100)
+            return FWInvalidFile;//not FW GDF file
 
         //check file CRC
         crcInit();
@@ -509,11 +511,9 @@ FirmwareUploadStatus verifyFirmwareData(smuint8 *data, smuint32 numbytes, int co
             {
                 //check target device type
                 deviceid=bufferGet32(&dataPtr);
-                targetFW_ID_Divider=bufferGet32(&dataPtr);
+                deviceid_max=bufferGet32(&dataPtr);
 
-                if(targetFW_ID_Divider<1)
-                    return FWInvalidFile;//invalid file
-                if(deviceid/targetFW_ID_Divider!=connectedDeviceTypeId/targetFW_ID_Divider)//if divider=1000, compare only device and model family. AABBCC so AAB is compared value, ARGON=004 IONI=011
+                if(connectedDeviceTypeId<deviceid || connectedDeviceTypeId>deviceid_max)
                     return FWUnsupportedTargetDevice;
             }
             else if(chunkType==100)//main MCU FW
