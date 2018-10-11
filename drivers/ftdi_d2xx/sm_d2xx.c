@@ -167,6 +167,19 @@ smint32 d2xxPortWrite(smBusdevicePointer busdevicepointer, unsigned char *buf, s
     return BytesWritten;
 }
 
+smbool d2xxPortPurge(smBusdevicePointer busdevicePointer)
+{
+    FT_HANDLE handle=(FT_HANDLE)busdevicePointer;
+
+    if(FT_Purge(handle,FT_PURGE_RX|FT_PURGE_TX)!=FT_OK)
+    {
+        smDebug( -1, SMDebugLow, "FTDI port error: failed to purge\n");
+        return smfalse;
+    }
+
+    return smtrue;
+}
+
 
 void d2xxPortClose(smBusdevicePointer busdevicepointer)
 {

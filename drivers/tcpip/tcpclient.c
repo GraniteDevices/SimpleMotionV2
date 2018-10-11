@@ -202,6 +202,10 @@ int tcpipPortWrite(smBusdevicePointer busdevicePointer, unsigned char *buf, int 
     return sent;
 }
 
+smbool tcpipPortPurge(smBusdevicePointer busdevicePointer)
+{
+    return smtrue;//not implemented atm
+}
 
 void tcpipPortClose(smBusdevicePointer busdevicePointer)
 {

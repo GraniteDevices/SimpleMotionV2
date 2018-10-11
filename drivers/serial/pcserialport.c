@@ -232,6 +232,16 @@ smint32 serialPortWrite(smBusdevicePointer busdevicePointer, unsigned char *buf,
     return(write((int)serialport_handle, buf, size));
 }
 
+smbool serialPortPurge(smBusdevicePointer busdevicePointer)
+{
+    int serialport_handle=(int)busdevicePointer;
+    //flush any stray bytes from device receive buffer that may reside in it
+    //note: according to following page, delay before this may be necessary http://stackoverflow.com/questions/13013387/clearing-the-serial-ports-buffer
+    usleep(50000);
+    tcflush(serialport_handle,TCIOFLUSH);
+
+    return smtrue;
+}
 
 void serialPortClose(smBusdevicePointer busdevicePointer)
 {
@@ -325,6 +335,15 @@ smint32 serialPortWrite(smBusdevicePointer busdevicePointer, unsigned char *buf,
     if(WriteFile((HANDLE)serialport_handle, buf, size, (LPDWORD)((void *)&n), NULL))
         return n;
     return -1;
+}
+
+smbool serialPortPurge(smBusdevicePointer busdevicePointer)
+{
+    HANDLE serialport_handle=(HANDLE)busdevicePointer;
+    if(PurgeComm((HANDLE)serialport_handle, PURGE_RXABORT|PURGE_RXCLEAR|PURGE_TXABORT|PURGE_TXCLEAR) )
+        return smtrue;
+    else
+        return smfalse;
 }
 
 

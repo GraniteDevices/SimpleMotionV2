@@ -288,6 +288,7 @@ LIB LoadConfigurationStatus smLoadConfigurationFromBuffer( const smbus smhandle,
         smDebug(smhandle,SMDebugLow,"Restarting device\n");
         smSetParameter( smhandle, smaddress, SMP_SYSTEM_CONTROL, SMP_SYSTEM_CONTROL_RESTART );
         sleep_ms(2000);//wait power-on
+        smPurge(smhandle);
     }
 
     if(getCumulativeStatus(smhandle)!=SM_OK)
@@ -855,6 +856,7 @@ FirmwareUploadStatus smFirmwareUploadFromBuffer( const smbus smhandle, const int
     else if(state==StatEnterDFU)
     {
         sleep_ms(2500);//wait device to reboot in DFU mode. probably shorter delay would do.
+        smPurge(smhandle);
 
         //check if device is in DFU mode already
         smint32 busMode;
@@ -872,6 +874,7 @@ FirmwareUploadStatus smFirmwareUploadFromBuffer( const smbus smhandle, const int
     else if(state==StatFindDFUDevice)
     {
         int i;
+        //scan thru addresses where SM device may appear in DFU mode if not appearing in it's original address
         for(i=245;i<=255;i++)
         {
             smint32 busMode;

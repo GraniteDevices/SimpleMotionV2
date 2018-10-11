@@ -224,7 +224,7 @@ smbus smOpenBus( const char * devicename )
 }
 
 /** same as smOpenBus but with user supplied port driver callbacks */
-smbus smOpenBusWithCallbacks( const char *devicename, BusdeviceOpen busOpenCallback, BusdeviceClose busCloseCallback, BusdeviceReadBuffer busReadCallback, BusdeviceWriteBuffer busWriteCallback )
+smbus smOpenBusWithCallbacks( const char *devicename, BusdeviceOpen busOpenCallback, BusdeviceClose busCloseCallback, BusdeviceReadBuffer busReadCallback, BusdeviceWriteBuffer busWriteCallback, BusdevicePurge busPurgeCallback )
 {
     int handle;
 
@@ -241,7 +241,7 @@ smbus smOpenBusWithCallbacks( const char *devicename, BusdeviceOpen busOpenCallb
     if(handle>=SM_MAX_BUSES) return -1;
 
     //open bus device
-    smBus[handle].bdHandle=smBDOpenWithCallbacks(devicename, busOpenCallback, busCloseCallback, busReadCallback, busWriteCallback );
+    smBus[handle].bdHandle=smBDOpenWithCallbacks(devicename, busOpenCallback, busCloseCallback, busReadCallback, busWriteCallback, busPurgeCallback );
     if(smBus[handle].bdHandle==-1) return -1;
 
     //success
@@ -287,6 +287,21 @@ LIB SM_STATUS smCloseBus( const smbus bushandle )
 
     return SM_OK;
 }
+
+/** Clear pending (stray) bytes in bus device reception buffer and reset receiver state. This may be needed i.e. after restarting device to eliminate clitches that appear in serial line.
+  -return value: a SM_STATUS value, i.e. SM_OK if command succeed
+*/
+LIB SM_STATUS smPurge( const smbus bushandle )
+{
+    //check if bus handle is valid & opened
+    if(smIsHandleOpen(bushandle)==smfalse) return recordStatus(bushandle,SM_ERR_NODEVICE);
+
+    if(smBDPurge( bushandle )==smtrue)
+        return recordStatus(bushandle,SM_OK);
+    else
+        return recordStatus(bushandle,SM_ERR_BUS);
+}
+
 
 char *cmdidToStr(smuint8 cmdid )
 {
