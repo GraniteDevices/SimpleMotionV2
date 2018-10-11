@@ -31,7 +31,8 @@ extern const smuint8 table_crc8[];
 extern FILE *smDebugOut; //such as stderr or file handle. if NULL, debug info disbled
 extern smuint16 readTimeoutMs;
 
-//smDebug: prints debug info to smDebugOut stream. If no handle available, set it to -1.
+#define DEBUG_PRINT_RAW 0x524157
+//smDebug: prints debug info to smDebugOut stream. If no handle available, set it to -1, or if wish to print as raw text, set handle to DEBUG_PRINT_RAW.
 //set verbositylevel according to frequency of prints made.
 //I.e SMDebugLow=low frequency, so it gets displayed when global verbosity level is set to at least Low or set it to Trace which gets filtered
 //out if global verbisity level is set less than SMDebugTrace

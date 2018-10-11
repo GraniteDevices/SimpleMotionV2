@@ -85,6 +85,14 @@ void smDebug( smbus handle, smVerbosityLevel verbositylevel, char *format, ...)
             {
                 fprintf(smDebugOut,"%s: %s",smBus[handle].busDeviceName, buffer);
             }
+            else if(handle==DEBUG_PRINT_RAW)
+            {
+                fprintf(smDebugOut,"%s", buffer);
+            }
+            else
+            {
+                fprintf(smDebugOut,"(bad smbus handle): %s", buffer);
+            }
         }
         else
             fprintf(smDebugOut,"SMLib: %s",buffer);//no handle given
@@ -345,26 +353,27 @@ SM_STATUS smSendSMCMD( smbus handle, smuint8 cmdid, smuint8 addr, smuint8 datale
             datalen);
 
 
-    smDebug(handle,SMDebugHigh,"ID ");
+    smDebug(handle,SMDebugHigh,"  Outbound packet raw data: CMDID (%d) ",cmdid);
     if( smWriteByte(handle,cmdid, &sendcrc) != smtrue ) return recordStatus(handle,SM_ERR_BUS);
 
     if(cmdid&SMCMD_MASK_N_PARAMS)
     {
-        smDebug(handle,SMDebugHigh,"Nparams ");
+        smDebug(DEBUG_PRINT_RAW,SMDebugHigh,"SIZE (%d bytes) ", datalen);
         if( smWriteByte(handle,datalen, &sendcrc) != smtrue ) return recordStatus(handle,SM_ERR_BUS);
     }
 
-    smDebug(handle,SMDebugHigh,"ADDR ");
+    smDebug(DEBUG_PRINT_RAW,SMDebugHigh,"ADDR (%d) ",addr);
     if( smWriteByte(handle,addr, &sendcrc) != smtrue ) return recordStatus(handle,SM_ERR_BUS);
 
+    smDebug(DEBUG_PRINT_RAW,SMDebugHigh,"PAYLOAD (");
     for(i=0;i<datalen;i++)
     {
-        smDebug(handle,SMDebugHigh,"DATA ");
+        smDebug(DEBUG_PRINT_RAW,SMDebugHigh,"%02x ",cmddata[i]);
         if( smWriteByte(handle,cmddata[i], &sendcrc) != smtrue ) return recordStatus(handle,SM_ERR_BUS);
     }
-    smDebug(handle,SMDebugHigh,"CRC ");
+    smDebug(DEBUG_PRINT_RAW,SMDebugHigh,") ");
+    smDebug(DEBUG_PRINT_RAW,SMDebugHigh,"CRC (%02x %02x)\n",sendcrc>>8, sendcrc&0xff);
     if( smWriteByte(handle,sendcrc>>8, NULL)  != smtrue ) return recordStatus(handle,SM_ERR_BUS);
-    smDebug(handle,SMDebugHigh,"CRC ");
     if( smWriteByte(handle,sendcrc&0xff,NULL) != smtrue ) return recordStatus(handle,SM_ERR_BUS);
 
     //transmit bytes to bus that were written in buffer by smWriteByte calls
