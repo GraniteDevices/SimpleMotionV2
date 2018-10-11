@@ -301,17 +301,19 @@ LIB LoadConfigurationStatus smLoadConfigurationFromBuffer( const smbus smhandle,
  * @param smhandle SM bus handle, must be opened before call
  * @param smaddress Target SM device address. Can be device in DFU mode or main operating mode. For Argon, one device in a bus must be started into DFU mode by DIP switches and smaddress must be set to 255.
  * @param UID result will be written to this pointer
- * @return smtrue if success, smfalse if failed (if communication otherwise works, then probably UID feature not present in this firmware version)
+ * @return smtrue if success, smfalse if failed (if communication otherwise works, then probably UID feature not present in this firmware version). Note: some devices' DFU/bootloader mode don't support this command but main firmware do.
  */
-smbool smGetDeviceFirmwareUniqueID( smbus smhandle, int deviceaddress, smuint32 *UID )//FIXME gives questionable value if device is in DFU mode. Check FW side.
+smbool smGetDeviceFirmwareUniqueID( smbus smhandle, int deviceaddress, smuint32 *UID )
 {
-    smint32 fwBinaryChecksum;
+    smint32 fwBinaryChecksum, commandStatus;
     resetCumulativeStatus(smhandle);
+    smSetParameter( smhandle, deviceaddress, SMP_CUMULATIVE_STATUS, 0);//reset any SM access error that might SM target might have active so we can test whether following command succeeds
     smSetParameter( smhandle, deviceaddress, SMP_SYSTEM_CONTROL, SMP_SYSTEM_CONTROL_GET_SPECIAL_DATA);
-    smRead1Parameter( smhandle, deviceaddress, SMP_DEBUGPARAM1, &fwBinaryChecksum );
+    smRead2Parameters( smhandle, deviceaddress, SMP_DEBUGPARAM1, &fwBinaryChecksum, SMP_CUMULATIVE_STATUS, &commandStatus );
+
     *UID=(smuint32) fwBinaryChecksum;
 
-    if(getCumulativeStatus(smhandle)==SM_OK)
+    if(getCumulativeStatus(smhandle)==SM_OK && commandStatus==SMP_CMD_STATUS_ACK)//if commandStatus==SMP_CMD_STATUS_ACK fails, then FW or curren mode of device doesn't support reading this
         return smtrue;
     else
         return smfalse;
@@ -359,9 +361,10 @@ smuint32 bufferGet32( smuint8 **buf )
 }
 
 
-FirmwareUploadStatus verifyFirmwareData(smuint8 *data, smuint32 numbytes, smuint32 connectedDeviceTypeId,
+FirmwareUploadStatus parseFirmwareFile(smuint8 *data, smuint32 numbytes, smuint32 connectedDeviceTypeId,
                                         smuint32 *primaryMCUDataOffset, smuint32 *primaryMCUDataLenth,
-                                        smuint32 *secondaryMCUDataOffset,smuint32 *secondaryMCUDataLength )
+                                        smuint32 *secondaryMCUDataOffset,smuint32 *secondaryMCUDataLength,
+                                        smuint32 *FWUniqueID )
 {
     //see https://granitedevices.com/wiki/Firmware_file_format_(.gdf)
 
@@ -371,6 +374,7 @@ FirmwareUploadStatus verifyFirmwareData(smuint8 *data, smuint32 numbytes, smuint
         return FWInvalidFile;
 
     smuint32 filever, deviceid;
+    *FWUniqueID=0;//updated later if available
 
     filever=((smuint16*)data)[2];
 
@@ -479,7 +483,6 @@ FirmwareUploadStatus verifyFirmwareData(smuint8 *data, smuint32 numbytes, smuint
         smuint32 chunkSize;
         smuint16 chunkOptions;
         smuint32 i;
-        smuint32 primaryMCU_FW_UID;
 
         //check file compatibility
         if(bufferGet16(&dataPtr)!=400)
@@ -530,7 +533,7 @@ FirmwareUploadStatus verifyFirmwareData(smuint8 *data, smuint32 numbytes, smuint
             }
             else if(chunkType==101 && chunkSize==4)//main MCU FW unique identifier
             {
-                primaryMCU_FW_UID=bufferGet32(&dataPtr);
+                *FWUniqueID=bufferGet32(&dataPtr);
             }
             else if(chunkOptions&1) //bit nr 0 is 1, which means we should be able to handle this chunk to support the GDF file, so as we don't know what chunk it is, this is an error
             {
@@ -812,6 +815,7 @@ FirmwareUploadStatus smFirmwareUploadFromBuffer( const smbus smhandle, const int
     static smint32 deviceType=0;
     static int DFUAddress;
     static int progress=0;
+    static smbool FW_already_installed=smfalse;
 
     SM_STATUS stat;
 
@@ -888,16 +892,34 @@ FirmwareUploadStatus smFirmwareUploadFromBuffer( const smbus smhandle, const int
 
     else if(state==StatLoadFile)
     {
-        FirmwareUploadStatus stat=verifyFirmwareData(fwData, fwDataLength, deviceType,
+        smuint32 GDFFileUID;
+        FirmwareUploadStatus stat=parseFirmwareFile(fwData, fwDataLength, deviceType,
                                   &primaryMCUDataOffset, &primaryMCUDataLenth,
-                                  &secondaryMCUDataOffset, &secondaryMCUDataLength);
+                                  &secondaryMCUDataOffset, &secondaryMCUDataLength,
+                                  &GDFFileUID);
         if(stat!=FWComplete)//error in verify
         {
             return abortFWUpload(stat,&state,100);
         }
 
-        //all good, upload firmware
+
+        //all good, upload firmware, unless state is changed to StatLaunch later
         state=StatUpload;
+        FW_already_installed=smfalse;
+
+        //check if that FW is already installed
+        if(GDFFileUID!=0)//check only if GDF has provided this value
+        {
+            smuint32 targetFWUID;
+            if(smGetDeviceFirmwareUniqueID( smhandle, DFUAddress, &targetFWUID )==smtrue)
+            {
+                if(GDFFileUID==targetFWUID)//FW is already installed
+                {
+                    state=StatLaunch;
+                    FW_already_installed=smtrue;
+                }
+            }
+        }
 
         progress=4;
     }
@@ -920,7 +942,10 @@ FirmwareUploadStatus smFirmwareUploadFromBuffer( const smbus smhandle, const int
     {
         smSetParameter(smhandle,DFUAddress,SMP_BOOTLOADER_FUNCTION,4);//BL func 4 = launch.
         sleep_ms(2000);
-        progress=100;
+        if(FW_already_installed)
+            progress=FWAlreadyInstalled;
+        else
+            progress=100;
         state=StatIdle;
     }
 

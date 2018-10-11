@@ -35,7 +35,9 @@ extern "C"{
 
 typedef enum
 {
+    /*in range 0-100 status indicates progress in percents*/
     FWComplete=100,
+    /*in range -1..-99 some error occurred*/
     FWInvalidFile=-1,
     FWConnectionError=-2,
     FWIncompatibleFW=-3,
@@ -43,7 +45,8 @@ typedef enum
     FWUnsupportedTargetDevice=-5,
     FWFileNotReadable=-6,
     FWConnectingDFUModeFailed=-7,
-    FWAlreadyInstalled=-8
+    /*in range -100..-200, state is ok but install is skipped*/
+    FWAlreadyInstalled=-100
 } FirmwareUploadStatus;
 
 typedef struct
