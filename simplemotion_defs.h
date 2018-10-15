@@ -98,13 +98,33 @@
  * will read it but no-one will send a reply because it would cause packet collision*/
  #define SM_BROADCAST_ADDR 0
 
-//these bits define attributes over parameter address to retreive different types of values as return data
+/* The following 4 #defines define attributes over parameter address to retrieve different types of values as return data.
+ * These can be used to request information about any parameter by reading a parameter normally but making logical OR of
+ * parameter address with following #defines. I.e:
+ *
+ * Reading parameter with address of (SMP_TIMEOUT|SMP_MIN_VALUE_MASK) will give the minimum settable value for param SMP_TIMEOUT.
+ */
+/* will return actual value of the parameter */
 #define SMP_VALUE_MASK  0x0000
-#define SMP_MIN_VALUE_MASK  0x4000 //so requesting i.e. param (SMP_TIMEOUT|SMP_MIN_VALUE_MASK) will give the minimum settable value for param SMP_TIMEOUT
+/* will return minimum writable value of parameter */
+#define SMP_MIN_VALUE_MASK  0x4000
+/* will return maximum writable value of parameter */
 #define SMP_MAX_VALUE_MASK  0x8000
-//mask to filter attributes
+/* properties mask that can be used to ask whether a parameter is supported in the target device and possibly also figure out it's
+ * properties such as it's version or data format details.
+ *
+ * Note this is not available in all SM devices:
+ * SMP_PROPERTIES_MASK is supported when DEVICE_CAPABILITY1_SUPPORTS_SMP_PARAMETER_PROPERTIES_MASK is set in DEVICE_CAPABILITIES1
+ */
+#define SMP_PROPERTIES_MASK 18
+	#define SMP_PROPERTY_PARAM_IS_READABLE BV(0) //if true, parameter exists and is readable (can be used to test whether parameter exists in SM device)
+	#define SMP_PROPERTY_PARAM_IS_WRITABLE BV(1) //if true, parameter is writable
+	#define SMP_PROPERTY_HAS_EXTRA_FLAGS BV(2) //if 1, then SMP_PARAMETER_PROPERTIES bits 8-15 (SMP_PROPERTY_EXTRA_FLAGS_MASK) will contain parameter specific flags (defined in this header file on each parameter separately, if available). If 0, bits 8-15 will contain 00000000b
+	#define SMP_PROPERTY_EXTRA_FLAGS_MASK 0x0000ff00; //mask for parameter specific flags, see SMP_PROPERTY_HAS_EXTRA_FLAGS
+
+/* Mask to filter above attributes, used internally by SM library, not useful for SM application writer. */
 #define SMP_ATTRIBUTE_BITS_MASK  0xC000//C=1100
-//mask for addresses
+/* Mask to filter above attributes, used internally by SM library, not useful for SM application writer. */
 #define SMP_ADDRESS_BITS_MASK  0x1FFF //E=1110
 
 /*
@@ -1012,6 +1032,7 @@
 	#define DEVICE_CAPABILITY1_SUPPORTS_STAT_STANDING_STILL BV(25) /*drive implements STAT_STANDING_STILL status bit */
 	#define DEVICE_CAPABILITY1_ENCODER_INTERFACE_V2 BV(26)
 	#define DEVICE_CAPABILITY1_HAS_SECOND_SERIAL_ENCODER_PORT BV(27) /*true if device has two serial encoder inputs */
+	#define DEVICE_CAPABILITY1_SUPPORTS_SMP_PARAMETER_PROPERTIES_MASK BV(28) /*true if support for SMP_PARAMETER_PROPERTIES_MASK */
 
 //read only bit field that is can be used to identify device capabilities
 //the list below is subject to extend
