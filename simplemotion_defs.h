@@ -484,6 +484,7 @@
 	 * Note: not all firmware versions support this. Check DEVICE_CAPABILITY1_SUPPORTS_STAT_STANDING_STILL bit. If it's 0, then STAT_STANDING_STILL always reads 0.
 	 */
 	#define STAT_STANDING_STILL BV(16)
+	#define STAT_QUICK_STOP_ACTIVE BV(17)
 
 #define SMP_SYSTEM_CONTROL 554 //writing 1 initiates settings save to flash, writing 2=device restart, 4=abort buffered motion
 	//possible values listed
