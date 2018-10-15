@@ -116,7 +116,7 @@
  * Note this is not available in all SM devices:
  * SMP_PROPERTIES_MASK is supported when DEVICE_CAPABILITY1_SUPPORTS_SMP_PARAMETER_PROPERTIES_MASK is set in DEVICE_CAPABILITIES1
  */
-#define SMP_PROPERTIES_MASK 18
+#define SMP_PROPERTIES_MASK 0xC000
 	#define SMP_PROPERTY_PARAM_IS_READABLE BV(0) //if true, parameter exists and is readable (can be used to test whether parameter exists in SM device)
 	#define SMP_PROPERTY_PARAM_IS_WRITABLE BV(1) //if true, parameter is writable
 	#define SMP_PROPERTY_HAS_EXTRA_FLAGS BV(2) //if 1, then SMP_PARAMETER_PROPERTIES bits 8-15 (SMP_PROPERTY_EXTRA_FLAGS_MASK) will contain parameter specific flags (defined in this header file on each parameter separately, if available). If 0, bits 8-15 will contain 00000000b
