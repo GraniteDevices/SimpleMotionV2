@@ -724,6 +724,17 @@
 //next 2 set fault sensitivity
 #define SMP_TORQUEFAULT_MARGIN 420
 #define SMP_TORQUEFAULT_OC_TOLERANCE 421
+/* SMP_MOTOR_TORQUE_OR_FORCE_CONSTANT specifies motor torque (rotary motor) or force (linear motor) constant.
+ * Scale:
+ * - on rotary motors value is 10000*Nm/A
+ * - on linear motors value is 10000*N/A
+ * Amps are in peak of sine or DC
+ *
+ * The value is optional and value of 0 means that the constant is unspecified.
+ *
+ * Note: before using, check if this parameter is supported in target device from SMP_CAPABILITES1
+ */
+#define SMP_MOTOR_TORQUE_OR_FORCE_CONSTANT 422
 
 /* next four parameters allow compensation of motor detent torque and torque ripple (cogging torque).
  * xxx_TORQUE_FUNCTION and xxx_TORQUE_AMPLITUDE sets function, value range is 0-25 and used like:
@@ -1033,6 +1044,7 @@
 	#define DEVICE_CAPABILITY1_ENCODER_INTERFACE_V2 BV(26)
 	#define DEVICE_CAPABILITY1_HAS_SECOND_SERIAL_ENCODER_PORT BV(27) /*true if device has two serial encoder inputs */
 	#define DEVICE_CAPABILITY1_SUPPORTS_SMP_PARAMETER_PROPERTIES_MASK BV(28) /*true if support for SMP_PARAMETER_PROPERTIES_MASK */
+	#define DEVICE_CAPABILITY1_HAS_TORQUE_OR_FORCE_CONSTANT_PARAMETER BV(29) /*true if SMP_TORQUE_OR_FORCE_CONSTANT parameter is supported */
 
 //read only bit field that is can be used to identify device capabilities
 //the list below is subject to extend
