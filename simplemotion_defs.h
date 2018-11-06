@@ -305,6 +305,15 @@
  *  read1=lowest 16 bits of position feedback value
  *  read2=bit nr 16 = STAT_SERVO_READY, bit nr 15=STAT_FAULTSTOP, bits 0-14=upper bits of position feedback value (pos FB bits 17-30)
  *
+ * format 2 (ALT2):
+ *  This is specific for simucube application mode only on available only in some drive models.
+ *  write is bit field of:
+ *  -signed 15 bits main torque setpoint
+ *  -signed 15 bits effects torque setpoint
+ *  -1 bit CB1_ENABLE
+ *  -1 bit CB1_CLEARFAULTS
+ *  read data is same format as in ALT1
+ *
  * Note:
  * Before reading/writing this, check if device supports this by checking capability flag DEVICE_CAPABILITY1_SELECTABLE_FAST_UPDATE_CYCLE_FORMAT.
  *
@@ -314,6 +323,7 @@
 #define SMP_FAST_UPDATE_CYCLE_FORMAT 17
 	#define FAST_UPDATE_CYCLE_FORMAT_DEFAULT 0
 	#define FAST_UPDATE_CYCLE_FORMAT_ALT1 1
+	#define FAST_UPDATE_CYCLE_FORMAT_ALT2 2
 
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
