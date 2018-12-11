@@ -325,6 +325,49 @@
 	#define FAST_UPDATE_CYCLE_FORMAT_ALT1 1
 	#define FAST_UPDATE_CYCLE_FORMAT_ALT2 2
 
+/* Intro: SMP_BINARY_DATA and SMP_INIT_BINARY_DATA parameters allow reading & writing binary data from pre-defined buffers. i.e. text strings or calibration data blob.
+ *
+ * Reading and writing data is done by sequentially writing or reading SMP_BINARY_DATA after SMP_INIT_BINARY_DATA_MODE has been properly set.
+ * I.e. set BINARY_DATA_MODE = BINARY_DATA_MODE_BLOCK_CALIBRATION|BINARY_DATA_MODE_FLAG_ERASE.
+ *
+ * Read parameter address (SMP_BINARY_DATA|SMP_MAX_VALUE_MASK) to get block size in bytes. If returned size is -1, it means invalid settings in SMP_BINARY_DATA_MODE.
+ *
+ * The write/read unit is 16 bits.
+ *
+ * Binary data parameter availability: to check whether SMP_BINARY_DATA is supported on target device, first check that DEVICE_CAPABILITY1_SUPPORTS_SMP_PARAMETER_PROPERTIES_MASK is set and
+ * then read parameter with address (SMP_BINARY_DATA|SMP_PROPERTIES_MASK) and check that it returns valid (no SM error) non-zero value.
+ *
+ * Note: if write or read to this parameter fails, it could mean one of following:
+ * - block does not support given operation, some buffers may be write or read only
+ * - SMP_BINARY_DATA_MODE is set incorrectly
+ * - read/write operation is performed out of bounds (overflow)
+ * - offset is not given in valid granularity
+ */
+#define SMP_BINARY_DATA 18
+/* SMP_BINARY_DATA_MODE initializes access mode to the buffer data. This must be written before reading/writing to SMP_BINARY_DATA.
+ *
+ * Accepted value is bit field, options defined below.
+ *
+ * Erasing block: depending on block, it may be cleared to zeroes (0x00) or ones (0xff). Erasing may take up to one second of time depending on block. User must not send
+ * any new SM commands to the bus during erase time because device performing erase may be offline during that time and cause error in communication if communication attempt
+ * is made during erase.
+ *
+ * Bits starting from LSB:
+ * 8 = buffer ID (one of BINARY_DATA_MODE_BLOCK_)
+ * 8 = access mode flags (or'ed combination of BINARY_DATA_MODE_FLAG_ defines)
+ * 16 = starting offset of read/write with SMP_BINARY_DATA
+ */
+#define SMP_BINARY_DATA_MODE 19
+	//data blocks:
+	#define BINARY_DATA_MODE_BLOCK_CALIBRATION 0 //id 0 = motor calibration data block. note that starting offset must be multiple of 2 for this block.
+	//...more blocks to be defined here
+	//flags:
+	#define BINARY_DATA_MODE_FLAG_ERASE BV(8) //if true, then the defined block will be erased immediately by writing this bit to SMP_BINARY_DATA_MODE. not all blocks support this.
+
+/* SMP_BINARY_DATA_MODE_ARGS is a helper macro to generate value for SMP_BINARY_DATA_MODE. Example:
+ * smSetParameter( .., .., SMP_BINARY_DATA_MODE, SMP_BINARY_DATA_MODE_ARGS( BINARY_DATA_MODE_BLOCK_CALIBRATION, BINARY_DATA_MODE_FLAG_ERASE, 500 )
+*/
+#define SMP_BINARY_DATA_MODE_ARGS(block,flags,offset) ((smuint32(block)&0xff) | (smuint32(flags)&0xff00) | ((smuint32(offset)<<16)&0xffff0000))
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // SimpleMotion device specific parameter definitions start below. Note: all parameters are not available in all device types/versions. To test which are available,
