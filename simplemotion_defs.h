@@ -98,13 +98,33 @@
  * will read it but no-one will send a reply because it would cause packet collision*/
  #define SM_BROADCAST_ADDR 0
 
-//these bits define attributes over parameter address to retreive different types of values as return data
+/* The following 4 #defines define attributes over parameter address to retrieve different types of values as return data.
+ * These can be used to request information about any parameter by reading a parameter normally but making logical OR of
+ * parameter address with following #defines. I.e:
+ *
+ * Reading parameter with address of (SMP_TIMEOUT|SMP_MIN_VALUE_MASK) will give the minimum settable value for param SMP_TIMEOUT.
+ */
+/* will return actual value of the parameter */
 #define SMP_VALUE_MASK  0x0000
-#define SMP_MIN_VALUE_MASK  0x4000 //so requesting i.e. param (SMP_TIMEOUT|SMP_MIN_VALUE_MASK) will give the minimum settable value for param SMP_TIMEOUT
+/* will return minimum writable value of parameter */
+#define SMP_MIN_VALUE_MASK  0x4000
+/* will return maximum writable value of parameter */
 #define SMP_MAX_VALUE_MASK  0x8000
-//mask to filter attributes
+/* properties mask that can be used to ask whether a parameter is supported in the target device and possibly also figure out it's
+ * properties such as it's version or data format details.
+ *
+ * Note this is not available in all SM devices:
+ * SMP_PROPERTIES_MASK is supported when DEVICE_CAPABILITY1_SUPPORTS_SMP_PARAMETER_PROPERTIES_MASK is set in DEVICE_CAPABILITIES1
+ */
+#define SMP_PROPERTIES_MASK 0xC000
+	#define SMP_PROPERTY_PARAM_IS_READABLE BV(0) //if true, parameter exists and is readable (can be used to test whether parameter exists in SM device)
+	#define SMP_PROPERTY_PARAM_IS_WRITABLE BV(1) //if true, parameter is writable
+	#define SMP_PROPERTY_HAS_EXTRA_FLAGS BV(2) //if 1, then SMP_PARAMETER_PROPERTIES bits 8-15 (SMP_PROPERTY_EXTRA_FLAGS_MASK) will contain parameter specific flags (defined in this header file on each parameter separately, if available). If 0, bits 8-15 will contain 00000000b
+	#define SMP_PROPERTY_EXTRA_FLAGS_MASK 0x0000ff00; //mask for parameter specific flags, see SMP_PROPERTY_HAS_EXTRA_FLAGS
+
+/* Mask to filter above attributes, used internally by SM library, not useful for SM application writer. */
 #define SMP_ATTRIBUTE_BITS_MASK  0xC000//C=1100
-//mask for addresses
+/* Mask to filter above attributes, used internally by SM library, not useful for SM application writer. */
 #define SMP_ADDRESS_BITS_MASK  0x1FFF //E=1110
 
 /*
@@ -285,6 +305,15 @@
  *  read1=lowest 16 bits of position feedback value
  *  read2=bit nr 16 = STAT_SERVO_READY, bit nr 15=STAT_FAULTSTOP, bits 0-14=upper bits of position feedback value (pos FB bits 17-30)
  *
+ * format 2 (ALT2):
+ *  This is specific for simucube application mode only on available only in some drive models.
+ *  write is bit field of:
+ *  -signed 15 bits main torque setpoint
+ *  -signed 15 bits effects torque setpoint
+ *  -1 bit CB1_ENABLE
+ *  -1 bit CB1_CLEARFAULTS
+ *  read data is same format as in ALT1
+ *
  * Note:
  * Before reading/writing this, check if device supports this by checking capability flag DEVICE_CAPABILITY1_SELECTABLE_FAST_UPDATE_CYCLE_FORMAT.
  *
@@ -294,7 +323,51 @@
 #define SMP_FAST_UPDATE_CYCLE_FORMAT 17
 	#define FAST_UPDATE_CYCLE_FORMAT_DEFAULT 0
 	#define FAST_UPDATE_CYCLE_FORMAT_ALT1 1
+	#define FAST_UPDATE_CYCLE_FORMAT_ALT2 2
 
+/* Intro: SMP_BINARY_DATA and SMP_INIT_BINARY_DATA parameters allow reading & writing binary data from pre-defined buffers. i.e. text strings or calibration data blob.
+ *
+ * Reading and writing data is done by sequentially writing or reading SMP_BINARY_DATA after SMP_INIT_BINARY_DATA_MODE has been properly set.
+ * I.e. set BINARY_DATA_MODE = BINARY_DATA_MODE_BLOCK_CALIBRATION|BINARY_DATA_MODE_FLAG_ERASE.
+ *
+ * Read parameter address (SMP_BINARY_DATA|SMP_MAX_VALUE_MASK) to get block size in bytes. If returned size is -1, it means invalid settings in SMP_BINARY_DATA_MODE.
+ *
+ * The write/read unit is 16 bits.
+ *
+ * Binary data parameter availability: to check whether SMP_BINARY_DATA is supported on target device, first check that DEVICE_CAPABILITY1_SUPPORTS_SMP_PARAMETER_PROPERTIES_MASK is set and
+ * then read parameter with address (SMP_BINARY_DATA|SMP_PROPERTIES_MASK) and check that it returns valid (no SM error) non-zero value.
+ *
+ * Note: if write or read to this parameter fails, it could mean one of following:
+ * - block does not support given operation, some buffers may be write or read only
+ * - SMP_BINARY_DATA_MODE is set incorrectly
+ * - read/write operation is performed out of bounds (overflow)
+ * - offset is not given in valid granularity
+ */
+#define SMP_BINARY_DATA 18
+/* SMP_BINARY_DATA_MODE initializes access mode to the buffer data. This must be written before reading/writing to SMP_BINARY_DATA.
+ *
+ * Accepted value is bit field, options defined below.
+ *
+ * Erasing block: depending on block, it may be cleared to zeroes (0x00) or ones (0xff). Erasing may take up to one second of time depending on block. User must not send
+ * any new SM commands to the bus during erase time because device performing erase may be offline during that time and cause error in communication if communication attempt
+ * is made during erase.
+ *
+ * Bits starting from LSB:
+ * 8 = buffer ID (one of BINARY_DATA_MODE_BLOCK_)
+ * 8 = access mode flags (or'ed combination of BINARY_DATA_MODE_FLAG_ defines)
+ * 16 = starting offset of read/write with SMP_BINARY_DATA
+ */
+#define SMP_BINARY_DATA_MODE 19
+	//data blocks:
+	#define BINARY_DATA_MODE_BLOCK_CALIBRATION 0 //id 0 = motor calibration data block. note that starting offset must be multiple of 2 for this block.
+	//...more blocks to be defined here
+	//flags:
+	#define BINARY_DATA_MODE_FLAG_ERASE BV(8) //if true, then the defined block will be erased immediately by writing this bit to SMP_BINARY_DATA_MODE. not all blocks support this.
+
+/* SMP_BINARY_DATA_MODE_ARGS is a helper macro to generate value for SMP_BINARY_DATA_MODE. Example:
+ * smSetParameter( .., .., SMP_BINARY_DATA_MODE, SMP_BINARY_DATA_MODE_ARGS( BINARY_DATA_MODE_BLOCK_CALIBRATION, BINARY_DATA_MODE_FLAG_ERASE, 500 )
+*/
+#define SMP_BINARY_DATA_MODE_ARGS(block,flags,offset) ((smuint32(block)&0xff) | (smuint32(flags)&0xff00) | ((smuint32(offset)<<16)&0xffff0000))
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // SimpleMotion device specific parameter definitions start below. Note: all parameters are not available in all device types/versions. To test which are available,
@@ -319,6 +392,7 @@
 	#define SMP_GPIO_LOW_LEVEL_ACCESS_SET_PIN_MODE 0
 	#define SMP_GPIO_LOW_LEVEL_ACCESS_WRITE_PIN_OUTPUT 1
 	#define SMP_GPIO_LOW_LEVEL_ACCESS_READ_PIN_INPUT 2
+	#define SMP_GPIO_LOW_LEVEL_ACCESS_READ_ADC_PIN_INPUT 3
 /* used only for device production testing, not recommended for normal operation, therefore not publicly documented */
 #define SMP_GPIO_LOW_LEVEL_INPUT_VALUE 103
 
@@ -463,6 +537,7 @@
 	 * Note: not all firmware versions support this. Check DEVICE_CAPABILITY1_SUPPORTS_STAT_STANDING_STILL bit. If it's 0, then STAT_STANDING_STILL always reads 0.
 	 */
 	#define STAT_STANDING_STILL BV(16)
+	#define STAT_QUICK_STOP_ACTIVE BV(17)
 
 #define SMP_SYSTEM_CONTROL 554 //writing 1 initiates settings save to flash, writing 2=device restart, 4=abort buffered motion
 	//possible values listed
@@ -703,6 +778,17 @@
 //next 2 set fault sensitivity
 #define SMP_TORQUEFAULT_MARGIN 420
 #define SMP_TORQUEFAULT_OC_TOLERANCE 421
+/* SMP_MOTOR_TORQUE_OR_FORCE_CONSTANT specifies motor torque (rotary motor) or force (linear motor) constant.
+ * Scale:
+ * - on rotary motors value is 10000*Nm/A
+ * - on linear motors value is 10000*N/A
+ * Amps are in peak of sine or DC
+ *
+ * The value is optional and value of 0 means that the constant is unspecified.
+ *
+ * Note: before using, check if this parameter is supported in target device from SMP_CAPABILITES1
+ */
+#define SMP_MOTOR_TORQUE_OR_FORCE_CONSTANT 422
 
 /* next four parameters allow compensation of motor detent torque and torque ripple (cogging torque).
  * xxx_TORQUE_FUNCTION and xxx_TORQUE_AMPLITUDE sets function, value range is 0-25 and used like:
@@ -790,6 +876,7 @@
         #define SMP_LIMIT_SW_DISABLED 0
         #define SMP_LIMIT_SW_NOTORQUE 1
         #define SMP_LIMIT_SW_FAULTSTOP 2
+		#define SMP_LIMIT_SW_SERVOSTOP 3 /*this is obsolete definition, kept for backwards compatibility, use new SMP_LIMIT_SW_DYNAMIC_BRAKING instead */
         #define SMP_LIMIT_SW_DYNAMIC_BRAKING 3
         #define _SMP_LIMIT_SW_LAST 3
 
@@ -1010,6 +1097,8 @@
 	#define DEVICE_CAPABILITY1_SUPPORTS_STAT_STANDING_STILL BV(25) /*drive implements STAT_STANDING_STILL status bit */
 	#define DEVICE_CAPABILITY1_ENCODER_INTERFACE_V2 BV(26)
 	#define DEVICE_CAPABILITY1_HAS_SECOND_SERIAL_ENCODER_PORT BV(27) /*true if device has two serial encoder inputs */
+	#define DEVICE_CAPABILITY1_SUPPORTS_SMP_PARAMETER_PROPERTIES_MASK BV(28) /*true if support for SMP_PARAMETER_PROPERTIES_MASK */
+	#define DEVICE_CAPABILITY1_HAS_TORQUE_OR_FORCE_CONSTANT_PARAMETER BV(29) /*true if SMP_TORQUE_OR_FORCE_CONSTANT parameter is supported */
 
 //read only bit field that is can be used to identify device capabilities
 //the list below is subject to extend

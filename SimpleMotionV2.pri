@@ -22,7 +22,8 @@ SOURCES += $$PWD/sm_consts.c $$PWD/simplemotion.c $$PWD/busdevice.c \
 HEADERS += $$PWD/simplemotion_private.h\
     $$PWD/busdevice.h  $$PWD/simplemotion.h $$PWD/sm485.h $$PWD/simplemotion_defs.h \
     $$PWD/bufferedmotion.h $$PWD/devicedeployment.h \
-    $$PWD/user_options.h
+    $$PWD/user_options.h \
+    $$PWD/simplemotion_types.h
 
 
 greaterThan(INCLUDE_BUILT_IN_DRIVERS, 0+)  {

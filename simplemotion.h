@@ -19,62 +19,14 @@
 #include <stdio.h>
 #include <stdint.h>
 #include "simplemotion_defs.h"
+#include "simplemotion_types.h"
 
 
 #ifdef __cplusplus
 extern "C"{
 #endif
 
-//possible return values (SM_STATUS type)
-#define SM_NONE 0
-#define SM_OK 1
-#define SM_ERR_NODEVICE 2
-#define SM_ERR_BUS 4
-#define SM_ERR_COMMUNICATION 8
-#define SM_ERR_PARAMETER 16
-#define SM_ERR_LENGTH 32
 
-///////////////////////////////////////////////////////////////////////////////////////
-//TYPES & VALUES //////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////////////
-//declare SM lib types
-typedef long smbus;
-typedef uint32_t smuint32;
-typedef uint16_t smuint16;
-typedef uint8_t smuint8;
-typedef int32_t smint32;
-typedef int16_t smint16;
-typedef int8_t smint8;
-typedef int8_t smbool;
-typedef smint32 smint;
-#define smtrue 1
-#define smfalse 0
-typedef int SM_STATUS;
-typedef smuint8 smaddr;
-typedef struct
-{
-    smbool is_simplemotion_device;//smtrue if usable in SM lib
-    char device_name[64];//name that should be fed to smOpenBus
-    char description[128];//such as "SimpleMotion USB"
-} SM_BUS_DEVICE_INFO;
-
-
-
-/* Set debug verbosity level with smSetDebugOutput
- * SMDebugOff=no debug prints (default)
- * SMDebugLow=only some excepetion/errors printed
- * SMDebugMid=some common function calls printed
- * SMDebugHigh=more details of function calls/bus communication printed
- * SMDebugTrace=print all raw RX/TX data and parsed read values of RX data
- */
-typedef enum _smVerbosityLevel {SMDebugOff,SMDebugLow,SMDebugMid,SMDebugHigh,SMDebugTrace} smVerbosityLevel;
-
-//define communication interface device driver callback types
-typedef void* smBusdevicePointer;
-typedef smBusdevicePointer (*BusdeviceOpen)(const char *port_device_name, smint32 baudrate_bps, smbool *success);
-typedef smint32 (*BusdeviceReadBuffer)(smBusdevicePointer busdevicePointer, unsigned char *buf, smint32 size);
-typedef smint32 (*BusdeviceWriteBuffer)(smBusdevicePointer busdevicePointer, unsigned char *buf, smint32 size);
-typedef void (*BusdeviceClose)(smBusdevicePointer busdevicePointer);
 //BusdeviceOpen callback should return this if port open fails (in addition to setting *success to smfalse):
 #define SMBUSDEVICE_RETURN_ON_OPEN_FAIL NULL
 
@@ -113,12 +65,9 @@ LIB smbus smOpenBusWithCallbacks( const char *devicename, BusdeviceOpen busOpenC
 	- then close port with smCloseBus
 	- then call smSetBaudrate(N)
 	- then open bus again with smOpenBus
-	
-	Note that in upcoming SM device firmware versions, bitrate will be reset to default (460800) if device side SM bus watchdog timer has been enabled, and it timeouts.
-	This allows re-establishing connection at defautl speed if connection breaks up and SM bus watchdog timeout gets exceeded. To identify is device supports this, 
-	read parameter SMP_SM_VERSION. Values above 25 support this feature. Value 25 and below will not reset baudrate.
-	
-	Note also that SMP_BUS_SPEED will not be saved in device flash memory - it will reset to default at every reset & power on.
+
+    The above method does not utilize very useful SM watchog feature that allows securely re-connecting in case of lost connection to the target devices.
+    For defails, see example at https://granitedevices.com/wiki/Changing_SimpleMotion_baud_rate
 	*/
 LIB void smSetBaudrate( unsigned long pbs );
 
@@ -189,15 +138,19 @@ LIB SM_STATUS smSetParameter( const smbus handle, const smaddr nodeAddress, cons
 
 LIB SM_STATUS smGetBufferClock( const smbus handle, const smaddr targetaddr, smuint16 *clock );
 
-/** smFastUpdateCycle uses special SimpleMotion command to perform fast turaround communication. May be used with cyclic real time control.
- * smFastUpdateCycle has been desniged to have lowest possible response time.
+/** smFastUpdateCycleWithStructs uses special SimpleMotion command to perform fast turaround communication. May be used with cyclic real time control.
+ * smFastUpdateCycleWithStructs has been desniged to have lowest possible response time.
  * Typically the worst case response is 50 microseconds, which makes it to achieve up to 20kHz call rate. This may be useful especially when using external
  * closed loop and controlling motor torque or velocity in real time.
- * Parameters write1, write2, read1 and read2 are firmware and mode specific. Currently by default, they are:
- -write1=absolute setpoint (lowest 16 bits of SMP_ABSOLUTE_SETPOINT)
- -write2=unused (write 0)
- -read1=position feedback value (lowest 16 bits of SMP_ACTUAL_POSITION_FB)
- -read2=status bits (SMP_STATUS)
+ *
+ * Parameters write and read are unions and contain several bit field arrangements.
+ * The format mode should be set by setting SMP_FAST_UPDATE_CYCLE_FORMAT value before calling this function.
+*/
+LIB SM_STATUS smFastUpdateCycleWithStructs( smbus handle, smuint8 nodeAddress, FastUpdateCycleWriteData write, FastUpdateCycleReadData *read);
+
+
+/** smFastUpdateCycle is similar to smFastUpdateCycleWithStructs with raw integer inputs and outputs instead of structures.
+ * This is deprecated, consider using smFastUpdateCycleWithStructs instead.
 */
 LIB SM_STATUS smFastUpdateCycle( smbus handle, smuint8 nodeAddress, smuint16 write1, smuint16 write2, smuint16 *read1, smuint16 *read2);
 
