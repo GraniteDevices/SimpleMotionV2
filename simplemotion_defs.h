@@ -644,6 +644,7 @@
  * -if linear encoder, then it's counts/100mm (if FLAG_FBDx_IS_LINEAR_ENCODER is 1)
  * note: supported only if DEVICE_CAPABILITY1_ENCODER_INTERFACE_V2 is set
  */
+//WIP
 #define SMP_FBD1_RESOLUTION 576
 #define SMP_FBD2_RESOLUTION 577
 
@@ -651,7 +652,7 @@
  * if using linear motor, defines pole pair length in micrometers
  * note: supported only if DEVICE_CAPABILITY1_ENCODER_INTERFACE_V2 is set
  */
-#define SMP_LINEAR_MOTOR_POLE_PAIR_PITCH 578
+//#define SMP_LINEAR_MOTOR_POLE_PAIR_PITCH 578
 
 /*
  * AC motor pole configuration
@@ -662,8 +663,8 @@
  * -linear motor (FLAG_IS_LINEAR_MOTOR is set), then this defines motor pole pair pitch in micrometers
  *  note: linear motor mode supported only if DEVICE_CAPABILITY1_ENCODER_INTERFACE_V2 is set
  */
-#define SMP_MOTOR_POLEPAIRS 566 /*old name kept for compatibility*/
-#define SMP_AC_MOTOR_POLE_CONFIG 566 /*new name*/
+//#define SMP_MOTOR_POLEPAIRS 566 /*old name kept for compatibility*/
+//#define SMP_AC_MOTOR_POLE_CONFIG 566 /*new name*/
 
 
 //flag bits & general
@@ -685,9 +686,10 @@
     #define FLAG_MECH_BRAKE_DURING_PHASING BV(15)
 	#define FLAG_LIMIT_SWITCHES_NORMALLY_OPEN_TYPE BV(16)
 	#define FLAG_ENABLE_MOTOR_SOUND_NOTIFICATIONS BV(17)
-	#define FLAG_FBD1_IS_LINEAR_ENCODER BV(18)
-	#define FLAG_FBD2_IS_LINEAR_ENCODER BV(19)
-	#define FLAG_IS_LINEAR_MOTOR BV(20) /* true if linear motor, changes effect of SMP_MOTOR_POLEPAIRS. supported if DEVICE_CAPABILITY1_ENCODER_INTERFACE_V2 is set */
+	//#define FLAG_FBD1_IS_LINEAR_ENCODER BV(18)
+	//#define FLAG_FBD2_IS_LINEAR_ENCODER BV(19)
+	///#define FLAG_IS_LINEAR_MOTOR BV(20) /* true if linear motor, changes effect of SMP_MOTOR_POLEPAIRS. supported if DEVICE_CAPABILITY1_ENCODER_INTERFACE_V2 is set */
+    #define FLAG_INVERT_FB2_ENCODER BV(21) /* invert optional secondary encoder */
 #define SMP_MOTION_FAULT_THRESHOLD 568
 #define SMP_HV_VOLTAGE_HI_LIMIT 569
 #define SMP_HV_VOLTAGE_LOW_LIMIT 570
@@ -826,21 +828,34 @@
 #define SMP_PHASESEARCH_CURRENT 481
 /* Commutation angle congiuration, i.e. for hall sensors or absolute encoder. can be automatically set with SMP_SYSTEM_CONTROL_START_COMMUTATION_SENSOR_AUTOSET.
  * Format:
- * bits 0-15 LSB: commutation sensor offset 0-65535 represents commutation angle offset 0-360 electical degrees
+ * bits 0-15 LSB: commutation sensor initialization offset 0-65535 represents commutation angle offset 0-360 electical degrees
  * bit 16: invert sensor count direction
  * bit 17: enable commutation sensor
- * bit 18-19: commutation sensor source, choices (supported only if DEVICE_CAPABILITY1_ENCODER_INTERFACE_V2 is set)
- * 	00=Hall sensor
- * 	01=Absoute sensor on FBD1
- * 	10=Absolute sensor on FBD2
- * 	11=reserved
- * bits 20-31: reserved, always 0
+ * bit 18-19: commutation sensor initialization source, choices (supported only if DEVICE_CAPABILITY1_ENCODER_INTERFACE_V2 is set), decimal value:
+ *  0=Hall sensor
+ * 	1=Absoute sensor on FBD1
+ * 	2=Absolute sensor on FBD2
+ * 	others=reserved, i.e. sensorless spin-up
+ * bits 20-32: reserved, always 0
+ *
+ * Commutation angle calculation uses FB device of SMP_FB1_DEVICE_SEPECTION after initialization and applies
+ * SMP_COUNTS_PER_POLE_PAIR to calculate electrical angle.
  */
 #define SMP_COMMUTATION_SENSOR_CONFIG 482
 	#define SMP_COMMUTATION_SENSOR_CONFIG_ANGLE_MASK 0xFFFF
 	#define SMP_COMMUTATION_SENSOR_CONFIG_INVERT_MASK 0x10000
 	#define SMP_COMMUTATION_SENSOR_CONFIG_ENABLE_MASK 0x20000
-	#define SMP_COMMUTATION_SENSOR_SOURCE 0xC0000
+	#define SMP_COMMUTATION_SENSOR_INIT_SOURCE_MASK ((0b11L)<<18L)
+		#define COMMUTATION_SENSOR_INIT_SOURCE_PHASING (0L<<18L)
+		#define COMMUTATION_SENSOR_INIT_SOURCE_HALL (1L<<18L)
+		#define COMMUTATION_SENSOR_INIT_SOURCE_FB1_ABSOLUTE (2L<<18L)
+		#define COMMUTATION_SENSOR_INIT_SOURCE_FB2_ABSOLUTE (3L<<18L)
+/*	#define SMP_COMMUTATION_SENSOR_COUNT_SOURCE_MASK ((0b1111L)<<24L)
+		#define COMMUTATION_SENSOR_COUNT_SOURCE_FB1 (0L<<18L)
+		#define COMMUTATION_SENSOR_COUNT_SOURCE_FB2 (11L<<18L)*/
+
+#define SMP_COUNTS_PER_POLE_PAIR 483
+
 
 //low pass filter selector, value 0=100Hz, 9=3300Hz, 10=4700Hz, 11=unlimited (see Granity for all options):
 #define SMP_TORQUE_LPF_BANDWIDTH 490
@@ -862,6 +877,8 @@
 	#define SMP_FBD_SINCOS256X 8
 	#define SMP_FBD_RESERVED 9
 	#define SMP_FBD_SERIALDATA_PORT2 10 /* configured with SMP_SERIAL_ENC2_BITS */
+
+/* FB2 is secondary feedback device (optional) to form a dual loop feedback system. has same allowed values than SMP_FB1_DEVICE_SELECTION. */
 #define SMP_FB2_DEVICE_SELECTION 494
 
 //in 1/2500 seconds.
