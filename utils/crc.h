@@ -1,12 +1,12 @@
 /**********************************************************************
  *
  * Filename:    crc.h
- * 
+ *
  * Description: A header file describing the various CRC standards.
  *
- * Notes:       
+ * Notes:
  *
- * 
+ *
  * Copyright (c) 2000 by Michael Barr.  This software is placed into
  * the public domain and may be used for any purpose.  However, this
  * notice must not be changed or removed and no warranty is either
@@ -16,6 +16,7 @@
 #ifndef _crc_h
 #define _crc_h
 
+#include <stdint.h>
 
 #define FALSE	0
 #define TRUE	!FALSE
@@ -28,7 +29,7 @@
 
 #if defined(CRC_CCITT)
 
-typedef unsigned short  crc;
+typedef uint16_t  crc;
 
 #define CRC_NAME			"CRC-CCITT"
 #define POLYNOMIAL			0x1021
@@ -40,7 +41,7 @@ typedef unsigned short  crc;
 
 #elif defined(CRC16)
 
-typedef unsigned short  crc;
+typedef uint16_t crc;
 
 #define CRC_NAME			"CRC-16"
 #define POLYNOMIAL			0x8005
@@ -52,7 +53,7 @@ typedef unsigned short  crc;
 
 #elif defined(CRC32)
 
-typedef unsigned long  crc;
+typedef uint32_t crc;
 
 #define CRC_NAME			"CRC-32"
 #define POLYNOMIAL			0x04C11DB7
