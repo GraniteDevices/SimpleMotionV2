@@ -589,6 +589,12 @@ SM_STATUS smTransmitReceiveCommandQueue( const smbus bushandle, const smaddr tar
         stat=smReceiveReturnPacket(bushandle);//blocking wait & receive return values from bus
         if(stat!=SM_OK) return recordStatus(bushandle,stat); //maybe timeouted
     }
+    if(targetaddress==0)
+    {
+        //make sure we don't return function before all data is really sent as we're not waiting for RX data
+        //note: we're note checking return value of it as some driver's dont support this atm and will return smfalse. TODO fix this & drivers.
+        smFlushTX(handle);
+    }
 
     smBus[bushandle].transmitBufFull=smfalse;//reset overflow status
     return recordStatus(bushandle,SM_OK);
@@ -1003,7 +1009,7 @@ SM_STATUS smSetParameter( const smbus handle, const smaddr nodeAddress, const sm
 
     smStat|=smAppendSetParamCommandToQueue( handle, paramId, paramVal );
     smStat|=smExecuteCommandQueue(handle,nodeAddress);
-    if(nodeAddress!=0)//don't anttempt to read if target address was broadcast address where no slave device will respond
+    if(nodeAddress!=0)//don't attempt to read if target address was broadcast address where no slave device will respond
         smStat|=smGetQueuedSetParamReturnValue(  handle, &nul );
 
     if(smStat!=SM_OK)
