@@ -11,7 +11,7 @@ extern "C" {
 smBusdevicePointer tcpipPortOpen(const char * devicename, smint32 baudrate_bps, smbool *success);
 int tcpipPortRead(smBusdevicePointer busdevicePointer, unsigned char *, int);
 int tcpipPortWrite(smBusdevicePointer busdevicePointer, unsigned char *, int);
-smbool tcpipPortPurge(smBusdevicePointer busdevicePointer);
+smbool tcpipMiscOperation(smBusdevicePointer busdevicePointer, BusDeviceMiscOperationType operation);
 void tcpipPortClose(smBusdevicePointer busdevicePointer);
 
 

@@ -202,9 +202,16 @@ int tcpipPortWrite(smBusdevicePointer busdevicePointer, unsigned char *buf, int 
     return sent;
 }
 
-smbool tcpipPortPurge(smBusdevicePointer busdevicePointer)
+smbool tcpipMiscOperation(smBusdevicePointer busdevicePointer, BusDeviceMiscOperationType operation)
 {
-    return smtrue;//not implemented atm
+    switch(operation)
+    {
+    case MiscOperationPurgeRX:
+    case MiscOperationFlushTX://TODO implement
+    default:
+        smDebug( -1, SMDebugLow, "TCP/IP: given MiscOperataion not implemented\n");
+        return smfalse;
+    }
 }
 
 void tcpipPortClose(smBusdevicePointer busdevicePointer)

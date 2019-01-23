@@ -25,7 +25,7 @@ extern "C" {
 smBusdevicePointer d2xxPortOpen(const char *port_device_name, smint32 baudrate_bps, smbool *success);
 smint32 d2xxPortRead(smBusdevicePointer busdevicepointer, unsigned char *buf, smint32 size);
 smint32 d2xxPortWrite(smBusdevicePointer busdevicepointer, unsigned char *buf, smint32 size);
-smbool d2xxPortPurge(smBusdevicePointer busdevicePointer);
+smbool d2xxPortMiscOperation(smBusdevicePointer busdevicePointer, BusDeviceMiscOperationType operation);
 void d2xxPortClose(smBusdevicePointer busdevicepointer);
 
 //Return number of bus devices found. details of each device may be consequently fetched by smGetBusDeviceDetails()

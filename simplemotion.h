@@ -69,12 +69,24 @@ typedef struct
  */
 typedef enum _smVerbosityLevel {SMDebugOff,SMDebugLow,SMDebugMid,SMDebugHigh,SMDebugTrace} smVerbosityLevel;
 
+/* Operations for BusdeviceMiscOperation callback.
+ *
+ * MiscOperationFlushTX = blocking call to make sure that all data has been physically transmitter
+ *   before returing the function. Max blocking duration is the value set with smSetTimeout.
+ *   If flush operation timeouted, return smfalse (fail), otherwise smtrue (success).
+ * MiscOperationPurgeRX = discard all incoming data that is waiting to be read. Return smtrue on success,
+ *   smfalse on fail.
+ *
+ * If operation is unsupported by the callback, return smfalse.
+ */
+typedef enum _BusDeviceMiscOperationType {MiscOperationFlushTX,MiscOperationPurgeRX} BusDeviceMiscOperationType;
+
 //define communication interface device driver callback types
 typedef void* smBusdevicePointer;
 typedef smBusdevicePointer (*BusdeviceOpen)(const char *port_device_name, smint32 baudrate_bps, smbool *success);
 typedef smint32 (*BusdeviceReadBuffer)(smBusdevicePointer busdevicePointer, unsigned char *buf, smint32 size);
 typedef smint32 (*BusdeviceWriteBuffer)(smBusdevicePointer busdevicePointer, unsigned char *buf, smint32 size);
-typedef smbool (*BusdevicePurge)(smBusdevicePointer busdevicePointer );
+typedef smbool (*BusdeviceMiscOperation)(smBusdevicePointer busdevicePointer, BusDeviceMiscOperationType operation );
 typedef void (*BusdeviceClose)(smBusdevicePointer busdevicePointer);
 //BusdeviceOpen callback should return this if port open fails (in addition to setting *success to smfalse):
 #define SMBUSDEVICE_RETURN_ON_OPEN_FAIL NULL
@@ -103,7 +115,7 @@ typedef void (*BusdeviceClose)(smBusdevicePointer busdevicePointer);
 LIB smbus smOpenBus( const char * devicename );
 
 /** Same as smOpenBus but with user supplied port driver callbacks */
-LIB smbus smOpenBusWithCallbacks(const char *devicename, BusdeviceOpen busOpenCallback, BusdeviceClose busCloseCallback, BusdeviceReadBuffer busReadCallback, BusdeviceWriteBuffer busWriteCallback , BusdevicePurge busPurgeCallback);
+LIB smbus smOpenBusWithCallbacks(const char *devicename, BusdeviceOpen busOpenCallback, BusdeviceClose busCloseCallback, BusdeviceReadBuffer busReadCallback, BusdeviceWriteBuffer busWriteCallback , BusdeviceMiscOperation busPurgeCallback);
 
 /** Change baudrate of SM communication port. This does not affect already opened ports but the next smOpenBus will be opened at the new speed. 
 	Calling this is optional. By default SM bus and all slave devices operates at 460800 BPS speed.

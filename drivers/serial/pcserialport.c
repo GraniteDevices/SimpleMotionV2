@@ -232,15 +232,27 @@ smint32 serialPortWrite(smBusdevicePointer busdevicePointer, unsigned char *buf,
     return(write((int)serialport_handle, buf, size));
 }
 
-smbool serialPortPurge(smBusdevicePointer busdevicePointer)
+smbool serialPortMiscOperation(smBusdevicePointer busdevicePointer, BusDeviceMiscOperationType operation)
 {
     int serialport_handle=(int)busdevicePointer;
-    //flush any stray bytes from device receive buffer that may reside in it
-    //note: according to following page, delay before this may be necessary http://stackoverflow.com/questions/13013387/clearing-the-serial-ports-buffer
-    usleep(50000);
-    tcflush(serialport_handle,TCIOFLUSH);
+    switch(operation)
+    {
+    case MiscOperationPurgeRX:
+        //flush any stray bytes from device receive buffer that may reside in it
+        //note: according to following page, delay before this may be necessary http://stackoverflow.com/questions/13013387/clearing-the-serial-ports-buffer
+        usleep(50000);
+        tcflush(serialport_handle,TCIOFLUSH);
 
-    return smtrue;
+        return smtrue;
+        break;
+    case MiscOperationFlushTX://TODO implement
+        smDebug( -1, SMDebugLow, "Serial port error: FlushTX not implemented\n");
+        return smfalse;
+        break;
+    default:
+        smDebug( -1, SMDebugLow, "Serial port error: given MiscOperataion not implemented\n");
+        return smfalse;
+    }
 }
 
 void serialPortClose(smBusdevicePointer busdevicePointer)

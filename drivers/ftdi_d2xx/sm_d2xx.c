@@ -167,17 +167,28 @@ smint32 d2xxPortWrite(smBusdevicePointer busdevicepointer, unsigned char *buf, s
     return BytesWritten;
 }
 
-smbool d2xxPortPurge(smBusdevicePointer busdevicePointer)
+smbool d2xxPortMiscOperation(smBusdevicePointer busdevicePointer, BusDeviceMiscOperationType operation)
 {
     FT_HANDLE handle=(FT_HANDLE)busdevicePointer;
 
-    if(FT_Purge(handle,FT_PURGE_RX|FT_PURGE_TX)!=FT_OK)
+    switch(operation)
     {
-        smDebug( -1, SMDebugLow, "FTDI port error: failed to purge\n");
+        case MiscOperationPurgeRX:
+        if(FT_Purge(handle,FT_PURGE_RX)!=FT_OK)
+        {
+            smDebug( -1, SMDebugLow, "FTDI port error: failed to purge\n");
+            return smfalse;
+        }
+        return smtrue;
+        break;
+    case MiscOperationFlushTX://TODO implement
+        smDebug( -1, SMDebugLow, "FTDI port error: FlushTX not implemented\n");
+        return smfalse;
+        break;
+    default:
+        smDebug( -1, SMDebugLow, "FTDI port error: given MiscOperataion not implemented\n");
         return smfalse;
     }
-
-    return smtrue;
 }
 
 

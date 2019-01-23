@@ -29,7 +29,7 @@ smBusdevicePointer serialPortOpen(const char *port_device_name, smint32 baudrate
 smint32 serialPortRead(smBusdevicePointer busdevicePointer, unsigned char *buf, smint32 size);
 smint32 serialPortWrite(smBusdevicePointer busdevicePointer, unsigned char *buf, smint32 size);
 void serialPortClose(smBusdevicePointer busdevicePointer);
-smbool serialPortPurge(smBusdevicePointer busdevicePointer);
+smbool serialPortMiscOperation(smBusdevicePointer busdevicePointer, BusDeviceMiscOperationType operation);
 
 
 #ifdef __cplusplus

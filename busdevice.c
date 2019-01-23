@@ -31,7 +31,7 @@ typedef struct _SMBusDevice
     BusdeviceOpen busOpenCallback;
     BusdeviceReadBuffer busReadCallback;
     BusdeviceWriteBuffer busWriteCallback;
-    BusdevicePurge busPurgeCallback;
+    BusdeviceMiscOperation busMiscOperationCallback;
     BusdeviceClose busCloseCallback;
 } SMBusDevice;
 
@@ -60,12 +60,12 @@ smbusdevicehandle smBDOpen( const char *devicename )
     smbusdevicehandle h;
 
     //try opening with all drivers:
-    h=smBDOpenWithCallbacks( devicename, serialPortOpen, serialPortClose, serialPortRead, serialPortWrite, serialPortPurge );
+    h=smBDOpenWithCallbacks( devicename, serialPortOpen, serialPortClose, serialPortRead, serialPortWrite, serialPortMiscOperation );
     if(h>=0) return h;//was success
-    h=smBDOpenWithCallbacks( devicename, tcpipPortOpen, tcpipPortClose, tcpipPortRead, tcpipPortWrite, tcpipPortPurge );
+    h=smBDOpenWithCallbacks( devicename, tcpipPortOpen, tcpipPortClose, tcpipPortRead, tcpipPortWrite, tcpipMiscOperation );
     if(h>=0) return h;//was success
 #ifdef FTDI_D2XX_SUPPORT
-    h=smBDOpenWithCallbacks( devicename, d2xxPortOpen, d2xxPortClose, d2xxPortRead, d2xxPortWrite, d2xxPortPurge );
+    h=smBDOpenWithCallbacks( devicename, d2xxPortOpen, d2xxPortClose, d2xxPortRead, d2xxPortWrite, d2xxPortMiscOperation );
     if(h>=0) return h;//was success
 #endif
 #else
@@ -79,7 +79,7 @@ smbusdevicehandle smBDOpen( const char *devicename )
 
 
 
-smbusdevicehandle smBDOpenWithCallbacks(const char *devicename, BusdeviceOpen busOpenCallback, BusdeviceClose busCloseCallback , BusdeviceReadBuffer busReadCallback, BusdeviceWriteBuffer busWriteCallback, BusdevicePurge busPurgeCallback )
+smbusdevicehandle smBDOpenWithCallbacks(const char *devicename, BusdeviceOpen busOpenCallback, BusdeviceClose busCloseCallback , BusdeviceReadBuffer busReadCallback, BusdeviceWriteBuffer busWriteCallback, BusdeviceMiscOperation busMiscOperationCallback )
 {
     int handle;
     smbool success;
@@ -101,7 +101,7 @@ smbusdevicehandle smBDOpenWithCallbacks(const char *devicename, BusdeviceOpen bu
     BusDevice[handle].busOpenCallback=busOpenCallback;
     BusDevice[handle].busWriteCallback=busWriteCallback;
     BusDevice[handle].busReadCallback=busReadCallback;
-    BusDevice[handle].busPurgeCallback=busPurgeCallback;
+    BusDevice[handle].busMiscOperationCallback=busMiscOperationCallback;
     BusDevice[handle].busCloseCallback=busCloseCallback;
 
     //try opening
@@ -214,7 +214,7 @@ smbool smBDPurge( const smbusdevicehandle handle )
 
     BusDevice[handle].txBufferUsed=0;
 
-    return BusDevice[handle].busPurgeCallback(BusDevice[handle].busDevicePointer);
+    return BusDevice[handle].busMiscOperationCallback(BusDevice[handle].busDevicePointer,MiscOperationPurgeRX);
 }
 
 

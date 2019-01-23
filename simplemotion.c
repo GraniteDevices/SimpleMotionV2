@@ -224,7 +224,7 @@ smbus smOpenBus( const char * devicename )
 }
 
 /** same as smOpenBus but with user supplied port driver callbacks */
-smbus smOpenBusWithCallbacks( const char *devicename, BusdeviceOpen busOpenCallback, BusdeviceClose busCloseCallback, BusdeviceReadBuffer busReadCallback, BusdeviceWriteBuffer busWriteCallback, BusdevicePurge busPurgeCallback )
+smbus smOpenBusWithCallbacks( const char *devicename, BusdeviceOpen busOpenCallback, BusdeviceClose busCloseCallback, BusdeviceReadBuffer busReadCallback, BusdeviceWriteBuffer busWriteCallback, BusdeviceMiscOperation busMiscOperationCallback )
 {
     int handle;
 
@@ -241,7 +241,7 @@ smbus smOpenBusWithCallbacks( const char *devicename, BusdeviceOpen busOpenCallb
     if(handle>=SM_MAX_BUSES) return -1;
 
     //open bus device
-    smBus[handle].bdHandle=smBDOpenWithCallbacks(devicename, busOpenCallback, busCloseCallback, busReadCallback, busWriteCallback, busPurgeCallback );
+    smBus[handle].bdHandle=smBDOpenWithCallbacks(devicename, busOpenCallback, busCloseCallback, busReadCallback, busWriteCallback, busMiscOperationCallback );
     if(smBus[handle].bdHandle==-1) return -1;
 
     //success
