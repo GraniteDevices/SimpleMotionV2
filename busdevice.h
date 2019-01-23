@@ -31,9 +31,9 @@ smbool smBDTransmit(const smbusdevicehandle handle);
 //returns true if byte read sucessfully
 smbool smBDRead( const smbusdevicehandle handle , smuint8 *byte );
 
-//clear pending bytes in reception and discard any outgoing bytes to be sent
+//see info at definition of BusDeviceMiscOperationType
 //returns true if sucessfully
-smbool smBDPurge( const smbusdevicehandle handle );
+smbool smBDMiscOperation( const smbusdevicehandle handle, BusDeviceMiscOperationType operation );
 
 //BUS DEVICE INFO FETCH FUNCTIONS:
 

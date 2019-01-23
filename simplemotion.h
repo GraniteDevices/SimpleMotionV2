@@ -147,11 +147,6 @@ LIB SM_STATUS smSetTimeout( smuint16 millsecs );
 */
 LIB SM_STATUS smCloseBus( const smbus bushandle );
 
-/** Clear pending (stray) bytes in bus device reception buffer and reset receiver state. This may be needed i.e. after restarting device to eliminate clitches that appear in serial line.
-  -return value: a SM_STATUS value, i.e. SM_OK if command succeed
-*/
-LIB SM_STATUS smPurge( const smbus bushandle );
-
 /** Return SM lib version number in hexadecimal format.
 Ie V 2.5.1 would be 0x020501 and 1.2.33 0x010233 */
 LIB smuint32 smGetVersion();

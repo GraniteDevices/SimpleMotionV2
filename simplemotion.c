@@ -296,7 +296,21 @@ LIB SM_STATUS smPurge( const smbus bushandle )
     //check if bus handle is valid & opened
     if(smIsHandleOpen(bushandle)==smfalse) return recordStatus(bushandle,SM_ERR_NODEVICE);
 
-    if(smBDPurge( bushandle )==smtrue)
+    if(smBDMiscOperation( bushandle, MiscOperationPurgeRX )==smtrue)
+        return recordStatus(bushandle,SM_OK);
+    else
+        return recordStatus(bushandle,SM_ERR_BUS);
+}
+
+/** Block until pending TX bytes are phyiscally out. Max blocking time is same that is set with smSetTimeout
+  -return value: a SM_STATUS value, i.e. SM_OK if command succeed
+*/
+LIB SM_STATUS smFlushTX( const smbus bushandle )
+{
+    //check if bus handle is valid & opened
+    if(smIsHandleOpen(bushandle)==smfalse) return recordStatus(bushandle,SM_ERR_NODEVICE);
+
+    if(smBDMiscOperation( bushandle, MiscOperationFlushTX )==smtrue)
         return recordStatus(bushandle,SM_OK);
     else
         return recordStatus(bushandle,SM_ERR_BUS);

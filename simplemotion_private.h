@@ -143,4 +143,15 @@ typedef union
 #endif
 
 
+/** Clear pending (stray) bytes in bus device reception buffer and reset receiver state. This may be needed i.e. after restarting device to eliminate clitches that appear in serial line.
+  -return value: a SM_STATUS value, i.e. SM_OK if command succeed
+*/
+LIB SM_STATUS smPurge( const smbus bushandle );
+
+/** Block until pending TX bytes are phyiscally out. Max blocking time is same that is set with smSetTimeout
+  -return value: a SM_STATUS value, i.e. SM_OK if command succeed
+*/
+LIB SM_STATUS smFlushTX( const smbus bushandle );
+
+
 #endif // SIMPLEMOTION_PRIVATE_H

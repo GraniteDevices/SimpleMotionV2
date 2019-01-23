@@ -116,7 +116,7 @@ smbusdevicehandle smBDOpenWithCallbacks(const char *devicename, BusdeviceOpen bu
     BusDevice[handle].cumulativeSmStatus=0;
 
     //purge
-    if(smBDPurge(handle)==smfalse)
+    if(smBDMiscOperation(handle,MiscOperationPurgeRX)==smfalse)
     {
         smBDClose(handle);
         return -1; //failed to purge
@@ -205,16 +205,15 @@ smbool smBDRead( const smbusdevicehandle handle, smuint8 *byte )
     }
 }
 
-//clear pending bytes in reception and discard any outgoing bytes to be sent
 //returns true if sucessfully
-smbool smBDPurge( const smbusdevicehandle handle )
+smbool smBDMiscOperation(const smbusdevicehandle handle , BusDeviceMiscOperationType operation)
 {
     //check if handle valid & open
     if( smIsBDHandleOpen(handle)==smfalse ) return smfalse;
 
     BusDevice[handle].txBufferUsed=0;
 
-    return BusDevice[handle].busMiscOperationCallback(BusDevice[handle].busDevicePointer,MiscOperationPurgeRX);
+    return BusDevice[handle].busMiscOperationCallback(BusDevice[handle].busDevicePointer,operation);
 }
 
 
