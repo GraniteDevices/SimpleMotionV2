@@ -68,6 +68,24 @@ smbool smInitialized=smfalse;
 //if debug message has priority this or above will be printed to debug stream
 smVerbosityLevel smDebugThreshold=SMDebugTrace;
 
+#if defined(__unix__) || defined(__APPLE__)
+#include <unistd.h>
+void smSleepMs(int millisecs)
+{
+    usleep(millisecs*1000);
+}
+
+#elif defined(_WIN32) || defined(WIN32)
+#include <windows.h>
+void smSleepMs(int millisecs)
+{
+    Sleep(millisecs);
+}
+#else
+#warning Make sure to implement own smSleepMs function for your platform as it's not one of supported ones (unix/win). For more info, see simplemotion_private.h.
+#endif
+
+
 #ifdef ENABLE_DEBUG_PRINTS
 void smDebug( smbus handle, smVerbosityLevel verbositylevel, char *format, ...)
 {
@@ -115,7 +133,6 @@ void smResetSM485variables(smbus handle)
     smBus[handle].cmd_send_queue_bytes=0;
     smBus[handle].cmd_recv_queue_bytes=0;
 }
-
 
 smuint16 calcCRC16(smuint8 data, smuint16 crc)
 {
@@ -593,7 +610,7 @@ SM_STATUS smTransmitReceiveCommandQueue( const smbus bushandle, const smaddr tar
     {
         //make sure we don't return function before all data is really sent as we're not waiting for RX data
         //note: we're note checking return value of it as some driver's dont support this atm and will return smfalse. TODO fix this & drivers.
-        smFlushTX(handle);
+        smFlushTX(bushandle);
     }
 
     smBus[bushandle].transmitBufFull=smfalse;//reset overflow status

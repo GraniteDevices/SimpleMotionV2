@@ -240,18 +240,20 @@ smbool serialPortMiscOperation(smBusdevicePointer busdevicePointer, BusDeviceMis
     case MiscOperationPurgeRX:
         //flush any stray bytes from device receive buffer that may reside in it
         //note: according to following page, delay before this may be necessary http://stackoverflow.com/questions/13013387/clearing-the-serial-ports-buffer
-        usleep(50000);
-        tcflush(serialport_handle,TCIOFLUSH);
-
+        usleep(20000);
+        tcflush(serialport_handle,TCIFLUSH);
         return smtrue;
         break;
     case MiscOperationFlushTX://TODO implement
-        smDebug( -1, SMDebugLow, "Serial port error: FlushTX not implemented\n");
-        return smfalse;
+        usleep(20000);
+        //waits until all output written to the object referred to by fd has been transmitted.
+        tcdrain(serialport_handle);
+        return smtrue;
         break;
     default:
         smDebug( -1, SMDebugLow, "Serial port error: given MiscOperataion not implemented\n");
         return smfalse;
+        break;
     }
 }
 

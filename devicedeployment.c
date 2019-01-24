@@ -10,19 +10,6 @@
 //wait some time after device is started/restarted. 500ms too little for some devices, 800ms was barely enough
 #define SM_DEVICE_POWER_UP_WAIT_MS 1500
 
-#if defined(__unix__) || defined(__APPLE__)
-#include <unistd.h>
-void sleep_ms(int millisecs)
-{
-    usleep(millisecs*1000);
-}
-#else
-#include <windows.h>
-void sleep_ms(int millisecs)
-{
-    Sleep(millisecs);
-}
-#endif
 
 int globalErrorDetailCode=0;
 
@@ -290,7 +277,7 @@ LIB LoadConfigurationStatus smLoadConfigurationFromBuffer( const smbus smhandle,
     {
         smDebug(smhandle,SMDebugLow,"Restarting device\n");
         smSetParameter( smhandle, smaddress, SMP_SYSTEM_CONTROL, SMP_SYSTEM_CONTROL_RESTART );
-        sleep_ms(SM_DEVICE_POWER_UP_WAIT_MS);//wait power-on
+        smSleepMs(SM_DEVICE_POWER_UP_WAIT_MS);//wait power-on
         smPurge(smhandle);
     }
 
@@ -654,7 +641,7 @@ smbool flashFirmwarePrimaryMCU( smbus smhandle, int deviceaddress, const smuint8
 */
             smSetParameter(smhandle,deviceaddress,SMP_BOOTLOADER_FUNCTION,1);//BL func 1 = do mass erase on STM32. On Non-Argon devices it doesn't reset confifuration
 
-        sleep_ms(SM_DEVICE_POWER_UP_WAIT_MS);
+        smSleepMs(SM_DEVICE_POWER_UP_WAIT_MS);
 
         //flash
         smSetParameter(smhandle,deviceaddress,SMP_RETURN_PARAM_LEN, SMPRET_CMD_STATUS);
@@ -858,7 +845,7 @@ FirmwareUploadStatus smFirmwareUploadFromBuffer( const smbus smhandle, const int
 
     else if(state==StatEnterDFU)
     {
-        sleep_ms(SM_DEVICE_POWER_UP_WAIT_MS);//wait device to reboot in DFU mode. probably shorter delay would do.
+        smSleepMs(SM_DEVICE_POWER_UP_WAIT_MS);//wait device to reboot in DFU mode. probably shorter delay would do.
         smPurge(smhandle);
 
         //check if device is in DFU mode already
@@ -947,7 +934,7 @@ FirmwareUploadStatus smFirmwareUploadFromBuffer( const smbus smhandle, const int
     else if(state==StatLaunch)
     {
         smSetParameter(smhandle,DFUAddress,SMP_BOOTLOADER_FUNCTION,4);//BL func 4 = launch.
-        sleep_ms(SM_DEVICE_POWER_UP_WAIT_MS);
+        smSleepMs(SM_DEVICE_POWER_UP_WAIT_MS);
         if(FW_already_installed)
             progress=FWAlreadyInstalled;
         else

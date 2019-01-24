@@ -160,14 +160,14 @@ smBusdevicePointer tcpipPortOpen(const char * devicename, smint32 baudrate_bps, 
 #endif
 
     *success=smtrue;
-    return (smBusdevicePointer)sockfd;
+    return (smBusdevicePointer)sockfd;//compiler warning expected here on 64 bit compilation but it's ok
 }
 
 // Read bytes from socket
 int tcpipPortRead(smBusdevicePointer busdevicePointer, unsigned char *buf, int size)
 {
     int n;
-    int sockfd=(int)busdevicePointer;
+    int sockfd=(int)busdevicePointer;//compiler warning expected here on 64 bit compilation but it's ok
     fd_set input;
     FD_ZERO(&input);
     FD_SET((unsigned int)sockfd, &input);
@@ -175,16 +175,16 @@ int tcpipPortRead(smBusdevicePointer busdevicePointer, unsigned char *buf, int s
     timeout.tv_sec = readTimeoutMs/1000;
     timeout.tv_usec = (readTimeoutMs%1000) * 1000;
 
-    n = select(sockfd + 1, &input, NULL, NULL, &timeout);
+    n = select(sockfd + 1, &input, NULL, NULL, &timeout);//n=-1, select failed. 0=no data within timeout ready, >0 data available
 
     // Error or timeout
     if (n < 1)
     {
-        return(-1);
+        return(-1);//select failed
     }
     if(!FD_ISSET(sockfd, &input))
     {
-        return(-1);
+        return(-1);//no data available
     }
 
     n = read(sockfd, (char*)buf, size);
@@ -193,7 +193,7 @@ int tcpipPortRead(smBusdevicePointer busdevicePointer, unsigned char *buf, int s
 
 int tcpipPortWrite(smBusdevicePointer busdevicePointer, unsigned char *buf, int size)
 {
-    int sockfd=(int)busdevicePointer;
+    int sockfd=(int)busdevicePointer;//compiler warning expected here on 64 bit compilation but it's ok
     int sent = write(sockfd, (char*)buf, size);
     if (sent != size)
     {
@@ -207,16 +207,49 @@ smbool tcpipMiscOperation(smBusdevicePointer busdevicePointer, BusDeviceMiscOper
     switch(operation)
     {
     case MiscOperationPurgeRX:
-    case MiscOperationFlushTX://TODO implement
+        {
+            int n;
+            do //loop read as long as there is data coming in
+            {
+                char discardbuf[256];
+                int sockfd=(int)busdevicePointer;//compiler warning expected here on 64 bit compilation but it's ok
+                fd_set input;
+                FD_ZERO(&input);
+                FD_SET((unsigned int)sockfd, &input);
+                struct timeval timeout;
+                timeout.tv_sec = 0;
+                timeout.tv_usec = 0;
+
+                n = select(sockfd + 1, &input, NULL, NULL, &timeout);
+
+                // Error or timeout
+                if (n < 1)
+                {
+                    return smfalse;//select failed
+                }
+                if(!FD_ISSET(sockfd, &input))
+                {
+                    return smtrue; //no data available
+                }
+                n = read(sockfd, (char*)discardbuf, 256);
+            } while( n>0 );
+            return smtrue;
+        }
+        break;
+    case MiscOperationFlushTX:
+        //FlushTX should be taken care with disabled Nagle algoritmh
+        return smtrue;
+        break;
     default:
         smDebug( -1, SMDebugLow, "TCP/IP: given MiscOperataion not implemented\n");
         return smfalse;
+        break;
     }
 }
 
 void tcpipPortClose(smBusdevicePointer busdevicePointer)
 {
-    int sockfd=(int)busdevicePointer;
+    int sockfd=(int)busdevicePointer;//compiler warning expected here on 64 bit compilation but it's ok
     close(sockfd);
 #if defined(_WIN32)
     WSACleanup();

@@ -153,5 +153,17 @@ LIB SM_STATUS smPurge( const smbus bushandle );
 */
 LIB SM_STATUS smFlushTX( const smbus bushandle );
 
+/* OS independent sleep function for SM internal use
+ *
+ * SM lib has implementation for unix/win systems (incl linux & mac). For other systems, please add your own smSleepMs implementation in your application.
+ * i.e. write function in your main.c or any other .c file that get's compiled and linked:
+ *
+ * void smSleepMs(int millisecs)
+ * {
+ *    // do your delay here
+ * }
+ */
+void smSleepMs(int millisecs);
+
 
 #endif // SIMPLEMOTION_PRIVATE_H

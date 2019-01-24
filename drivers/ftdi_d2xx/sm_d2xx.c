@@ -174,20 +174,42 @@ smbool d2xxPortMiscOperation(smBusdevicePointer busdevicePointer, BusDeviceMiscO
     switch(operation)
     {
         case MiscOperationPurgeRX:
-        if(FT_Purge(handle,FT_PURGE_RX)!=FT_OK)
-        {
-            smDebug( -1, SMDebugLow, "FTDI port error: failed to purge\n");
-            return smfalse;
-        }
-        return smtrue;
+            if(FT_Purge(handle,FT_PURGE_RX)!=FT_OK)
+            {
+                smDebug( -1, SMDebugLow, "FTDI port error: failed to purge\n");
+                return smfalse;
+            }
+            return smtrue;
         break;
-    case MiscOperationFlushTX://TODO implement
-        smDebug( -1, SMDebugLow, "FTDI port error: FlushTX not implemented\n");
-        return smfalse;
+        case MiscOperationFlushTX:
+        {
+            int timespent_ms=0;
+            while(1)
+            {
+                DWORD InRxQueue, InTxQueue, EventStatus;
+                FT_STATUS stat=FT_GetStatus(handle, &InRxQueue, &InTxQueue, &EventStatus);
+
+                if(stat!=FT_OK)
+                {
+                    smDebug( -1, SMDebugLow, "FTDI port error: FT_GetStatus failed\n");
+                    return smfalse;
+                }
+
+                if(InTxQueue==0)//no data to be sent in buffer
+                    return smtrue;
+
+                //wait before next loop round
+                smSleepMs(1);
+                timespent_ms++;
+                if(timespent_ms>=readTimeoutMs)
+                    return smfalse;//timeouted
+            };
+        }
         break;
     default:
         smDebug( -1, SMDebugLow, "FTDI port error: given MiscOperataion not implemented\n");
         return smfalse;
+        break;
     }
 }
 
