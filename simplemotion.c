@@ -94,6 +94,10 @@ void smDebug( smbus handle, smVerbosityLevel verbositylevel, char *format, ...)
 
     if(smDebugOut!=NULL && verbositylevel <= smDebugThreshold )
     {
+        #ifdef SM_DEBUG_PREFIX_STRING //user app may define this macro if need to write custom prefix
+        fprintf(smDebugOut, SM_DEBUG_PREFIX_STRING);
+        #endif
+
         va_start(fmtargs,format);
         vsnprintf(buffer,sizeof(buffer)-1,format,fmtargs);
         va_end(fmtargs);
@@ -114,6 +118,10 @@ void smDebug( smbus handle, smVerbosityLevel verbositylevel, char *format, ...)
         }
         else
             fprintf(smDebugOut,"SMLib: %s",buffer);//no handle given
+
+        #ifdef SM_DEBUG_SUFFIX_STRING //user app may define this macro if need to write custom suffix
+        fprintf(smDebugOut, SM_DEBUG_SUFFIX_STRING);
+        #endif
     }
 }
 #endif
