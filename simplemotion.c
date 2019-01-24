@@ -82,9 +82,12 @@ void smSleepMs(int millisecs)
     Sleep(millisecs);
 }
 #else
-#warning Make sure to implement own smSleepMs function for your platform as it's not one of supported ones (unix/win). For more info, see simplemotion_private.h.
+#warning Make sure to implement own smSleepMs function for your platform as it is not one of supported ones (unix/win). For more info, see simplemotion_private.h.
 #endif
 
+
+extern const char *smDebugPrefixString;
+extern const char *smDebugSuffixString;
 
 #ifdef ENABLE_DEBUG_PRINTS
 void smDebug( smbus handle, smVerbosityLevel verbositylevel, char *format, ...)
@@ -94,8 +97,8 @@ void smDebug( smbus handle, smVerbosityLevel verbositylevel, char *format, ...)
 
     if(smDebugOut!=NULL && verbositylevel <= smDebugThreshold )
     {
-        #ifdef SM_DEBUG_PREFIX_STRING //user app may define this macro if need to write custom prefix
-        fprintf(smDebugOut, SM_DEBUG_PREFIX_STRING);
+        #ifdef SM_ENABLE_DEBUG_PREFIX_STRING //user app may define this macro if need to write custom prefix, if defined, then define also "const char *smDebugPrefixString="my string";" somewhere in your app.
+        fprintf(smDebugOut, smDebugPrefixString);
         #endif
 
         va_start(fmtargs,format);
@@ -119,8 +122,8 @@ void smDebug( smbus handle, smVerbosityLevel verbositylevel, char *format, ...)
         else
             fprintf(smDebugOut,"SMLib: %s",buffer);//no handle given
 
-        #ifdef SM_DEBUG_SUFFIX_STRING //user app may define this macro if need to write custom suffix
-        fprintf(smDebugOut, SM_DEBUG_SUFFIX_STRING);
+        #ifdef SM_ENABLE_DEBUG_SUFFIX_STRING //user app may define this macro if need to write custom suffix, if defined, then define also "const char *smDebugSuffixString="my string";" somewhere in your app.
+        fprintf(smDebugOut, smDebugSuffixString);
         #endif
     }
 }
