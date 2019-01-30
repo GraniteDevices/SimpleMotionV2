@@ -4,7 +4,11 @@
 #ifndef SIMPLEMOTION_TYPES_H
 #define SIMPLEMOTION_TYPES_H
 
+#ifdef LINUX_KEY_WORD
 #include <unistd.h>
+#elif WINDOWS_KEY_WORD
+#include <io.h>
+#endif
 
 //possible return values (SM_STATUS type)
 #define SM_NONE 0

@@ -4,14 +4,9 @@
 #ifndef SIMPLEMOTION_H
 #define SIMPLEMOTION_H
 
-#ifdef WIN32
-//dll specs
-#ifdef BUILD_DLL
-    #define LIB __declspec(dllexport)
-#else
-//    #define LIB __declspec(dllimport)
-#define LIB
-#endif
+#if defined(BUILD_DLL) && (defined(_WIN64) || defined(_WIN32))
+	//dll specs
+#define LIB __declspec(dllexport)
 #else
 #define LIB
 #endif

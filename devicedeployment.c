@@ -3,7 +3,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-#include <simplemotion_private.h>
+#include "simplemotion_private.h"
 #include <math.h>
 
 #if defined(__unix__) || defined(__APPLE__)

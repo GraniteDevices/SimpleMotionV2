@@ -16,3 +16,15 @@
 *.exe
 *.out
 *.app
+*.suo
+*.ipch
+*.obj
+*.tlog
+*.log
+*.pch
+*.idb
+*.pdb
+*.exp
+*.opendb
+*.db
+*.ilk
