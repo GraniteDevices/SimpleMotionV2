@@ -840,7 +840,8 @@
  * new interface has equivalents. */
 /* Number of FBD1 sensor position counts per motor pole count (set by SMP_MOTOR_POLEPAIRS). Can be also negative value, which means
  * that commutation count direction is inverted. */
-#define SMP_COMMUTATION_COUNTS_PER_POLE_PAIR_AND_DIRECTION 483
+#define SMP_COMMUTATION_COUNTS_PER_POLE_PAIR_COUNT_AND_DIRECTION 483
+//TODO mieti miten asetetaan enkooderin pos suunta torquen suunnan kanssa samaksi. nyt kommutointi kääntää suuntaa jos vaiheet swäppää. myös dc motilla miten.
 
 /* Following parameter is part of feedback sensor interface version 2.
  * To test whether drive supports this, test if the DEVICE_CAPABILITY1_ENCODER_INTERFACE_V2 is set.
@@ -850,17 +851,16 @@
 #define SMP_COMMUTATION_INIT_SOURCE 484
 		#define COMMUTATION_INIT_SOURCE_PHASING 0
 		#define COMMUTATION_INIT_SOURCE_HALL 1
-		#define COMMUTATION_INIT_SOURCE_FB1_ABSOLUTE 2
-		#define COMMUTATION_INIT_SOURCE_FB2_ABSOLUTE 3
+		#define COMMUTATION_INIT_SOURCE_HALL_INVERTED 2
+		#define COMMUTATION_INIT_SOURCE_FB1_ABSOLUTE 3
 		#define _COMMUTATION_INIT_SOURCE_LAST 3
 
 /* Following parameter is part of feedback sensor interface version 2.
  * To test whether drive supports this, test if the DEVICE_CAPABILITY1_ENCODER_INTERFACE_V2 is set.
  * If this interface v2 is supported, then target device does not support parameters: SMP_COMMUTATION_SENSOR_CONFIG & FLAG_INVERT_ENCODER as
  * new interface has equivalents. */
-/* Commitation sensor init offset for 0..360 electrical degrees equals value 0-65535,
- * this value can be also negative, which means inverted init sensor count direction */
-#define SMP_COMMUTATION_INIT_OFFSET_AND_DIRECTION 485
+/* Commitation sensor init offset for 0..360 electrical degrees equals value 0-65535 */
+#define SMP_COMMUTATION_INIT_OFFSET 485
 
 //low pass filter selector, value 0=100Hz, 9=3300Hz, 10=4700Hz, 11=unlimited (see Granity for all options):
 #define SMP_TORQUE_LPF_BANDWIDTH 490
