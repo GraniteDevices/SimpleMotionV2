@@ -645,14 +645,10 @@
  * note: supported only if DEVICE_CAPABILITY1_ENCODER_INTERFACE_V2 is set
  */
 //WIP
-#define SMP_FBD1_RESOLUTION 576
-#define SMP_FBD2_RESOLUTION 577
-
-/*
- * if using linear motor, defines pole pair length in micrometers
- * note: supported only if DEVICE_CAPABILITY1_ENCODER_INTERFACE_V2 is set
- */
-//#define SMP_LINEAR_MOTOR_POLE_PAIR_PITCH 578
+#warning TODO
+//TODO idea: käyttäjä asettaa output skaalan AXS tyyliin enkooderin counteista fyysiseksi. FW ei tarvii tätä tietoa hirveesti.
+//#define SMP_FBD1_RESOLUTION 576
+//#define SMP_FBD2_RESOLUTION 577
 
 /*
  * AC motor pole configuration
@@ -663,8 +659,7 @@
  * -linear motor (FLAG_IS_LINEAR_MOTOR is set), then this defines motor pole pair pitch in micrometers
  *  note: linear motor mode supported only if DEVICE_CAPABILITY1_ENCODER_INTERFACE_V2 is set
  */
-//#define SMP_MOTOR_POLEPAIRS 566 /*old name kept for compatibility*/
-//#define SMP_AC_MOTOR_POLE_CONFIG 566 /*new name*/
+#define SMP_MOTOR_POLEPAIRS 566 /*old name kept for compatibility*/
 
 
 //flag bits & general
@@ -686,10 +681,10 @@
     #define FLAG_MECH_BRAKE_DURING_PHASING BV(15)
 	#define FLAG_LIMIT_SWITCHES_NORMALLY_OPEN_TYPE BV(16)
 	#define FLAG_ENABLE_MOTOR_SOUND_NOTIFICATIONS BV(17)
-	//#define FLAG_FBD1_IS_LINEAR_ENCODER BV(18)
-	//#define FLAG_FBD2_IS_LINEAR_ENCODER BV(19)
-	///#define FLAG_IS_LINEAR_MOTOR BV(20) /* true if linear motor, changes effect of SMP_MOTOR_POLEPAIRS. supported if DEVICE_CAPABILITY1_ENCODER_INTERFACE_V2 is set */
-    #define FLAG_INVERT_FB2_ENCODER BV(21) /* invert optional secondary encoder */
+	//#define FLAG_FBD1_IS_LINEAR_ENCODER BV(18) //TODO
+	//#define FLAG_FBD2_IS_LINEAR_ENCODER BV(19) //TODO
+	///#define FLAG_IS_LINEAR_MOTOR BV(20) /* true if linear motor, changes effect of SMP_MOTOR_POLEPAIRS. supported if DEVICE_CAPABILITY1_ENCODER_INTERFACE_V2 is set */ //TODO
+    #define FLAG_INVERT_FB2_ENCODER BV(21) /* invert optional secondary encoder */ //TODO
 #define SMP_MOTION_FAULT_THRESHOLD 568
 #define SMP_HV_VOLTAGE_HI_LIMIT 569
 #define SMP_HV_VOLTAGE_LOW_LIMIT 570
@@ -831,31 +826,41 @@
  * bits 0-15 LSB: commutation sensor initialization offset 0-65535 represents commutation angle offset 0-360 electical degrees
  * bit 16: invert sensor count direction
  * bit 17: enable commutation sensor
- * bit 18-19: commutation sensor initialization source, choices (supported only if DEVICE_CAPABILITY1_ENCODER_INTERFACE_V2 is set), decimal value:
- *  0=Hall sensor
- * 	1=Absoute sensor on FBD1
- * 	2=Absolute sensor on FBD2
- * 	others=reserved, i.e. sensorless spin-up
- * bits 20-32: reserved, always 0
  *
- * Commutation angle calculation uses FB device of SMP_FB1_DEVICE_SEPECTION after initialization and applies
- * SMP_COUNTS_PER_POLE_PAIR to calculate electrical angle.
+ * Note: this is for devices where params 484-486
  */
 #define SMP_COMMUTATION_SENSOR_CONFIG 482
 	#define SMP_COMMUTATION_SENSOR_CONFIG_ANGLE_MASK 0xFFFF
 	#define SMP_COMMUTATION_SENSOR_CONFIG_INVERT_MASK 0x10000
 	#define SMP_COMMUTATION_SENSOR_CONFIG_ENABLE_MASK 0x20000
-	#define SMP_COMMUTATION_SENSOR_INIT_SOURCE_MASK ((0b11L)<<18L)
-		#define COMMUTATION_SENSOR_INIT_SOURCE_PHASING (0L<<18L)
-		#define COMMUTATION_SENSOR_INIT_SOURCE_HALL (1L<<18L)
-		#define COMMUTATION_SENSOR_INIT_SOURCE_FB1_ABSOLUTE (2L<<18L)
-		#define COMMUTATION_SENSOR_INIT_SOURCE_FB2_ABSOLUTE (3L<<18L)
-/*	#define SMP_COMMUTATION_SENSOR_COUNT_SOURCE_MASK ((0b1111L)<<24L)
-		#define COMMUTATION_SENSOR_COUNT_SOURCE_FB1 (0L<<18L)
-		#define COMMUTATION_SENSOR_COUNT_SOURCE_FB2 (11L<<18L)*/
 
-#define SMP_COUNTS_PER_POLE_PAIR 483
+/* Following parameter is part of feedback sensor interface version 2.
+ * To test whether drive supports this, test if the DEVICE_CAPABILITY1_ENCODER_INTERFACE_V2 is set.
+ * If this interface v2 is supported, then target device does not support parameters: SMP_COMMUTATION_SENSOR_CONFIG & FLAG_INVERT_ENCODER as
+ * new interface has equivalents. */
+/* Number of FBD1 sensor position counts per motor pole count (set by SMP_MOTOR_POLEPAIRS). Can be also negative value, which means
+ * that commutation count direction is inverted. */
+#define SMP_COMMUTATION_COUNTS_PER_POLE_PAIR_AND_DIRECTION 483
 
+/* Following parameter is part of feedback sensor interface version 2.
+ * To test whether drive supports this, test if the DEVICE_CAPABILITY1_ENCODER_INTERFACE_V2 is set.
+ * If this interface v2 is supported, then target device does not support parameters: SMP_COMMUTATION_SENSOR_CONFIG & FLAG_INVERT_ENCODER as
+ * new interface has equivalents. */
+/* Commutation sensor initialization source */
+#define SMP_COMMUTATION_INIT_SOURCE 484
+		#define COMMUTATION_INIT_SOURCE_PHASING 0
+		#define COMMUTATION_INIT_SOURCE_HALL 1
+		#define COMMUTATION_INIT_SOURCE_FB1_ABSOLUTE 2
+		#define COMMUTATION_INIT_SOURCE_FB2_ABSOLUTE 3
+		#define _COMMUTATION_INIT_SOURCE_LAST 3
+
+/* Following parameter is part of feedback sensor interface version 2.
+ * To test whether drive supports this, test if the DEVICE_CAPABILITY1_ENCODER_INTERFACE_V2 is set.
+ * If this interface v2 is supported, then target device does not support parameters: SMP_COMMUTATION_SENSOR_CONFIG & FLAG_INVERT_ENCODER as
+ * new interface has equivalents. */
+/* Commitation sensor init offset for 0..360 electrical degrees equals value 0-65535,
+ * this value can be also negative, which means inverted init sensor count direction */
+#define SMP_COMMUTATION_INIT_OFFSET_AND_DIRECTION 485
 
 //low pass filter selector, value 0=100Hz, 9=3300Hz, 10=4700Hz, 11=unlimited (see Granity for all options):
 #define SMP_TORQUE_LPF_BANDWIDTH 490
