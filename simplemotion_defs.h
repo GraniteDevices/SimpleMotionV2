@@ -636,22 +636,8 @@
 #define SMP_ABS_IN_SCALER 564
 
 //FB1 device resolution, pulses per rev
-#define SMP_ENCODER_PPR 565 //note this is not used if DEVICE_CAPABILITY1_ENCODER_INTERFACE_V2 is set, see SMP_FBD1_COUNTS_PER_POLEPAIR instead
+#define SMP_ENCODER_PPR 565 //note this is not used if DEVICE_CAPABILITY1_COMMUTATION_CONFIG_V2 is set, see SMP_FBD1_COUNTS_PER_POLEPAIR instead
 
-/*
- * defines encoder resolutions:
- * -if rotary encoder, then it's counts per revolution (if FLAG_FBDx_IS_LINEAR_ENCODER is 0)
- * -if linear encoder, then it's counts/100mm (if FLAG_FBDx_IS_LINEAR_ENCODER is 1)
- * note: supported only if DEVICE_CAPABILITY1_ENCODER_INTERFACE_V2 is set
- */
-#define SMP_FBD1_RESOLUTION 576
-#define SMP_FBD2_RESOLUTION 577
-
-/*
- * if using linear motor, defines pole pair length in micrometers
- * note: supported only if DEVICE_CAPABILITY1_ENCODER_INTERFACE_V2 is set
- */
-#define SMP_LINEAR_MOTOR_POLE_PAIR_PITCH 578
 
 /*
  * AC motor pole configuration
@@ -660,10 +646,9 @@
  * -dc motor - no effect
  * -AC/bldc motor, number of polepairs
  * -linear motor (FLAG_IS_LINEAR_MOTOR is set), then this defines motor pole pair pitch in micrometers
- *  note: linear motor mode supported only if DEVICE_CAPABILITY1_ENCODER_INTERFACE_V2 is set
+ *  note: linear motor mode supported only if DEVICE_CAPABILITY1_COMMUTATION_CONFIG_V2 is set
  */
 #define SMP_MOTOR_POLEPAIRS 566 /*old name kept for compatibility*/
-#define SMP_AC_MOTOR_POLE_CONFIG 566 /*new name*/
 
 
 //flag bits & general
@@ -685,9 +670,6 @@
     #define FLAG_MECH_BRAKE_DURING_PHASING BV(15)
 	#define FLAG_LIMIT_SWITCHES_NORMALLY_OPEN_TYPE BV(16)
 	#define FLAG_ENABLE_MOTOR_SOUND_NOTIFICATIONS BV(17)
-	#define FLAG_FBD1_IS_LINEAR_ENCODER BV(18)
-	#define FLAG_FBD2_IS_LINEAR_ENCODER BV(19)
-	#define FLAG_IS_LINEAR_MOTOR BV(20) /* true if linear motor, changes effect of SMP_MOTOR_POLEPAIRS. supported if DEVICE_CAPABILITY1_ENCODER_INTERFACE_V2 is set */
 #define SMP_MOTION_FAULT_THRESHOLD 568
 #define SMP_HV_VOLTAGE_HI_LIMIT 569
 #define SMP_HV_VOLTAGE_LOW_LIMIT 570
@@ -826,21 +808,42 @@
 #define SMP_PHASESEARCH_CURRENT 481
 /* Commutation angle congiuration, i.e. for hall sensors or absolute encoder. can be automatically set with SMP_SYSTEM_CONTROL_START_COMMUTATION_SENSOR_AUTOSET.
  * Format:
- * bits 0-15 LSB: commutation sensor offset 0-65535 represents commutation angle offset 0-360 electical degrees
+ * bits 0-15 LSB: commutation sensor initialization offset 0-65535 represents commutation angle offset 0-360 electical degrees
  * bit 16: invert sensor count direction
  * bit 17: enable commutation sensor
- * bit 18-19: commutation sensor source, choices (supported only if DEVICE_CAPABILITY1_ENCODER_INTERFACE_V2 is set)
- * 	00=Hall sensor
- * 	01=Absoute sensor on FBD1
- * 	10=Absolute sensor on FBD2
- * 	11=reserved
- * bits 20-31: reserved, always 0
+ *
+ * Note: this is for devices where params 484-486
  */
 #define SMP_COMMUTATION_SENSOR_CONFIG 482
 	#define SMP_COMMUTATION_SENSOR_CONFIG_ANGLE_MASK 0xFFFF
 	#define SMP_COMMUTATION_SENSOR_CONFIG_INVERT_MASK 0x10000
 	#define SMP_COMMUTATION_SENSOR_CONFIG_ENABLE_MASK 0x20000
-	#define SMP_COMMUTATION_SENSOR_SOURCE 0xC0000
+
+/* Following parameter is part of feedback sensor interface version 2.
+ * To test whether drive supports this, test if the DEVICE_CAPABILITY1_COMMUTATION_CONFIG_V2 is set.
+ * If this interface v2 is supported, then target device does not support parameters: SMP_COMMUTATION_SENSOR_CONFIG as
+ * new interface has equivalents. */
+/* Number of FBD1 sensor position counts per motor pole count (set by SMP_MOTOR_POLEPAIRS).*/
+#define SMP_COMMUTATION_COUNTS_PER_POLE_PAIR_COUNT 483
+
+/* Following parameter is part of feedback sensor interface version 2.
+ * To test whether drive supports this, test if the DEVICE_CAPABILITY1_COMMUTATION_CONFIG_V2 is set.
+ * If this interface v2 is supported, then target device does not support parameters: SMP_COMMUTATION_SENSOR_CONFIG & FLAG_INVERT_ENCODER as
+ * new interface has equivalents. */
+/* Commutation sensor initialization source */
+#define SMP_COMMUTATION_INIT_SOURCE 484
+		#define COMMUTATION_INIT_SOURCE_PHASING 0
+		#define COMMUTATION_INIT_SOURCE_HALL 1
+		#define COMMUTATION_INIT_SOURCE_HALL_INVERTED_DIRECTION 2
+		#define COMMUTATION_INIT_SOURCE_FB1_ABSOLUTE 3
+		#define _COMMUTATION_INIT_SOURCE_LAST 3
+
+/* Following parameter is part of feedback sensor interface version 2.
+ * To test whether drive supports this, test if the DEVICE_CAPABILITY1_COMMUTATION_CONFIG_V2 is set.
+ * If this interface v2 is supported, then target device does not support parameters: SMP_COMMUTATION_SENSOR_CONFIG as
+ * new interface has equivalents. */
+/* Commutation sensor init offset for 0..360 electrical degrees equals value 0-65535 */
+#define SMP_COMMUTATION_INIT_OFFSET 485
 
 //low pass filter selector, value 0=100Hz, 9=3300Hz, 10=4700Hz, 11=unlimited (see Granity for all options):
 #define SMP_TORQUE_LPF_BANDWIDTH 490
@@ -862,7 +865,20 @@
 	#define SMP_FBD_SINCOS256X 8
 	#define SMP_FBD_RESERVED 9
 	#define SMP_FBD_SERIALDATA_PORT2 10 /* configured with SMP_SERIAL_ENC2_BITS */
+
+/* FB2 is secondary/aux feedback device (optional) to form a dual loop feedback system. has same allowed values than SMP_FB1_DEVICE_SELECTION. */
 #define SMP_FB2_DEVICE_SELECTION 494
+
+/* WIP, not yet implemented.
+ *
+ * Ratio of how many counts FB1 changes in relation to one FB2 count change.
+ * Formula = 100000*FB2Counts/FB1Counts
+ *
+ * Note: value can be also negative when counting direction of FB2 is inverted compared to FB1
+ *
+ * Parameter requires that DEVICE_CAPABILITY2_SUPPORT_FB2_AUX_ENCODER is 1.
+ */
+#define SMP_FB1_TO_FB2_COUPLING_RATIO 500
 
 //in 1/2500 seconds.
 #define SMP_GOAL_FAULT_FILTER_TIME 495
@@ -1095,7 +1111,7 @@
 	#define DEVICE_CAPABILITY1_SELECTABLE_FAST_UPDATE_CYCLE_FORMAT BV(23) /*1 if device supports parameter SMP_FAST_UPDATE_CYCLE_FORMAT */
 	#define DEVICE_CAPABILITY1_CONTROL_BITS1_VERSION2 BV(24) /*drive implements CB1_QUICKSTOP_SET, CB1_QUICKSTOP_RELEASE, CB1_CLEARFAULTS, CB1_BYPASS_TRAJPLANNER bits in SMP_CONTROL_BITS1 */
 	#define DEVICE_CAPABILITY1_SUPPORTS_STAT_STANDING_STILL BV(25) /*drive implements STAT_STANDING_STILL status bit */
-	#define DEVICE_CAPABILITY1_ENCODER_INTERFACE_V2 BV(26)
+	#define DEVICE_CAPABILITY1_COMMUTATION_CONFIG_V2 BV(26) /* new commutation sensor config  */
 	#define DEVICE_CAPABILITY1_HAS_SECOND_SERIAL_ENCODER_PORT BV(27) /*true if device has two serial encoder inputs */
 	#define DEVICE_CAPABILITY1_SUPPORTS_SMP_PARAMETER_PROPERTIES_MASK BV(28) /*true if support for SMP_PARAMETER_PROPERTIES_MASK */
 	#define DEVICE_CAPABILITY1_HAS_TORQUE_OR_FORCE_CONSTANT_PARAMETER BV(29) /*true if SMP_TORQUE_OR_FORCE_CONSTANT parameter is supported */
@@ -1121,6 +1137,7 @@
     #define DEVICE_CAPABILITY2_SUPPORT_FORCE_CONTROL BV(14)
 	#define DEVICE_CAPABILITY2_LOW_LEVEL_GPIO BV(15)
 	#define DEVICE_CAPABILITY2_HAS_SMP_LIMIT_SW_FUNCTION_SOURCE BV(16) /*true if device supports parameter SMP_LIMIT_SW_FUNCTION_SOURCE*/
+	#define DEVICE_CAPABILITY2_SUPPORT_FB2_AUX_ENCODER BV(17) /* true if secondary feedback device supported */
 
 #define SMP_FIRMWARE_VERSION 6010
 #define SMP_FIRMWARE_BACKWARDS_COMP_VERSION 6011
