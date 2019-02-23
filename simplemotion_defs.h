@@ -231,7 +231,9 @@
 //possible values:
 	#define SMP_BUS_MODE_DFU 0
 	#define SMP_BUS_MODE_NORMAL 1
-	#define _SMP_BUS_MODE_LAST 1
+    /* Busy mode: device responds only to Granity's detect nodes message and Granity will display message that device can't be connected in this mode. I.e. EtherFOX in EC mode. */
+    #define SMP_BUS_MODE_BUSY 2
+    #define _SMP_BUS_MODE_LAST 2
 
 /* SMP_SM_VERSION returns current SM protocol version */
 #define SMP_SM_VERSION 3
