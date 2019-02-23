@@ -1150,6 +1150,15 @@
 #define SMP_DEVICE_TYPE 6020
 #define SMP_PID_FREQUENCY 6055
 
+/*plays sound effect on motor (if motor active). value=sound nr to be played*/
+#define SMP_PLAY_SOUND_EFFECT 6070
+/* safety function to activate high torque mode (in some drive models only).
+ * use by reading this SMP first, then writing a correctly calculated response.
+ * challenge changes every time a value is written.
+ * if wrong answer or 0 is written, hi torq mode deactivates.
+ */
+#define SMP_ACTIVATE_HITORQ_MODE_CHALLENGE 6071
+
 //affects only in MC_VECTOR & MC_BLDC mode
 //used in drive development only, do not use if unsure
 #define SMP_OVERRIDE_COMMUTATION_ANGLE 8000
