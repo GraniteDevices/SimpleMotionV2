@@ -12,12 +12,16 @@ void sleep_ms(int millisecs)
 {
     usleep(millisecs*1000);
 }
-#else
+
+#elif defined(_WIN32) || defined(WIN32)
 #include <windows.h>
 void sleep_ms(int millisecs)
 {
     Sleep(millisecs);
 }
+#else
+//If end up here, we're on other OS or on embedded platform. User must implement void sleep_ms(int millisecs) function somewhere.
+void sleep_ms(int millisecs);
 #endif
 
 int globalErrorDetailCode=0;
