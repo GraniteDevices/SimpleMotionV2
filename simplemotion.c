@@ -373,6 +373,11 @@ SM_STATUS smSendSMCMD( smbus handle, smuint8 cmdid, smuint8 addr, smuint8 datale
     return recordStatus(handle,SM_OK);
 }
 
+LIB SM_STATUS smFastUpdateCycleWithStructs( smbus handle, smuint8 nodeAddress, FastUpdateCycleWriteData write, FastUpdateCycleReadData *read)
+{
+    return smFastUpdateCycle( handle, nodeAddress, write.U16[0], write.U16[1], &read->U16[0], &read->U16[1]);
+}
+
 
 SM_STATUS smFastUpdateCycle( smbus handle, smuint8 nodeAddress, smuint16 write1, smuint16 write2, smuint16 *read1, smuint16 *read2)
 {

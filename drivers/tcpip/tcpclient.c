@@ -65,7 +65,7 @@ smBusdevicePointer tcpipPortOpen(const char * devicename, smint32 baudrate_bps, 
 
     if (validateIpAddress(devicename, NULL, NULL) != 0)
     {
-        smDebug(-1,SMDebugLow,"TCP/IP: device name '%s' does not appear to be IP address, skipping TCP/IP open attempt (note: this is normal if opening a non-TCP/IP port)\n");
+        smDebug(-1,SMDebugLow,"TCP/IP: device name '%s' does not appear to be IP address, skipping TCP/IP open attempt (note: this is normal if opening a non-TCP/IP port)\n",devicename);
         return SMBUSDEVICE_RETURN_ON_OPEN_FAIL;
     }
 
