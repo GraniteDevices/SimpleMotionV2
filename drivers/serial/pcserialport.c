@@ -351,21 +351,38 @@ smint32 serialPortWrite(smBusdevicePointer busdevicePointer, unsigned char *buf,
     return -1;
 }
 
-smbool serialPortPurge(smBusdevicePointer busdevicePointer)
-{
-    HANDLE serialport_handle=(HANDLE)busdevicePointer;
-    if(PurgeComm((HANDLE)serialport_handle, PURGE_RXABORT|PURGE_RXCLEAR|PURGE_TXABORT|PURGE_TXCLEAR) )
-        return smtrue;
-    else
-        return smfalse;
-}
-
-
 void serialPortClose(smBusdevicePointer busdevicePointer)
 {
     HANDLE serialport_handle=(HANDLE)busdevicePointer;
     CloseHandle((HANDLE)serialport_handle);
 }
 
+smbool serialPortMiscOperation(smBusdevicePointer busdevicePointer, BusDeviceMiscOperationType operation)
+{
+    HANDLE serialport_handle=(HANDLE)busdevicePointer;
+
+    switch(operation)
+    {
+    case MiscOperationPurgeRX:
+        //flush any stray bytes from device receive buffer that may reside in it
+        if(PurgeComm((HANDLE)serialport_handle, PURGE_RXABORT|PURGE_RXCLEAR) )
+            return smtrue;
+        else
+            return smfalse;
+        break;
+    case MiscOperationFlushTX:
+        //flush any stray bytes from device transmit buffer that may reside in it
+        if(PurgeComm((HANDLE)serialport_handle, PURGE_TXABORT|PURGE_TXCLEAR) )
+            return smtrue;
+        else
+            return smfalse;
+        break;
+        break;
+    default:
+        smDebug( -1, SMDebugLow, "Serial port error: given MiscOperataion not implemented\n");
+        return smfalse;
+        break;
+    }
+}
 
 #endif//windows
