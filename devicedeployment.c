@@ -1,5 +1,6 @@
 #include "devicedeployment.h"
 #include "user_options.h"
+#include "crc.h"
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -23,6 +24,9 @@ void sleep_ms(int millisecs)
 //If end up here, we're on other OS or on embedded platform. User must implement void sleep_ms(int millisecs) function somewhere.
 void sleep_ms(int millisecs);
 #endif
+
+//wait some time after device is started/restarted. 500ms too little for some devices, 800ms was barely enough
+#define SM_DEVICE_POWER_UP_WAIT_MS 1500
 
 int globalErrorDetailCode=0;
 
@@ -290,7 +294,8 @@ LIB LoadConfigurationStatus smLoadConfigurationFromBuffer( const smbus smhandle,
     {
         smDebug(smhandle,SMDebugLow,"Restarting device\n");
         smSetParameter( smhandle, smaddress, SMP_SYSTEM_CONTROL, SMP_SYSTEM_CONTROL_RESTART );
-        sleep_ms(2000);//wait power-on
+        smSleepMs(SM_DEVICE_POWER_UP_WAIT_MS);//wait power-on
+        smPurge(smhandle);
     }
 
     if(getCumulativeStatus(smhandle)!=SM_OK)
@@ -304,73 +309,287 @@ LIB LoadConfigurationStatus smLoadConfigurationFromBuffer( const smbus smhandle,
  * @param smhandle SM bus handle, must be opened before call
  * @param smaddress Target SM device address. Can be device in DFU mode or main operating mode. For Argon, one device in a bus must be started into DFU mode by DIP switches and smaddress must be set to 255.
  * @param UID result will be written to this pointer
- * @return smtrue if success, smfalse if failed (if communication otherwise works, then probably UID feature not present in this firmware version)
+ * @return smtrue if success, smfalse if failed (if communication otherwise works, then probably UID feature not present in this firmware version). Note: some devices' DFU/bootloader mode don't support this command but main firmware do.
  */
-smbool smGetDeviceFirmwareUniqueID( smbus smhandle, int deviceaddress, smuint32 *UID )//FIXME gives questionable value if device is in DFU mode. Check FW side.
+smbool smGetDeviceFirmwareUniqueID( smbus smhandle, int deviceaddress, smuint32 *UID )
 {
-    smint32 fwBinaryChecksum;
+    smint32 fwBinaryChecksum, commandStatus;
     resetCumulativeStatus(smhandle);
+    smSetParameter( smhandle, deviceaddress, SMP_CUMULATIVE_STATUS, 0);//reset any SM access error that might SM target might have active so we can test whether following command succeeds
     smSetParameter( smhandle, deviceaddress, SMP_SYSTEM_CONTROL, SMP_SYSTEM_CONTROL_GET_SPECIAL_DATA);
-    smRead1Parameter( smhandle, deviceaddress, SMP_DEBUGPARAM1, &fwBinaryChecksum );
+    smRead2Parameters( smhandle, deviceaddress, SMP_DEBUGPARAM1, &fwBinaryChecksum, SMP_CUMULATIVE_STATUS, &commandStatus );
+
     *UID=(smuint32) fwBinaryChecksum;
 
-    if(getCumulativeStatus(smhandle)==SM_OK)
+    if(getCumulativeStatus(smhandle)==SM_OK && commandStatus==SMP_CMD_STATUS_ACK)//if commandStatus==SMP_CMD_STATUS_ACK fails, then FW or curren mode of device doesn't support reading this
         return smtrue;
     else
         return smfalse;
 }
 
-FirmwareUploadStatus verifyFirmwareData(smuint8 *data, smuint32 numbytes, int connectedDeviceTypeId,
-                                        smuint32 *primaryMCUDataOffset, smuint32 *primaryMCUDataLenth,
-                                        smuint32 *secondaryMCUDataOffset,smuint32 *secondaryMCUDataLength )
+/* local helper functions to get 8, 16 or 32 bit value from data buffer.
+ * these will increment *buf pointer on each call.
+ *
+ * FYI: motivation of using these, is that simple pointer cast to various sizes
+ * might not work on all CPU architectures due to data alignment restrictions.
+*/
+
+
+smuint8 bufferGet8( smuint8 **buf )
 {
-    //see http://granitedevices.com/wiki/Argon_firmware_file_format
+    smuint8 ret=(*buf)[0];
+    *buf++;
+    return ret;
+}
+
+smuint16 bufferGet16( smuint8 **buf )
+{
+    UnionOf4Bytes d;
+    d.U8[0]=(*buf)[0];
+    d.U8[1]=(*buf)[1];
+
+    smuint16 ret=d.U16[0];
+
+    *buf+=2;
+    return ret;
+}
+
+smuint32 bufferGet32( smuint8 **buf )
+{
+    UnionOf4Bytes d;
+    d.U8[0]=(*buf)[0];
+    d.U8[1]=(*buf)[1];
+    d.U8[2]=(*buf)[2];
+    d.U8[3]=(*buf)[3];
+
+    smuint32 ret=d.U32;
+
+    *buf+=4;
+    return ret;
+}
+
+
+FirmwareUploadStatus parseFirmwareFile(smuint8 *data, smuint32 numbytes, smuint32 connectedDeviceTypeId,
+                                        smuint32 *primaryMCUDataOffset, smuint32 *primaryMCUDataLenth,
+                                        smuint32 *secondaryMCUDataOffset,smuint32 *secondaryMCUDataLength,
+                                        smuint32 *FWUniqueID )
+{
+    //see https://granitedevices.com/wiki/Firmware_file_format_(.gdf)
 
     smuint32 filetype;
     filetype=((smuint32*)data)[0];
     if(filetype!=0x57464447) //check header string "GDFW"
         return FWInvalidFile;
 
-    smuint16 filever, deviceid;
-    smuint32 primaryMCUSize, secondaryMCUSize;
+    smuint32 filever, deviceid;
+    *FWUniqueID=0;//updated later if available
 
     filever=((smuint16*)data)[2];
-    deviceid=((smuint16*)data)[3];
-    primaryMCUSize=((smuint32*)data)[2];
-    secondaryMCUSize=((smuint32*)data)[3];
-    if(secondaryMCUSize==0xffffffff)
-        secondaryMCUSize=0;//it is not present
 
-    if(filever!=300)
-        return FWIncompatibleFW;
-
-    if(deviceid/1000!=connectedDeviceTypeId/1000)//compare only device and model family. AABBCC so AAB is compared value, ARGON=004 IONI=011
-        return FWIncompatibleFW;
-
-    //get checksum and check it
-    smuint32 cksum,cksumcalc=0;
-    smuint32 i;
-    smuint32 cksumOffset=4+2+2+4+4+primaryMCUSize+secondaryMCUSize;
-    if(cksumOffset>numbytes-4)
-        return FWInvalidFile;
-    cksum=((smuint32*)(data+cksumOffset))[0];
-
-    for(i=0;i< numbytes-4;i++)
+    if(filever==300)//handle GDF version 300 here
     {
-        cksumcalc+=data[i];
+        smuint32 primaryMCUSize, secondaryMCUSize;
+
+        deviceid=((smuint16*)data)[3];
+        primaryMCUSize=((smuint32*)data)[2];
+        secondaryMCUSize=((smuint32*)data)[3];
+        if(secondaryMCUSize==0xffffffff)
+            secondaryMCUSize=0;//it is not present
+
+        if(deviceid/1000!=connectedDeviceTypeId/1000)//compare only device and model family. AABBCC so AAB is compared value, ARGON=004 IONI=011
+            return FWIncompatibleFW;
+
+        //get checksum and check it
+        smuint32 cksum,cksumcalc=0;
+        smuint32 i;
+        smuint32 cksumOffset=4+2+2+4+4+primaryMCUSize+secondaryMCUSize;
+        if(cksumOffset>numbytes-4)
+            return FWInvalidFile;
+        cksum=((smuint32*)(data+cksumOffset))[0];
+
+        for(i=0;i< numbytes-4;i++)
+        {
+            cksumcalc+=data[i];
+        }
+
+        if(cksum!=cksumcalc)
+            return FWIncompatibleFW;
+
+        //let caller know where the firmware data is located in buffer
+        *primaryMCUDataOffset=4+2+2+4+4;
+        *primaryMCUDataLenth=primaryMCUSize;
+        *secondaryMCUDataOffset=*primaryMCUDataOffset+*primaryMCUDataLenth;
+        *secondaryMCUDataLength=secondaryMCUSize;
     }
+    else if(filever>=400 && filever<500)//handle GDF versions 400-499 here
+    {
+        /* GDF version 400 format
+         * ----------------------
+         *
+         * Note: GDF v400 is not limited to firmware files any more,
+         * it can be used as general purpose data container for up to 4GB data chunks.
+         *
+         * Binary file contents
+         * --------------------
+         *
+         * bytes  meaning:
+         *
+         * 4	ASCII string = "GDFW"
+         * 2	GDF version = 400
+         * 2	GDF backwards compatible version = 400
+         * 4	File category = 100 for firmware files  (value range <2^31 is reserved and managed by GD, range from 2^31 to 2^32-1 are free for use by anyone for any purpose)
+         * 4	number of data chunks in file = N
+         *
+         * repeat N times:
+         * 4	data chunk descriptive name string length in bytes = L
+         * L	data chunk descriptive name string in UTF8
+         * 4	data chunk type
+         * 4	data chunk option bits
+         * 4	data chunk size in bytes=S
+         * S	data
+         * end of repeat
+         *
+         * 4	file's CRC-32
+         *
+         * data chunk types
+         * ----------------
+         * 0=target device name, UTF8
+         * 1=firmware name, UTF8
+         * 2=firmware version string, UTF8
+         * 3=remarks, UTF8
+         * 4=manufacturer, UTF8
+         * 5=copyright, UTF8
+         * 6=license, UTF8
+         * 7=disclaimer, UTF8
+         * 8=circulation, UTF8 (i.e. customer name)
+         * 20=unix timestamp divided by 4, S=4
+         * 50=target device type ID range, S=8
+         *   first 4 bytes are lowest supported target device ID, i.e. 11000=IONI
+         *   second 4 bytes are highest supported target device ID's, i.e. 11200=IONI PRO HC
+         * 100=main MCU FW binary, S=any
+         * 101=main MCU FW unique identifier number, S=4
+         * 102=main MCU FW required HW feature bits, S=4
+         *     helps to determine whether FW works on target
+         *     device version when compared to a value readable from the device.
+         *     0 means no requirements, works on all target ID devices.
+         * 200=secondary MCU FW binary, S=any
+         *
+         * note: firmware may contain many combinations of above chunks. in basic case, it contains just chunk type 100 and nothing else.
+         *
+         * data chunk option bits
+         * ----------------------
+         * bit 0: if 1, GDF loading application must support/understand the chunk type to use this file
+         * bits 1-31: reserved
+         *
+         */
+        smuint8 *dataPtr=&data[6];//start at byte 6 because first 6 bytes are already read
+        smuint8 *dataCRCPtr=&data[numbytes-4];
+        smuint32 numOfChunks;
+        smuint32 deviceid_max;
+        smuint32 chunkType;
+        smuint32 chunkTypeStringLen;
+        smuint32 chunkSize;
+        smuint16 chunkOptions;
+        smuint32 i;
 
-    if(cksum!=cksumcalc)
-        return FWIncompatibleFW;
+        //check file compatibility
+        if(bufferGet16(&dataPtr)!=400)
+            return FWIncompatibleFW;//this version of library requires file that is backwards compatible with version 400
 
-    //let caller know where the firmware data is located in buffer
-    *primaryMCUDataOffset=4+2+2+4+4;
-    *primaryMCUDataLenth=primaryMCUSize;
-    *secondaryMCUDataOffset=*primaryMCUDataOffset+*primaryMCUDataLenth;
-    *secondaryMCUDataLength=secondaryMCUSize;
+        //check file category (100=firmware file)
+        if(bufferGet32(&dataPtr)!=100)
+            return FWInvalidFile;//not FW GDF file
+
+        //check file CRC
+        crcInit();
+        crc calculatedCRC=crcFast((const unsigned char*)data, numbytes-4);
+        crc fileCRC=bufferGet32(&dataCRCPtr);
+        if(calculatedCRC!=fileCRC)
+            return FWInvalidFile;//CRC mismatch
+
+        //read data chunks
+        numOfChunks=bufferGet32(&dataPtr);
+        for( i=0; i<numOfChunks; i++ )
+        {
+            chunkTypeStringLen=bufferGet32(&dataPtr);
+            dataPtr+=chunkTypeStringLen;//skip type string, we don't use it for now
+            chunkType=bufferGet32(&dataPtr);
+            chunkOptions=bufferGet32(&dataPtr);
+            chunkSize=bufferGet32(&dataPtr);
+
+            //handle chunk
+            if(chunkType==50 && chunkSize==8)
+            {
+                //check target device type
+                deviceid=bufferGet32(&dataPtr);
+                deviceid_max=bufferGet32(&dataPtr);
+
+                if(connectedDeviceTypeId<deviceid || connectedDeviceTypeId>deviceid_max)
+                    return FWUnsupportedTargetDevice;
+            }
+            else if(chunkType==100)//main MCU FW
+            {
+                *primaryMCUDataOffset=(smuint32)(dataPtr-data);
+                *primaryMCUDataLenth=chunkSize;
+                dataPtr+=chunkSize;//skip to next chunk
+            }
+            else if(chunkType==200)//secondary MCU FW
+            {
+                *secondaryMCUDataOffset=(smuint32)(dataPtr-data);
+                *secondaryMCUDataLength=chunkSize;
+                dataPtr+=chunkSize;//skip to next chunk
+            }
+            else if(chunkType==101 && chunkSize==4)//main MCU FW unique identifier
+            {
+                *FWUniqueID=bufferGet32(&dataPtr);
+            }
+            else if(chunkOptions&1) //bit nr 0 is 1, which means we should be able to handle this chunk to support the GDF file, so as we don't know what chunk it is, this is an error
+            {
+                return FWIncompatibleFW;
+            }
+            else //unsupported chunk that we can skip
+            {
+                dataPtr+=chunkSize;//skip to next chunk
+            }
+        }
+
+        if((smuint32)(dataPtr-data)!=numbytes-4)//check if chunks total size match file size
+            return FWInvalidFile;
+    }
+    else
+        return FWIncompatibleFW;//unsupported file version
 
     return FWComplete;
 }
+
+/**
+ * @brief smFirmwareUploadStatusToString converts FirmwareUploadStatus enum to string.
+ * @param string user supplied pointer where string will be stored. must have writable space for at least 100 characters.
+ * @return void
+ */
+void smFirmwareUploadStatusToString(const FirmwareUploadStatus FWUploadStatus, char *string )
+{
+    int i;
+    const int count=sizeof(FirmwareUploadStatusToString)/sizeof(FirmwareUploadStatusToStringType);
+
+    for(i=0;i<count;i++)
+    {
+        if(FirmwareUploadStatusToString[i].FWUSEnum==FWUploadStatus)
+        {
+            strcpy(string,FirmwareUploadStatusToString[i].string);
+            return;
+        }
+    }
+
+    if((int)FWUploadStatus>=0 && (int)FWUploadStatus<=99 )
+    {
+        snprintf( string, 100, "Firmware install %d%% done", (int)FWUploadStatus);
+        return;
+    }
+
+    snprintf( string, 100, "SimpleMotion lib error: unknown FW upload state (%d), please check input or report a bug", (int)FWUploadStatus);
+}
+
 
 smbool loadBinaryFile( const char *filename, smuint8 **data, int *numbytes )
 {
@@ -439,7 +658,7 @@ smbool flashFirmwarePrimaryMCU( smbus smhandle, int deviceaddress, const smuint8
 */
             smSetParameter(smhandle,deviceaddress,SMP_BOOTLOADER_FUNCTION,1);//BL func 1 = do mass erase on STM32. On Non-Argon devices it doesn't reset confifuration
 
-        sleep_ms(2000);//wait some time. 500ms too little 800ms barely enough
+        smSleepMs(SM_DEVICE_POWER_UP_WAIT_MS);
 
         //flash
         smSetParameter(smhandle,deviceaddress,SMP_RETURN_PARAM_LEN, SMPRET_CMD_STATUS);
@@ -604,6 +823,7 @@ FirmwareUploadStatus smFirmwareUploadFromBuffer( const smbus smhandle, const int
     static smint32 deviceType=0;
     static int DFUAddress;
     static int progress=0;
+    static smbool FW_already_installed=smfalse;
 
     SM_STATUS stat;
 
@@ -642,7 +862,8 @@ FirmwareUploadStatus smFirmwareUploadFromBuffer( const smbus smhandle, const int
 
     else if(state==StatEnterDFU)
     {
-        sleep_ms(2500);//wait device to reboot in DFU mode. probably shorter delay would do.
+        smSleepMs(SM_DEVICE_POWER_UP_WAIT_MS);//wait device to reboot in DFU mode. probably shorter delay would do.
+        smPurge(smhandle);
 
         //check if device is in DFU mode already
         smint32 busMode;
@@ -660,6 +881,7 @@ FirmwareUploadStatus smFirmwareUploadFromBuffer( const smbus smhandle, const int
     else if(state==StatFindDFUDevice)
     {
         int i;
+        //scan thru addresses where SM device may appear in DFU mode if not appearing in it's original address
         for(i=245;i<=255;i++)
         {
             smint32 busMode;
@@ -680,16 +902,34 @@ FirmwareUploadStatus smFirmwareUploadFromBuffer( const smbus smhandle, const int
 
     else if(state==StatLoadFile)
     {
-        FirmwareUploadStatus stat=verifyFirmwareData(fwData, fwDataLength, deviceType,
+        smuint32 GDFFileUID;
+        FirmwareUploadStatus stat=parseFirmwareFile(fwData, fwDataLength, deviceType,
                                   &primaryMCUDataOffset, &primaryMCUDataLenth,
-                                  &secondaryMCUDataOffset, &secondaryMCUDataLength);
+                                  &secondaryMCUDataOffset, &secondaryMCUDataLength,
+                                  &GDFFileUID);
         if(stat!=FWComplete)//error in verify
         {
             return abortFWUpload(stat,&state,100);
         }
 
-        //all good, upload firmware
+
+        //all good, upload firmware, unless state is changed to StatLaunch later
         state=StatUpload;
+        FW_already_installed=smfalse;
+
+        //check if that FW is already installed
+        if(GDFFileUID!=0)//check only if GDF has provided this value
+        {
+            smuint32 targetFWUID;
+            if(smGetDeviceFirmwareUniqueID( smhandle, DFUAddress, &targetFWUID )==smtrue)
+            {
+                if(GDFFileUID==targetFWUID)//FW is already installed
+                {
+                    state=StatLaunch;
+                    FW_already_installed=smtrue;
+                }
+            }
+        }
 
         progress=4;
     }
@@ -711,8 +951,11 @@ FirmwareUploadStatus smFirmwareUploadFromBuffer( const smbus smhandle, const int
     else if(state==StatLaunch)
     {
         smSetParameter(smhandle,DFUAddress,SMP_BOOTLOADER_FUNCTION,4);//BL func 4 = launch.
-        sleep_ms(2000);
-        progress=100;
+        smSleepMs(SM_DEVICE_POWER_UP_WAIT_MS);
+        if(FW_already_installed)
+            progress=FWAlreadyInstalled;
+        else
+            progress=100;
         state=StatIdle;
     }
 

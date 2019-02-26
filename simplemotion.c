@@ -68,6 +68,27 @@ smbool smInitialized=smfalse;
 //if debug message has priority this or above will be printed to debug stream
 smVerbosityLevel smDebugThreshold=SMDebugTrace;
 
+#if defined(__unix__) || defined(__APPLE__)
+#include <unistd.h>
+void smSleepMs(int millisecs)
+{
+    usleep(millisecs*1000);
+}
+
+#elif defined(_WIN32) || defined(WIN32)
+#include <windows.h>
+void smSleepMs(int millisecs)
+{
+    Sleep(millisecs);
+}
+#else
+#warning Make sure to implement own smSleepMs function for your platform as it is not one of supported ones (unix/win). For more info, see simplemotion_private.h.
+#endif
+
+
+extern const char *smDebugPrefixString;
+extern const char *smDebugSuffixString;
+
 #ifdef ENABLE_DEBUG_PRINTS
 void smDebug( smbus handle, smVerbosityLevel verbositylevel, char *format, ...)
 {
@@ -76,6 +97,10 @@ void smDebug( smbus handle, smVerbosityLevel verbositylevel, char *format, ...)
 
     if(smDebugOut!=NULL && verbositylevel <= smDebugThreshold )
     {
+        #ifdef SM_ENABLE_DEBUG_PREFIX_STRING //user app may define this macro if need to write custom prefix, if defined, then define also "const char *smDebugPrefixString="my string";" somewhere in your app.
+        fprintf(smDebugOut, smDebugPrefixString);
+        #endif
+
         va_start(fmtargs,format);
         vsnprintf(buffer,sizeof(buffer)-1,format,fmtargs);
         va_end(fmtargs);
@@ -85,9 +110,21 @@ void smDebug( smbus handle, smVerbosityLevel verbositylevel, char *format, ...)
             {
                 fprintf(smDebugOut,"%s: %s",smBus[handle].busDeviceName, buffer);
             }
+            else if(handle==DEBUG_PRINT_RAW)
+            {
+                fprintf(smDebugOut,"%s", buffer);
+            }
+            else
+            {
+                fprintf(smDebugOut,"(bad smbus handle): %s", buffer);
+            }
         }
         else
             fprintf(smDebugOut,"SMLib: %s",buffer);//no handle given
+
+        #ifdef SM_ENABLE_DEBUG_SUFFIX_STRING //user app may define this macro if need to write custom suffix, if defined, then define also "const char *smDebugSuffixString="my string";" somewhere in your app.
+        fprintf(smDebugOut, smDebugSuffixString);
+        #endif
     }
 }
 #endif
@@ -107,7 +144,6 @@ void smResetSM485variables(smbus handle)
     smBus[handle].cmd_send_queue_bytes=0;
     smBus[handle].cmd_recv_queue_bytes=0;
 }
-
 
 smuint16 calcCRC16(smuint8 data, smuint16 crc)
 {
@@ -216,7 +252,7 @@ smbus smOpenBus( const char * devicename )
 }
 
 /** same as smOpenBus but with user supplied port driver callbacks */
-smbus smOpenBusWithCallbacks( const char *devicename, BusdeviceOpen busOpenCallback, BusdeviceClose busCloseCallback, BusdeviceReadBuffer busReadCallback, BusdeviceWriteBuffer busWriteCallback )
+smbus smOpenBusWithCallbacks( const char *devicename, BusdeviceOpen busOpenCallback, BusdeviceClose busCloseCallback, BusdeviceReadBuffer busReadCallback, BusdeviceWriteBuffer busWriteCallback, BusdeviceMiscOperation busMiscOperationCallback )
 {
     int handle;
 
@@ -233,7 +269,7 @@ smbus smOpenBusWithCallbacks( const char *devicename, BusdeviceOpen busOpenCallb
     if(handle>=SM_MAX_BUSES) return -1;
 
     //open bus device
-    smBus[handle].bdHandle=smBDOpenWithCallbacks(devicename, busOpenCallback, busCloseCallback, busReadCallback, busWriteCallback );
+    smBus[handle].bdHandle=smBDOpenWithCallbacks(devicename, busOpenCallback, busCloseCallback, busReadCallback, busWriteCallback, busMiscOperationCallback );
     if(smBus[handle].bdHandle==-1) return -1;
 
     //success
@@ -279,6 +315,35 @@ LIB SM_STATUS smCloseBus( const smbus bushandle )
 
     return SM_OK;
 }
+
+/** Clear pending (stray) bytes in bus device reception buffer and reset receiver state. This may be needed i.e. after restarting device to eliminate clitches that appear in serial line.
+  -return value: a SM_STATUS value, i.e. SM_OK if command succeed
+*/
+LIB SM_STATUS smPurge( const smbus bushandle )
+{
+    //check if bus handle is valid & opened
+    if(smIsHandleOpen(bushandle)==smfalse) return recordStatus(bushandle,SM_ERR_NODEVICE);
+
+    if(smBDMiscOperation( bushandle, MiscOperationPurgeRX )==smtrue)
+        return recordStatus(bushandle,SM_OK);
+    else
+        return recordStatus(bushandle,SM_ERR_BUS);
+}
+
+/** Block until pending TX bytes are phyiscally out. Max blocking time is same that is set with smSetTimeout
+  -return value: a SM_STATUS value, i.e. SM_OK if command succeed
+*/
+LIB SM_STATUS smFlushTX( const smbus bushandle )
+{
+    //check if bus handle is valid & opened
+    if(smIsHandleOpen(bushandle)==smfalse) return recordStatus(bushandle,SM_ERR_NODEVICE);
+
+    if(smBDMiscOperation( bushandle, MiscOperationFlushTX )==smtrue)
+        return recordStatus(bushandle,SM_OK);
+    else
+        return recordStatus(bushandle,SM_ERR_BUS);
+}
+
 
 char *cmdidToStr(smuint8 cmdid )
 {
@@ -345,26 +410,27 @@ SM_STATUS smSendSMCMD( smbus handle, smuint8 cmdid, smuint8 addr, smuint8 datale
             datalen);
 
 
-    smDebug(handle,SMDebugHigh,"ID ");
+    smDebug(handle,SMDebugHigh,"  Outbound packet raw data: CMDID (%d) ",cmdid);
     if( smWriteByte(handle,cmdid, &sendcrc) != smtrue ) return recordStatus(handle,SM_ERR_BUS);
 
     if(cmdid&SMCMD_MASK_N_PARAMS)
     {
-        smDebug(handle,SMDebugHigh,"Nparams ");
+        smDebug(DEBUG_PRINT_RAW,SMDebugHigh,"SIZE (%d bytes) ", datalen);
         if( smWriteByte(handle,datalen, &sendcrc) != smtrue ) return recordStatus(handle,SM_ERR_BUS);
     }
 
-    smDebug(handle,SMDebugHigh,"ADDR ");
+    smDebug(DEBUG_PRINT_RAW,SMDebugHigh,"ADDR (%d) ",addr);
     if( smWriteByte(handle,addr, &sendcrc) != smtrue ) return recordStatus(handle,SM_ERR_BUS);
 
+    smDebug(DEBUG_PRINT_RAW,SMDebugHigh,"PAYLOAD (");
     for(i=0;i<datalen;i++)
     {
-        smDebug(handle,SMDebugHigh,"DATA ");
+        smDebug(DEBUG_PRINT_RAW,SMDebugHigh,"%02x ",cmddata[i]);
         if( smWriteByte(handle,cmddata[i], &sendcrc) != smtrue ) return recordStatus(handle,SM_ERR_BUS);
     }
-    smDebug(handle,SMDebugHigh,"CRC ");
+    smDebug(DEBUG_PRINT_RAW,SMDebugHigh,") ");
+    smDebug(DEBUG_PRINT_RAW,SMDebugHigh,"CRC (%02x %02x)\n",sendcrc>>8, sendcrc&0xff);
     if( smWriteByte(handle,sendcrc>>8, NULL)  != smtrue ) return recordStatus(handle,SM_ERR_BUS);
-    smDebug(handle,SMDebugHigh,"CRC ");
     if( smWriteByte(handle,sendcrc&0xff,NULL) != smtrue ) return recordStatus(handle,SM_ERR_BUS);
 
     //transmit bytes to bus that were written in buffer by smWriteByte calls
@@ -555,6 +621,12 @@ SM_STATUS smTransmitReceiveCommandQueue( const smbus bushandle, const smaddr tar
     {
         stat=smReceiveReturnPacket(bushandle);//blocking wait & receive return values from bus
         if(stat!=SM_OK) return recordStatus(bushandle,stat); //maybe timeouted
+    }
+    if(targetaddress==0)
+    {
+        //make sure we don't return function before all data is really sent as we're not waiting for RX data
+        //note: we're note checking return value of it as some driver's dont support this atm and will return smfalse. TODO fix this & drivers.
+        smFlushTX(bushandle);
     }
 
     smBus[bushandle].transmitBufFull=smfalse;//reset overflow status
@@ -970,7 +1042,7 @@ SM_STATUS smSetParameter( const smbus handle, const smaddr nodeAddress, const sm
 
     smStat|=smAppendSetParamCommandToQueue( handle, paramId, paramVal );
     smStat|=smExecuteCommandQueue(handle,nodeAddress);
-    if(nodeAddress!=0)//don't anttempt to read if target address was broadcast address where no slave device will respond
+    if(nodeAddress!=0)//don't attempt to read if target address was broadcast address where no slave device will respond
         smStat|=smGetQueuedSetParamReturnValue(  handle, &nul );
 
     if(smStat!=SM_OK)

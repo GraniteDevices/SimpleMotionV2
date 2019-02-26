@@ -31,7 +31,8 @@ extern const smuint8 table_crc8[];
 extern FILE *smDebugOut; //such as stderr or file handle. if NULL, debug info disbled
 extern smuint16 readTimeoutMs;
 
-//smDebug: prints debug info to smDebugOut stream. If no handle available, set it to -1.
+#define DEBUG_PRINT_RAW 0x524157
+//smDebug: prints debug info to smDebugOut stream. If no handle available, set it to -1, or if wish to print as raw text, set handle to DEBUG_PRINT_RAW.
 //set verbositylevel according to frequency of prints made.
 //I.e SMDebugLow=low frequency, so it gets displayed when global verbosity level is set to at least Low or set it to Trace which gets filtered
 //out if global verbisity level is set less than SMDebugTrace
@@ -127,12 +128,42 @@ typedef struct {
         unsigned long ID:2; //MSB 2 bits. when serailzied to bytestream byte4 must be transmitted first to contain ID
 } PACKED SMPayloadCommandRet8;
 
+typedef union
+{
+    smuint8 U8[4];
+    smuint16 U16[2];
+    smuint32 U32;
+} UnionOf4Bytes;
+
 /*Workaround to have packed structs that compile on GCC and MSVC*/
 #ifdef __GNUC__
 #else/*Assuming MSVC*/
 #pragma pack(pop)
 #undef PACKED
 #endif
+
+
+/** Clear pending (stray) bytes in bus device reception buffer and reset receiver state. This may be needed i.e. after restarting device to eliminate clitches that appear in serial line.
+  -return value: a SM_STATUS value, i.e. SM_OK if command succeed
+*/
+LIB SM_STATUS smPurge( const smbus bushandle );
+
+/** Block until pending TX bytes are phyiscally out. Max blocking time is same that is set with smSetTimeout
+  -return value: a SM_STATUS value, i.e. SM_OK if command succeed
+*/
+LIB SM_STATUS smFlushTX( const smbus bushandle );
+
+/* OS independent sleep function for SM internal use
+ *
+ * SM lib has implementation for unix/win systems (incl linux & mac). For other systems, please add your own smSleepMs implementation in your application.
+ * i.e. write function in your main.c or any other .c file that get's compiled and linked:
+ *
+ * void smSleepMs(int millisecs)
+ * {
+ *    // do your delay here
+ * }
+ */
+void smSleepMs(int millisecs);
 
 
 #endif // SIMPLEMOTION_PRIVATE_H

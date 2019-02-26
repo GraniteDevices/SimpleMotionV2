@@ -47,11 +47,24 @@ typedef struct
  */
 typedef enum _smVerbosityLevel {SMDebugOff,SMDebugLow,SMDebugMid,SMDebugHigh,SMDebugTrace} smVerbosityLevel;
 
-//define communication interface device driver callback types for smOpenBusWithCallbacks
+/* Operations for BusdeviceMiscOperation callback.
+ *
+ * MiscOperationFlushTX = blocking call to make sure that all data has been physically transmitter
+ *   before returing the function. Max blocking duration is the value set with smSetTimeout.
+ *   If flush operation timeouted, return smfalse (fail), otherwise smtrue (success).
+ * MiscOperationPurgeRX = discard all incoming data that is waiting to be read. Return smtrue on success,
+ *   smfalse on fail.
+ *
+ * If operation is unsupported by the callback, return smfalse.
+ */
+typedef enum _BusDeviceMiscOperationType {MiscOperationFlushTX,MiscOperationPurgeRX} BusDeviceMiscOperationType;
+
+//define communication interface device driver callback types
 typedef void* smBusdevicePointer;
 typedef smBusdevicePointer (*BusdeviceOpen)(const char *port_device_name, smint32 baudrate_bps, smbool *success);
 typedef smint32 (*BusdeviceReadBuffer)(smBusdevicePointer busdevicePointer, unsigned char *buf, smint32 size);
 typedef smint32 (*BusdeviceWriteBuffer)(smBusdevicePointer busdevicePointer, unsigned char *buf, smint32 size);
+typedef smbool (*BusdeviceMiscOperation)(smBusdevicePointer busdevicePointer, BusDeviceMiscOperationType operation );
 typedef void (*BusdeviceClose)(smBusdevicePointer busdevicePointer);
 
 //must use packed mode for bitfields in structs for smFastUpdateCycleWithStructs
