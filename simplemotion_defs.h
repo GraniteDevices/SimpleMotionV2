@@ -540,6 +540,7 @@
 	 */
 	#define STAT_STANDING_STILL BV(16)
 	#define STAT_QUICK_STOP_ACTIVE BV(17)
+	#define STAT_SAFE_TORQUE_MODE_ACTIVE BV(18)
 
 #define SMP_SYSTEM_CONTROL 554 //writing 1 initiates settings save to flash, writing 2=device restart, 4=abort buffered motion
 	//possible values listed
