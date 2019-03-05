@@ -747,12 +747,20 @@
 //NOT IMPLEMENTED YET
 
 //current loop related 400-499
-//direct torque gains, not used after VSD-E
-#define SMP_TORQ_P 401
-#define SMP_TORQ_I 402
-//motor inductance and resistance
+//motor inductance and resistance, in milliohms and millihenries
 #define SMP_MOTOR_RES 405
 #define SMP_MOTOR_IND 406
+
+/* SMP_MOTOR_VOLTAGE_CONSTANT specifies motor Back EMF voltage per Hz (on ac/bldc/stepper motors) and on DC motor voltage per raw velocity feedback unit.
+ * Scale:
+ * - on AC/BLDC/stepper motors value is uV/Hz (peak of sine voltage)
+ * - on brush DC motors value is uV/raw_velocity_fb_unit
+ *
+ * The value is optional and value of 0 means that the constant is unspecified.
+ *
+ * Note: not supported in all devices
+ */
+#define SMP_MOTOR_VOLTAGE_CONSTANT 407
 
 //continuous current limit mA
 #define SMP_TORQUELIMIT_CONT 410
