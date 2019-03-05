@@ -753,7 +753,10 @@
 
 /* SMP_MOTOR_VOLTAGE_CONSTANT specifies motor Back EMF voltage per Hz (on ac/bldc/stepper motors) and on DC motor voltage per raw velocity feedback unit.
  * Scale:
- * - on AC/BLDC/stepper motors value is uV/Hz (peak of sine voltage, phase to neutral)
+ * - on AC/BLDC/stepper motors value is mV/Hz (peak of sine voltage, phase to neutral).
+ *   (to get good estimate of this value, test how many revs/second (=S) motor turns at given DC supply voltage (U) and calculate:
+ *   SMP_MOTOR_VOLTAGE_CONSTANT = U/2*PWMModulationDepth*1.15*MotorPoleCount/2*S*1000 = 287.5*PWMModulationDepth*U*MotorPoleCount/S.
+ *   Typical values for PWMModulationDepth is 0.95 (actual model specfic value obtainable form GD Wiki drive specs).
  * - on brush DC motors value is uV/raw_velocity_fb_unit (phase to phase)
  *
  * The value is optional and value of 0 means that the constant is unspecified.
