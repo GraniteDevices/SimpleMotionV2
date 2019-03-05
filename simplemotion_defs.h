@@ -753,8 +753,8 @@
 
 /* SMP_MOTOR_VOLTAGE_CONSTANT specifies motor Back EMF voltage per Hz (on ac/bldc/stepper motors) and on DC motor voltage per raw velocity feedback unit.
  * Scale:
- * - on AC/BLDC/stepper motors value is uV/Hz (peak of sine voltage)
- * - on brush DC motors value is uV/raw_velocity_fb_unit
+ * - on AC/BLDC/stepper motors value is uV/Hz (peak of sine voltage, phase to neutral)
+ * - on brush DC motors value is uV/raw_velocity_fb_unit (phase to phase)
  *
  * The value is optional and value of 0 means that the constant is unspecified.
  *
@@ -773,8 +773,8 @@
 #define SMP_TORQUEFAULT_OC_TOLERANCE 421
 /* SMP_MOTOR_TORQUE_OR_FORCE_CONSTANT specifies motor torque (rotary motor) or force (linear motor) constant.
  * Scale:
- * - on rotary motors value is 10000*Nm/A
- * - on linear motors value is 10000*N/A
+ * - on rotary motors value is 10000*Nm/A (peak of sine)
+ * - on linear motors value is 10000*N/A  (peak of sine)
  * Amps are in peak of sine or DC
  *
  * The value is optional and value of 0 means that the constant is unspecified.
