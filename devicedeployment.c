@@ -774,7 +774,7 @@ smbool flashFirmwarePrimaryMCU( smbus smhandle, int deviceaddress, const smuint8
 }
 
 
-typedef enum { StatIdle=0, StatEnterDFU, StatFindDFUDevice, StatLoadFile, StatUpload, StatLaunch } UploadState;//state machine status
+typedef enum { StatIdle=0, StatFirstConnectAttempt, StatEnterDFU, StatFindDFUDevice, StatUpload, StatLaunch } UploadState;//state machine status
 
 //handle error in FW upload
 FirmwareUploadStatus abortFWUpload( FirmwareUploadStatus stat, UploadState *state, int errorDetailCode )
@@ -845,89 +845,18 @@ FirmwareUploadStatus smFirmwareUploadFromBuffer( const smbus smhandle, const int
     //state machine
     if(state==StatIdle)
     {
-        smDebug(smhandle,SMDebugLow,"smFirmwareUploadFromBuffer: StatIdle\n");
-
-        //check if device is in DFU mode already
-        smint32 busMode;
-        stat=smRead2Parameters(smhandle,smaddress,SMP_BUS_MODE,&busMode, SMP_DEVICE_TYPE, &deviceType);
-        if(stat==SM_OK && busMode==SMP_BUS_MODE_DFU)
-        {
-            state=StatLoadFile;
-        }
-        else if(stat==SM_OK && busMode!=0)//device not in bus mode
-        {
-            if(deviceType==4000)//argon does not support restarting in DFU mode by software
-            {
-                smDebug(smhandle,SMDebugLow,"smFirmwareUploadFromBuffer: ARGON devices not supported\n");
-                return abortFWUpload(FWConnectionError,&state,200);
-            }
-
-            //restart device into DFU mode
-            state=StatEnterDFU;
-
-            stat=smSetParameter(smhandle,smaddress,SMP_SYSTEM_CONTROL,64);//reset device to DFU command
-            if(stat!=SM_OK)
-                return abortFWUpload(FWConnectionError,&state,300);
-        }
-        else
-            state=StatFindDFUDevice;//search DFU device in brute force, fallback for older BL versions that don't preserve same smaddress than non-DFU mode
-            //return abortFWUpload(FWConnectionError,fwData,&state,301);
-
+        smDebug(smhandle,SMDebugLow,"smFirmwareUploadFromBuffer: Idle\n");
         progress=1;
-        DFUAddress=smaddress;
-    }
 
-    else if(state==StatEnterDFU)
-    {
-        smDebug(smhandle,SMDebugLow,"smFirmwareUploadFromBuffer: StatEnterDFU\n");
-
-        smSleepMs(SM_DEVICE_POWER_UP_WAIT_MS);//wait device to reboot in DFU mode. probably shorter delay would do.
-        smPurge(smhandle);
-
-        //check if device is in DFU mode already
-        smint32 busMode;
-        stat=smRead2Parameters(smhandle,smaddress, SMP_BUS_MODE,&busMode, SMP_DEVICE_TYPE, &deviceType);
-        if(stat==SM_OK && busMode==0)//busmode 0 is DFU mode
+        //try to read device type
+        stat=smRead1Parameter(smhandle,smaddress,SMP_DEVICE_TYPE, &deviceType);
+        if(stat!=SM_OK)
         {
-            state=StatLoadFile;
-        }
-        else
-            state=StatFindDFUDevice;//search DFU device in brute force, fallback for older BL versions that don't preserve same smaddress than non-DFU mode
-
-        progress=2;
-    }
-
-    else if(state==StatFindDFUDevice)
-    {
-        smDebug(smhandle,SMDebugLow,"smFirmwareUploadFromBuffer: StatFindDFUDevice\n");
-
-        int i;
-        //scan thru addresses where SM device may appear in DFU mode if not appearing in it's original address
-        for(i=245;i<=255;i++)
-        {
-            smint32 busMode;
-            stat=smRead2Parameters(smhandle,i, SMP_BUS_MODE,&busMode, SMP_DEVICE_TYPE, &deviceType);
-            if(stat==SM_OK && busMode==0)//busmode 0 is DFU mode
-            {
-                state=StatLoadFile;
-                DFUAddress=i;
-                smDebug(smhandle,SMDebugLow,"smFirmwareUploadFromBuffer: DFU device found at address %d\n",DFUAddress);
-                break;//DFU found, break out of for loop
-            }
+            smDebug(smhandle,SMDebugLow,"smFirmwareUploadFromBuffer: failed to read target device type ID (the very first SM command in FirmwareUpload failed, no device there?)\n");
+            return abortFWUpload(stat,&state,30);
         }
 
-        if(i==256)//DFU device not found
-        {
-            smDebug(smhandle,SMDebugLow,"smFirmwareUploadFromBuffer: DFU device not found\n");
-            return abortFWUpload(FWConnectingDFUModeFailed,&state,400);//setting DFU mode failed
-        }
-
-        progress=3;
-    }
-
-    else if(state==StatLoadFile)
-    {
-        smDebug(smhandle,SMDebugLow,"smFirmwareUploadFromBuffer: StatLoadFile\n");
+        smDebug(smhandle,SMDebugLow,"smFirmwareUploadFromBuffer: target device type of %d successfully read\n",deviceType);
 
         smuint32 GDFFileUID;
         FirmwareUploadStatus stat=parseFirmwareFile(fwData, fwDataLength, deviceType,
@@ -942,7 +871,7 @@ FirmwareUploadStatus smFirmwareUploadFromBuffer( const smbus smhandle, const int
 
 
         //all good, upload firmware, unless state is changed to StatLaunch later
-        state=StatUpload;
+        state=StatFirstConnectAttempt;
         FW_already_installed=smfalse;
 
         //check if that FW is already installed
@@ -951,14 +880,121 @@ FirmwareUploadStatus smFirmwareUploadFromBuffer( const smbus smhandle, const int
             smuint32 targetFWUID;
             if(smGetDeviceFirmwareUniqueID( smhandle, DFUAddress, &targetFWUID )==smtrue)
             {
+                //reset two upper bits because reading SMP will sign-extend them from 30 bits assuming so that we're reading signed 30 bit integer.
+                //but this is unsigned 30 bit so reset top 2 bits to cancel sign extension.
+                targetFWUID&=0x3fffffff;
+
                 smDebug(smhandle,SMDebugLow,"smFirmwareUploadFromBuffer: Device provided firmware UID\n");
                 if(GDFFileUID==targetFWUID)//FW is already installed
                 {
                     smDebug(smhandle,SMDebugLow,"smFirmwareUploadFromBuffer: Same FW is already installed, skipping install\n");
-                    state=StatLaunch;
+
+                    //check if device is in NORMAL mode already
+                    smint32 busMode;
+                    stat=smRead1Parameter(smhandle,smaddress,SMP_BUS_MODE,&busMode);
+                    if(stat==SM_OK && busMode==SMP_BUS_MODE_NORMAL)
+                    {
+                        smDebug(smhandle,SMDebugLow,"smFirmwareUploadFromBuffer: application is already running in target, finishing up\n");
+                        progress=FWAlreadyInstalled;
+                        state=StatIdle;
+                    }
+                    else
+                    {
+                        smDebug(smhandle,SMDebugLow,"smFirmwareUploadFromBuffer: device is in DFU mode, will launch app now\n");
+                        state=StatLaunch;//launch app from DFU mode
+                    }
+
                     FW_already_installed=smtrue;
                 }
+                else
+                    smDebug(smhandle,SMDebugLow,"smFirmwareUploadFromBuffer: firmware differs from the file, uploading\n");
             }
+        }
+    }
+
+    if(state==StatFirstConnectAttempt)
+    {
+        smDebug(smhandle,SMDebugLow,"smFirmwareUploadFromBuffer: StatFirstConnectAttempt\n");
+
+        //check if device is in DFU mode already
+        smint32 busMode;
+        stat=smRead2Parameters(smhandle,smaddress,SMP_BUS_MODE,&busMode, SMP_DEVICE_TYPE, &deviceType);
+        if(stat==SM_OK && busMode==SMP_BUS_MODE_DFU)
+        {
+            state=StatUpload;
+        }
+        else if(stat==SM_OK && busMode!=SMP_BUS_MODE_DFU)//device not in DFU mode
+        {
+            if(deviceType==4000)//argon does not support restarting in DFU mode by software
+            {
+                smDebug(smhandle,SMDebugLow,"smFirmwareUploadFromBuffer: ARGON devices not support booting in DFU mode automatically\n");
+                return abortFWUpload(FWConnectionError,&state,200);
+            }
+
+            //restart device into DFU mode
+            state=StatEnterDFU;
+
+            stat=smSetParameter(smhandle,smaddress,SMP_SYSTEM_CONTROL,64);//reset device to DFU command
+            if(stat!=SM_OK)
+                return abortFWUpload(FWConnectionError,&state,300);
+        }
+        else
+            state=StatFindDFUDevice;//search DFU device in brute force, fallback for older BL versions that don't preserve same smaddress than non-DFU mode
+            //return abortFWUpload(FWConnectionError,fwData,&state,301);
+
+        progress=2;
+        DFUAddress=smaddress;
+    }
+
+    else if(state==StatEnterDFU)
+    {
+        smDebug(smhandle,SMDebugLow,"smFirmwareUploadFromBuffer: StatEnterDFU\n");
+
+        smSleepMs(SM_DEVICE_POWER_UP_WAIT_MS);//wait device to reboot in DFU mode. probably shorter delay would do.
+        smPurge(smhandle);
+
+        //check if device is in DFU mode already
+        smint32 busMode;
+        stat=smRead2Parameters(smhandle,smaddress, SMP_BUS_MODE,&busMode, SMP_DEVICE_TYPE, &deviceType);
+        if(stat==SM_OK && busMode==SMP_BUS_MODE_DFU)//is DFU mode
+        {
+            smDebug(smhandle,SMDebugLow,"smFirmwareUploadFromBuffer: device is in DFU mode, continuing to upload\n");
+            state=StatUpload;
+        }
+        else
+        {
+            //note older FW IONIs will appear in high SM addresses after DFU mode is activated (i.e. addresses become 245-255).
+            //so it probably has happenend now, in the next state try to search a device in high address range
+            smDebug(smhandle,SMDebugLow,"smFirmwareUploadFromBuffer: device is not found in DFU mode, continuing to search from high SM addresses\n");
+            state=StatFindDFUDevice;//search DFU device in brute force, fallback for older BL versions that don't preserve same smaddress than non-DFU mode
+        }
+
+        progress=3;
+    }
+
+    else if(state==StatFindDFUDevice)
+    {
+        smDebug(smhandle,SMDebugLow,"smFirmwareUploadFromBuffer: StatFindDFUDevice\n");
+
+        int i;
+        //scan thru addresses where SM device may appear in DFU mode if not appearing in it's original address
+        for(i=245;i<=255;i++)
+        {
+            smint32 busMode;
+            stat=smRead2Parameters(smhandle,i, SMP_BUS_MODE,&busMode, SMP_DEVICE_TYPE, &deviceType);
+            if(stat==SM_OK && busMode==0)//busmode 0 is DFU mode
+            {
+                state=StatUpload;
+                DFUAddress=i;
+                smDebug(smhandle,SMDebugLow,"smFirmwareUploadFromBuffer: DFU device found at address %d\n",DFUAddress);
+                break;//DFU found, break out of for loop
+            }
+        }
+
+        if(i==256)//DFU device not found
+        {
+            smDebug(smhandle,SMDebugLow,"smFirmwareUploadFromBuffer: DFU device not found\n");
+            return abortFWUpload(FWConnectingDFUModeFailed,&state,400);//setting DFU mode failed
         }
 
         progress=4;
