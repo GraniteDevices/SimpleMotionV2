@@ -191,6 +191,7 @@ LIB LoadConfigurationStatus smLoadConfigurationFromBuffer( const smbus smhandle,
     int changed=0;
     *skippedCount=-1;
     *errorCount=-1;
+    smbool deviceDisabled=smfalse;
 
     //test connection
     resetCumulativeStatus(smhandle);
@@ -199,12 +200,6 @@ LIB LoadConfigurationStatus smLoadConfigurationFromBuffer( const smbus smhandle,
         return CFGCommunicationError;
 
     //smSetParameter( smhandle, smaddress, SMP_RETURN_PARAM_LEN, SMPRET_CMD_STATUS );//get command status as feedback from each executed SM command
-
-    if(mode&CONFIGMODE_DISABLE_DURING_CONFIG)
-    {
-        smRead1Parameter( smhandle, smaddress, SMP_CONTROL_BITS1, &CB1Value );
-        smSetParameter( smhandle, smaddress, SMP_CONTROL_BITS1, 0);//disable drive
-    }
 
     if(getCumulativeStatus( smhandle )!=SM_OK )
         return CFGCommunicationError;
@@ -229,6 +224,15 @@ LIB LoadConfigurationStatus smLoadConfigurationFromBuffer( const smbus smhandle,
             {
                 if(currentValue!=configFileValue  ) //set only if different
                 {
+                    //disable device only only if at least one parameter has changed, and disalbe is configured by CONFIGMODE_DISABLE_DURING_CONFIG flag.
+                    //deviceDisabled is compared so it gets disabled only at first parameter, not consequent ones
+                    if(mode&CONFIGMODE_DISABLE_DURING_CONFIG && deviceDisabled==smfalse)
+                    {
+                        smRead1Parameter( smhandle, smaddress, SMP_CONTROL_BITS1, &CB1Value );
+                        smSetParameter( smhandle, smaddress, SMP_CONTROL_BITS1, 0);//disable drive
+                        deviceDisabled==smtrue;
+                    }
+
                     resetCumulativeStatus( smhandle );
                     smint32 dummy;
                     smint32 cmdSetAddressStatus;
@@ -282,7 +286,7 @@ LIB LoadConfigurationStatus smLoadConfigurationFromBuffer( const smbus smhandle,
     }
 
     //re-enable drive
-    if(mode&CONFIGMODE_DISABLE_DURING_CONFIG)
+    if(mode&CONFIGMODE_DISABLE_DURING_CONFIG && deviceDisabled==smtrue)
     {
         smDebug(smhandle,SMDebugLow,"Restoring CONTROL_BITS1 to value 0x%x\n",CB1Value);
         smSetParameter( smhandle, smaddress, SMP_CONTROL_BITS1, CB1Value );//restore controbits1 (enable if it was enabled before)
