@@ -180,6 +180,8 @@ LoadConfigurationStatus smLoadConfiguration(const smbus smhandle, const int smad
  */
 LIB LoadConfigurationStatus smLoadConfigurationFromBuffer( const smbus smhandle, const int smaddress, const smuint8 *drcData, const int drcDataLength, unsigned int mode, int *skippedCount, int *errorCount )
 {
+    smDebug(smhandle,SMDebugLow,"smLoadConfigurationFromBuffer for SM address %d called\n",smaddress);
+
     //test connection
     smint32 devicetype;
     SM_STATUS stat;
@@ -275,7 +277,7 @@ LIB LoadConfigurationStatus smLoadConfigurationFromBuffer( const smbus smhandle,
 
     if(mode&CONFIGMODE_CLEAR_FAULTS_AFTER_CONFIG )
     {
-        smDebug(smhandle,SMDebugLow,"Restting faults\n");
+        smDebug(smhandle,SMDebugLow,"Resetting faults\n");
         smSetParameter( smhandle, smaddress, SMP_FAULTS, 0 );//reset faults
     }
 
@@ -313,6 +315,8 @@ LIB LoadConfigurationStatus smLoadConfigurationFromBuffer( const smbus smhandle,
  */
 smbool smGetDeviceFirmwareUniqueID( smbus smhandle, int deviceaddress, smuint32 *UID )
 {
+    smDebug(smhandle,SMDebugMid,"smGetDeviceFirmwareUniqueID called\n");
+
     smint32 fwBinaryChecksum, commandStatus;
     resetCumulativeStatus(smhandle);
     smSetParameter( smhandle, deviceaddress, SMP_CUMULATIVE_STATUS, 0);//reset any SM access error that might SM target might have active so we can test whether following command succeeds
@@ -374,6 +378,8 @@ FirmwareUploadStatus parseFirmwareFile(smuint8 *data, smuint32 numbytes, smuint3
                                         smuint32 *secondaryMCUDataOffset,smuint32 *secondaryMCUDataLength,
                                         smuint32 *FWUniqueID )
 {
+    smDebug(-1,SMDebugMid,"parseFirmwareFile called\n");
+
     //see https://granitedevices.com/wiki/Firmware_file_format_(.gdf)
 
     smuint32 filetype;
@@ -641,6 +647,8 @@ smbool flashFirmwarePrimaryMCU( smbus smhandle, int deviceaddress, const smuint8
 
     if(state==Init)
     {
+        smDebug(smhandle,SMDebugLow,"flashFirmwarePrimaryMCU: Init\n");
+
         resetCumulativeStatus( smhandle );
         smRead2Parameters( smhandle, deviceaddress, SMP_FIRMWARE_VERSION, &fwVersion, SMP_DEVICE_TYPE,&deviceType );
 
@@ -675,6 +683,8 @@ smbool flashFirmwarePrimaryMCU( smbus smhandle, int deviceaddress, const smuint8
     }
     else if(state==Upload)
     {
+        smDebug(smhandle,SMDebugMid,"flashFirmwarePrimaryMCU: Upload\n");
+
         size/=2;//bytes to 16 bit words
 
         //upload data in 32=BL_CHUNK_LEN word chunks
@@ -726,6 +736,8 @@ smbool flashFirmwarePrimaryMCU( smbus smhandle, int deviceaddress, const smuint8
     }
     else if(state==Finish)
     {
+        smDebug(smhandle,SMDebugLow,"flashFirmwarePrimaryMCU: Finish\n");
+
         //verify STM32 flash if supported by BL version
         if(fwVersion>=1210)
         {
@@ -742,14 +754,15 @@ smbool flashFirmwarePrimaryMCU( smbus smhandle, int deviceaddress, const smuint8
 
             if(faults&FLT_FLASHING_COMMSIDE_FAIL)
             {
-                //printf("verify failed\n");
+                smDebug(smhandle,SMDebugLow,"flashFirmwarePrimaryMCU: verify failed\n");
+
                 *progress=0;
                 state=Init;
                 return smfalse;
             }
             else
             {
-                //printf("verify success\n");
+                smDebug(smhandle,SMDebugLow,"flashFirmwarePrimaryMCU: verify success\n");
             }
         }
 
@@ -766,6 +779,8 @@ typedef enum { StatIdle=0, StatEnterDFU, StatFindDFUDevice, StatLoadFile, StatUp
 //handle error in FW upload
 FirmwareUploadStatus abortFWUpload( FirmwareUploadStatus stat, UploadState *state, int errorDetailCode )
 {
+    smDebug(-1,SMDebugLow,"abortFWUpload called with error detail code %d\n",errorDetailCode);
+
     globalErrorDetailCode=errorDetailCode;
     *state=StatIdle;
     return stat;
@@ -830,6 +845,7 @@ FirmwareUploadStatus smFirmwareUploadFromBuffer( const smbus smhandle, const int
     //state machine
     if(state==StatIdle)
     {
+        smDebug(smhandle,SMDebugLow,"smFirmwareUploadFromBuffer: StatIdle\n");
 
         //check if device is in DFU mode already
         smint32 busMode;
@@ -842,6 +858,7 @@ FirmwareUploadStatus smFirmwareUploadFromBuffer( const smbus smhandle, const int
         {
             if(deviceType==4000)//argon does not support restarting in DFU mode by software
             {
+                smDebug(smhandle,SMDebugLow,"smFirmwareUploadFromBuffer: ARGON devices not supported\n");
                 return abortFWUpload(FWConnectionError,&state,200);
             }
 
@@ -862,6 +879,8 @@ FirmwareUploadStatus smFirmwareUploadFromBuffer( const smbus smhandle, const int
 
     else if(state==StatEnterDFU)
     {
+        smDebug(smhandle,SMDebugLow,"smFirmwareUploadFromBuffer: StatEnterDFU\n");
+
         smSleepMs(SM_DEVICE_POWER_UP_WAIT_MS);//wait device to reboot in DFU mode. probably shorter delay would do.
         smPurge(smhandle);
 
@@ -880,6 +899,8 @@ FirmwareUploadStatus smFirmwareUploadFromBuffer( const smbus smhandle, const int
 
     else if(state==StatFindDFUDevice)
     {
+        smDebug(smhandle,SMDebugLow,"smFirmwareUploadFromBuffer: StatFindDFUDevice\n");
+
         int i;
         //scan thru addresses where SM device may appear in DFU mode if not appearing in it's original address
         for(i=245;i<=255;i++)
@@ -890,18 +911,24 @@ FirmwareUploadStatus smFirmwareUploadFromBuffer( const smbus smhandle, const int
             {
                 state=StatLoadFile;
                 DFUAddress=i;
+                smDebug(smhandle,SMDebugLow,"smFirmwareUploadFromBuffer: DFU device found at address %d\n",DFUAddress);
                 break;//DFU found, break out of for loop
             }
         }
 
         if(i==256)//DFU device not found
+        {
+            smDebug(smhandle,SMDebugLow,"smFirmwareUploadFromBuffer: DFU device not found\n");
             return abortFWUpload(FWConnectingDFUModeFailed,&state,400);//setting DFU mode failed
+        }
 
         progress=3;
     }
 
     else if(state==StatLoadFile)
     {
+        smDebug(smhandle,SMDebugLow,"smFirmwareUploadFromBuffer: StatLoadFile\n");
+
         smuint32 GDFFileUID;
         FirmwareUploadStatus stat=parseFirmwareFile(fwData, fwDataLength, deviceType,
                                   &primaryMCUDataOffset, &primaryMCUDataLenth,
@@ -909,6 +936,7 @@ FirmwareUploadStatus smFirmwareUploadFromBuffer( const smbus smhandle, const int
                                   &GDFFileUID);
         if(stat!=FWComplete)//error in verify
         {
+            smDebug(smhandle,SMDebugLow,"smFirmwareUploadFromBuffer: FW file verify failed\n");
             return abortFWUpload(stat,&state,100);
         }
 
@@ -923,8 +951,10 @@ FirmwareUploadStatus smFirmwareUploadFromBuffer( const smbus smhandle, const int
             smuint32 targetFWUID;
             if(smGetDeviceFirmwareUniqueID( smhandle, DFUAddress, &targetFWUID )==smtrue)
             {
+                smDebug(smhandle,SMDebugLow,"smFirmwareUploadFromBuffer: Device provided firmware UID\n");
                 if(GDFFileUID==targetFWUID)//FW is already installed
                 {
+                    smDebug(smhandle,SMDebugLow,"smFirmwareUploadFromBuffer: Same FW is already installed, skipping install\n");
                     state=StatLaunch;
                     FW_already_installed=smtrue;
                 }
@@ -936,9 +966,12 @@ FirmwareUploadStatus smFirmwareUploadFromBuffer( const smbus smhandle, const int
 
     else if(state==StatUpload)
     {
+        smDebug(smhandle,SMDebugMid,"smFirmwareUploadFromBuffer: StatUpload\n");
+
         smbool ret=flashFirmwarePrimaryMCU(smhandle,DFUAddress,fwData+primaryMCUDataOffset,primaryMCUDataLenth,&progress);
         if(ret==smfalse)//failed
         {
+            smDebug(smhandle,SMDebugLow,"smFirmwareUploadFromBuffer: StatUpload failed\n");
             return abortFWUpload(FWConnectionError,&state,1000);
         }
         else
@@ -950,6 +983,8 @@ FirmwareUploadStatus smFirmwareUploadFromBuffer( const smbus smhandle, const int
 
     else if(state==StatLaunch)
     {
+        smDebug(smhandle,SMDebugLow,"smFirmwareUploadFromBuffer: StatLaunch\n");
+
         smSetParameter(smhandle,DFUAddress,SMP_BOOTLOADER_FUNCTION,4);//BL func 4 = launch.
         smSleepMs(SM_DEVICE_POWER_UP_WAIT_MS);
         if(FW_already_installed)
