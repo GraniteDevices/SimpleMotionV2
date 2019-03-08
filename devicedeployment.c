@@ -758,7 +758,7 @@ smbool flashFirmwarePrimaryMCU( smbus smhandle, int deviceaddress, const smuint8
 
             if(faults&FLT_FLASHING_COMMSIDE_FAIL)
             {
-                smDebug(smhandle,SMDebugLow,"flashFirmwarePrimaryMCU: verify failed\n");
+                smDebug(smhandle,SMDebugLow,"flashFirmwarePrimaryMCU: verify failed (faults=%d)\n",faults);
 
                 *progress=0;
                 state=Init;
@@ -882,7 +882,7 @@ FirmwareUploadStatus smFirmwareUploadFromBuffer( const smbus smhandle, const int
         if(GDFFileUID!=0)//check only if GDF has provided this value
         {
             smuint32 targetFWUID;
-            if(smGetDeviceFirmwareUniqueID( smhandle, DFUAddress, &targetFWUID )==smtrue)
+            if(smGetDeviceFirmwareUniqueID( smhandle, smaddress, &targetFWUID )==smtrue)
             {
                 //reset two upper bits because reading SMP will sign-extend them from 30 bits assuming so that we're reading signed 30 bit integer.
                 //but this is unsigned 30 bit so reset top 2 bits to cancel sign extension.
