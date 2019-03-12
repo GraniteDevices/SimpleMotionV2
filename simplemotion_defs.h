@@ -742,6 +742,8 @@
 #define SMP_TORQUE_EFFECT_INERTIA 243
 //special smoothing filter. 0=disabled, other choices application dependent. this value is not saved in flash at the time of release, set it in run-time.
 #define SMP_SETPOINT_FILTER_MODE 244
+//static torque reduction effect, scale 0..10000 = 0..100% reduction
+#define SMP_TORQUE_EFFECT_STATIC_TORQUE_REDUCTION 245
 
 //secondary feedback loop 300-399
 //NOT IMPLEMENTED YET
