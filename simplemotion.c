@@ -54,10 +54,6 @@ typedef struct SM_BUS_
     smint16 cmd_send_queue_bytes;//for queued device commands
     smint16 cmd_recv_queue_bytes;//recv_queue_bytes counted upwards at every smGetQueued.. and compared to payload size
 
-    //for detailed debug prints on failed smSetParameter
-    smint16 lastAccessedSMPAddress;
-    smint32 lastWrittenSMPValue;
-
     SM_STATUS cumulativeSmStatus;
 } SM_BUS;
 
@@ -146,8 +142,6 @@ void smResetSM485variables(smbus handle)
     smBus[handle].transmitBufFull=smfalse;
     smBus[handle].cmd_send_queue_bytes=0;
     smBus[handle].cmd_recv_queue_bytes=0;
-    smBus[handle].lastAccessedSMPAddress=0;
-    smBus[handle].lastWrittenSMPValue=0;
 }
 
 smuint16 calcCRC16(smuint8 data, smuint16 crc)
@@ -930,63 +924,24 @@ SM_STATUS smAppendSetParamCommandToQueue( smbus handle, smint16 paramAddress, sm
     //check if bus handle is valid & opened
     if(smIsHandleOpen(handle)==smfalse) return SM_ERR_NODEVICE;
 
-    smBus[handle].lastAccessedSMPAddress=paramAddress;
-    smBus[handle].lastWrittenSMPValue=paramValue;
-
     stat|=smAppendSMCommandToQueue( handle, SMPCMD_SETPARAMADDR, paramAddress );//2b
     stat|=smAppendSMCommandToQueue( handle, SMPCMD_32B, paramValue );//4b
     return recordStatus(handle,stat);
 }
 
 
-SM_STATUS smGetQueuedSetParamReturnValue(const smbus bushandle)
+SM_STATUS smGetQueuedSetParamReturnValue(  const smbus bushandle, smint32 *retValue )
 {
-    smint32 readSubpacketCMDStatus=0;
+    smint32 retVal=0;
     SM_STATUS stat=SM_NONE;
 
     //check if bus handle is valid & opened
     if(smIsHandleOpen(bushandle)==smfalse) return SM_ERR_NODEVICE;
 
     //must get all inserted commands from buffer
-    stat|=smGetQueuedSMCommandReturnValue( bushandle, &readSubpacketCMDStatus );
-    stat|=smGetQueuedSMCommandReturnValue( bushandle, &readSubpacketCMDStatus ); //retVal here gets meaningful value: the SMP_CMD_STATUS of actual write subpacket
-
-    if(readSubpacketCMDStatus!=SMP_CMD_STATUS_ACK)//check if write was ok
-    {
-        smDebug(bushandle,SMDebugLow,"Writing value %d to parameter address %d failed (SMP_CMD_STATUS=%d)\n",smBus[bushandle].lastWrittenSMPValue,smBus[bushandle].lastAccessedSMPAddress,readSubpacketCMDStatus);
-        stat|=SM_ERR_PARAMETER_WRITE_NACK;
-    }
-
-    return recordStatus(bushandle,stat);
-}
-
-//insert commands to configure every consequent SMP subpacket to return subpacket execution status
-//consumes 6 bytes in payload buf, so max calls per cycle is 20
-SM_STATUS smAppendReadSMPStatusCommandToQueue( smbus handle )
-{
-    SM_STATUS stat=SM_NONE;
-
-    //check if bus handle is valid & opened
-    if(smIsHandleOpen(handle)==smfalse) return SM_ERR_NODEVICE;
-
-    stat|=smAppendSMCommandToQueue( handle, SM_SET_WRITE_ADDRESS, SMP_RETURN_PARAM_LEN ); //2b
-    stat|=smAppendSMCommandToQueue( handle, SM_WRITE_VALUE_24B, SMPRET_CMD_STATUS );//4b
-
-    return recordStatus(handle,stat);
-}
-
-//called in conjunction with smAppendReadSMPStatusCommandToQueue. this just reads and discards returning subpackets from the smAppendReadSMPStatusCommandToQueue.
-SM_STATUS smGetQueuedReadSMPStatusReturnValue(  const smbus bushandle )
-{
-    smint32 discard=0;
-    SM_STATUS stat=SM_NONE;
-
-    //check if bus handle is valid & opened
-    if(smIsHandleOpen(bushandle)==smfalse) return SM_ERR_NODEVICE;
-
-    //must get all inserted commands from buffer
-    stat|=smGetQueuedSMCommandReturnValue( bushandle, &discard );
-    stat|=smGetQueuedSMCommandReturnValue( bushandle, &discard );
+    stat|=smGetQueuedSMCommandReturnValue( bushandle, &retVal );
+    stat|=smGetQueuedSMCommandReturnValue( bushandle, &retVal );  //the real return value is here
+    if(retValue!=NULL) *retValue=retVal;
 
     return recordStatus(bushandle,stat);
 }
@@ -1083,13 +1038,21 @@ SM_STATUS smSetParameter( const smbus handle, const smaddr nodeAddress, const sm
 
     smDebug(handle,SMDebugMid,"smSetParameter: writing parameter [%hu]=%d into SM address %d.\n",(unsigned short)paramId,(int)paramVal,(int)nodeAddress);
 
-    smStat|=smAppendReadSMPStatusCommandToQueue( handle );
+    smStat|=smAppendSetParamCommandToQueue( handle, SMP_RETURN_PARAM_LEN, SMPRET_CMD_STATUS );
     smStat|=smAppendSetParamCommandToQueue( handle, paramId, paramVal );
     smStat|=smExecuteCommandQueue(handle,nodeAddress);
     if(nodeAddress!=0)//don't attempt to read if target address was broadcast address where no slave device will respond
     {
-        smStat|=smGetQueuedReadSMPStatusReturnValue( handle );
-        smStat|=smGetQueuedSetParamReturnValue(  handle );
+        smint32 writeStatus;
+
+        smStat|=smGetQueuedSetParamReturnValue( handle, &writeStatus );
+        smStat|=smGetQueuedSetParamReturnValue( handle, &writeStatus );//the real writestatus is here
+
+        if(writeStatus!=SMP_CMD_STATUS_ACK)//check if write was ok
+        {
+            smDebug(handle,SMDebugLow,"Writing value %d to parameter address %d failed (SMP_CMD_STATUS=%d)\n",paramVal,nodeAddress,writeStatus);
+            smStat|=SM_ERR_PARAMETER_WRITE_NACK;
+        }
     }
 
     if(smStat!=SM_OK)
