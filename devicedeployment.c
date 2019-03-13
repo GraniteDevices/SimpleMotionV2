@@ -260,7 +260,7 @@ LIB LoadConfigurationStatus smLoadConfigurationFromBuffer( const smbus smhandle,
 
                         smRead1Parameter( smhandle, smaddress, SMP_CONTROL_BITS1, &CB1Value );
                         smSetParameter( smhandle, smaddress, SMP_CONTROL_BITS1, 0);//disable drive
-                        deviceDisabled==smtrue;
+                        deviceDisabled=smtrue;
                     }
 
                     resetCumulativeStatus( smhandle );
