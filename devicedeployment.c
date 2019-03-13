@@ -7,23 +7,6 @@
 #include <simplemotion_private.h>
 #include <math.h>
 
-#if defined(__unix__) || defined(__APPLE__)
-#include <unistd.h>
-void sleep_ms(int millisecs)
-{
-    usleep(millisecs*1000);
-}
-
-#elif defined(_WIN32) || defined(WIN32)
-#include <windows.h>
-void sleep_ms(int millisecs)
-{
-    Sleep(millisecs);
-}
-#else
-//If end up here, we're on other OS or on embedded platform. User must implement void sleep_ms(int millisecs) function somewhere.
-void sleep_ms(int millisecs);
-#endif
 
 //wait some time after device is started/restarted. 500ms too little for some devices, 800ms was barely enough
 #define SM_DEVICE_POWER_UP_WAIT_MS 1500
@@ -310,7 +293,7 @@ LIB LoadConfigurationStatus smLoadConfigurationFromBuffer( const smbus smhandle,
     if(changed>0)
     {
         smSetParameter( smhandle, smaddress, SMP_SYSTEM_CONTROL, SMP_SYSTEM_CONTROL_SAVECFG );
-        sleep_ms(200);//wait save command to complete on hardware before new commands
+        smSleepMs(200);//wait save command to complete on hardware before new commands
     }
 
     if(mode&CONFIGMODE_CLEAR_FAULTS_AFTER_CONFIG )
