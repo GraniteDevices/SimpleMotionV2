@@ -27,6 +27,8 @@ void sleep_ms(int millisecs);
 
 //wait some time after device is started/restarted. 500ms too little for some devices, 800ms was barely enough
 #define SM_DEVICE_POWER_UP_WAIT_MS 1500
+//waiting time after save config command
+#define SM_DEVICE_SAVE_CONFIG_WAIT_MS 200
 
 int globalErrorDetailCode=0;
 
@@ -224,8 +226,6 @@ LIB LoadConfigurationStatus smLoadConfigurationFromBuffer( const smbus smhandle,
     if(stat!=SM_OK)
         return CFGCommunicationError;
 
-    //smSetParameter( smhandle, smaddress, SMP_RETURN_PARAM_LEN, SMPRET_CMD_STATUS );//get command status as feedback from each executed SM command
-
     if(getCumulativeStatus( smhandle )!=SM_OK )
         return CFGCommunicationError;
 
@@ -249,14 +249,14 @@ LIB LoadConfigurationStatus smLoadConfigurationFromBuffer( const smbus smhandle,
             {
                 if(currentValue!=configFileValue  ) //set only if different
                 {
+                    smDebug(smhandle,SMDebugLow,"Config file parameter nr %d differs from taraget's value (target value %d, new value %d)\n",
+                            param.address,currentValue,configFileValue);
+
                     //disable device only only if at least one parameter has changed, and disalbe is configured by CONFIGMODE_DISABLE_DURING_CONFIG flag.
                     //deviceDisabled is compared so it gets disabled only at first parameter, not consequent ones
                     if(mode&CONFIGMODE_DISABLE_DURING_CONFIG && deviceDisabled==smfalse)
                     {
-                    	smDebug(smhandle,SMDebugLow,
-                    			"First parameter (param %d, orig value %d, new value %d) that will be altered has been found,"
-                    			" disabling drive during rest of DRC file load\n",
-                    			param.address,currentValue,configFileValue);
+                    	smDebug(smhandle,SMDebugLow,"Drive will be disabled as requested because of parameter change\n");
 
                         smRead1Parameter( smhandle, smaddress, SMP_CONTROL_BITS1, &CB1Value );
                         smSetParameter( smhandle, smaddress, SMP_CONTROL_BITS1, 0);//disable drive
@@ -268,6 +268,7 @@ LIB LoadConfigurationStatus smLoadConfigurationFromBuffer( const smbus smhandle,
                     smint32 cmdSetAddressStatus;
                     smint32 cmdSetValueStatus;
 
+                    smDebug(smhandle,SMDebugMid,"Writing parameter addr %d value %d\n",param.address,configFileValue);
                     //use low level SM commands so we can get execution status of each subpacet:
                     smAppendSMCommandToQueue( smhandle, SM_SET_WRITE_ADDRESS, SMP_RETURN_PARAM_LEN );
                     smAppendSMCommandToQueue( smhandle, SM_WRITE_VALUE_24B, SMPRET_CMD_STATUS );
@@ -307,7 +308,10 @@ LIB LoadConfigurationStatus smLoadConfigurationFromBuffer( const smbus smhandle,
 
     //save to flash if some value was changed
     if(changed>0)
+    {
         smSetParameter( smhandle, smaddress, SMP_SYSTEM_CONTROL, SMP_SYSTEM_CONTROL_SAVECFG );
+        sleep_ms(200);//wait save command to complete on hardware before new commands
+    }
 
     if(mode&CONFIGMODE_CLEAR_FAULTS_AFTER_CONFIG )
     {
@@ -328,7 +332,11 @@ LIB LoadConfigurationStatus smLoadConfigurationFromBuffer( const smbus smhandle,
     //restart drive if necessary or if forced
     if( (statusbits&STAT_PERMANENT_STOP) || (mode&CONFIGMODE_ALWAYS_RESTART_TARGET) )
     {
-        smDebug(smhandle,SMDebugLow,"Restarting device\n");
+        if(statusbits&STAT_PERMANENT_STOP)
+            smDebug(smhandle,SMDebugLow,"Restarting device because drive permanent stop status requires it to continue\n");
+        if(mode&CONFIGMODE_ALWAYS_RESTART_TARGET)
+            smDebug(smhandle,SMDebugLow,"Restarting device because caller has requested restart always\n");
+
         smSetParameter( smhandle, smaddress, SMP_SYSTEM_CONTROL, SMP_SYSTEM_CONTROL_RESTART );
         smSleepMs(SM_DEVICE_POWER_UP_WAIT_MS);//wait power-on
         smPurge(smhandle);
@@ -336,6 +344,9 @@ LIB LoadConfigurationStatus smLoadConfigurationFromBuffer( const smbus smhandle,
 
     if(getCumulativeStatus(smhandle)!=SM_OK)
         return CFGCommunicationError;
+
+
+    smDebug(smhandle,SMDebugMid,"smLoadConfigurationFromBuffer finished\n");
 
     return CFGComplete;
 }
