@@ -14,6 +14,7 @@
 #define SM_ERR_COMMUNICATION 8
 #define SM_ERR_PARAMETER 16
 #define SM_ERR_LENGTH 32
+#define SM_ERR_PARAMETER_WRITE_NACK 64 /*set if smSetParam fails writign value because parameter address is invalid, it's value is invalid, or if parameter is read-only */
 
 //declare SM lib integer types
 typedef long smbus;

@@ -125,7 +125,7 @@ LIB SM_STATUS smGetQueuedSMCommandReturnValue(  const smbus bushandle, smint32 *
 LIB SM_STATUS smAppendGetParamCommandToQueue( smbus handle, smint16 paramAddress );
 LIB SM_STATUS smGetQueuedGetParamReturnValue(  const smbus bushandle, smint32 *retValue  );
 LIB SM_STATUS smAppendSetParamCommandToQueue( smbus handle, smint16 paramAddress, smint32 paramValue );
-LIB SM_STATUS smGetQueuedSetParamReturnValue(  const smbus bushandle, smint32 *retValue  );
+LIB SM_STATUS smGetQueuedSetParamReturnValue(  const smbus bushandle );
 
 /** Simple read & write of parameters with internal queueing, so only one call needed.
 Use these for non-time critical operations. */
