@@ -81,6 +81,19 @@ typedef struct
 
 #define maxLineLen 100
 
+//returns byte offset where str starts, or -1 if not found before data ends
+int findSubstring( const smuint8 *data, const int dataLen, const char *str )
+{
+	int strLen=strlen(str);
+	int i;
+	for(i=0;i<dataLen-strLen;i++)
+	{
+		if(strncmp((const char*)(data+i),str,strLen)==0)
+			return i; // found
+	}
+	return -1;// not found
+}
+
 smbool parseParameter( const smuint8 *drcData, const int drcDataLen, int idx, Parameter *param )
 {
     char line[maxLineLen];
@@ -90,9 +103,21 @@ smbool parseParameter( const smuint8 *drcData, const int drcDataLen, int idx, Pa
     int readPosition=0;
     smbool eof;
 
+    //optimization below: finds starting offset where the wanted idx parameter will be available in drcData.
+    //i.e. find start offset of line that starts with "50\" (for idx=50)
+    if(idx>999)
+    	return smfalse;//parseParam supports only idx 1-999 because startingTag has fixed length
+    char startingTag[5];
+    sprintf(startingTag,"%d\\",idx);
+    readPosition=findSubstring(drcData,drcDataLen,startingTag);
+    if(readPosition<0)//such parameter not found in data
+    	return smfalse;
+
     do//loop trhu all lines of file
     {
         readbytes=readFileLine(drcData,drcDataLen,&readPosition,maxLineLen,line,&eof);//read line
+        if(readbytes<=1)//empty line or only linefeed character, read another to avoid wasting time below
+        	readbytes=readFileLine(drcData,drcDataLen,&readPosition,maxLineLen,line,&eof);//read line
 
         //try read address
         sprintf(scanline,"%d\\addr=",idx);
