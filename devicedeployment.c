@@ -253,6 +253,11 @@ LIB LoadConfigurationStatus smLoadConfigurationFromBuffer( const smbus smhandle,
                     //deviceDisabled is compared so it gets disabled only at first parameter, not consequent ones
                     if(mode&CONFIGMODE_DISABLE_DURING_CONFIG && deviceDisabled==smfalse)
                     {
+                    	smDebug(smhandle,SMDebugLow,
+                    			"First parameter (param %d, orig value %d, new value %d) that will be altered has been found,"
+                    			" disabling drive during rest of DRC file load\n",
+                    			param.address,currentValue,configFileValue);
+
                         smRead1Parameter( smhandle, smaddress, SMP_CONTROL_BITS1, &CB1Value );
                         smSetParameter( smhandle, smaddress, SMP_CONTROL_BITS1, 0);//disable drive
                         deviceDisabled==smtrue;
