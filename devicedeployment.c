@@ -7,26 +7,11 @@
 #include <simplemotion_private.h>
 #include <math.h>
 
-#if defined(__unix__) || defined(__APPLE__)
-#include <unistd.h>
-void sleep_ms(int millisecs)
-{
-    usleep(millisecs*1000);
-}
-
-#elif defined(_WIN32) || defined(WIN32)
-#include <windows.h>
-void sleep_ms(int millisecs)
-{
-    Sleep(millisecs);
-}
-#else
-//If end up here, we're on other OS or on embedded platform. User must implement void sleep_ms(int millisecs) function somewhere.
-void sleep_ms(int millisecs);
-#endif
 
 //wait some time after device is started/restarted. 500ms too little for some devices, 800ms was barely enough
 #define SM_DEVICE_POWER_UP_WAIT_MS 1500
+//waiting time after save config command
+#define SM_DEVICE_SAVE_CONFIG_WAIT_MS 200
 
 int globalErrorDetailCode=0;
 
@@ -81,6 +66,19 @@ typedef struct
 
 #define maxLineLen 100
 
+//returns byte offset where str starts, or -1 if not found before data ends
+int findSubstring( const smuint8 *data, const int dataLen, const char *str )
+{
+	int strLen=strlen(str);
+	int i;
+	for(i=0;i<dataLen-strLen;i++)
+	{
+		if(strncmp((const char*)(data+i),str,strLen)==0)
+			return i; // found
+	}
+	return -1;// not found
+}
+
 smbool parseParameter( const smuint8 *drcData, const int drcDataLen, int idx, Parameter *param )
 {
     char line[maxLineLen];
@@ -90,9 +88,21 @@ smbool parseParameter( const smuint8 *drcData, const int drcDataLen, int idx, Pa
     int readPosition=0;
     smbool eof;
 
+    //optimization below: finds starting offset where the wanted idx parameter will be available in drcData.
+    //i.e. find start offset of line that starts with "50\" (for idx=50)
+    if(idx>999)
+    	return smfalse;//parseParam supports only idx 1-999 because startingTag has fixed length
+    char startingTag[5];
+    sprintf(startingTag,"%d\\",idx);
+    readPosition=findSubstring(drcData,drcDataLen,startingTag);
+    if(readPosition<0)//such parameter not found in data
+    	return smfalse;
+
     do//loop trhu all lines of file
     {
         readbytes=readFileLine(drcData,drcDataLen,&readPosition,maxLineLen,line,&eof);//read line
+        if(readbytes<=1)//empty line or only linefeed character, read another to avoid wasting time below
+        	readbytes=readFileLine(drcData,drcDataLen,&readPosition,maxLineLen,line,&eof);//read line
 
         //try read address
         sprintf(scanline,"%d\\addr=",idx);
@@ -199,8 +209,6 @@ LIB LoadConfigurationStatus smLoadConfigurationFromBuffer( const smbus smhandle,
     if(stat!=SM_OK)
         return CFGCommunicationError;
 
-    //smSetParameter( smhandle, smaddress, SMP_RETURN_PARAM_LEN, SMPRET_CMD_STATUS );//get command status as feedback from each executed SM command
-
     if(getCumulativeStatus( smhandle )!=SM_OK )
         return CFGCommunicationError;
 
@@ -224,13 +232,18 @@ LIB LoadConfigurationStatus smLoadConfigurationFromBuffer( const smbus smhandle,
             {
                 if(currentValue!=configFileValue  ) //set only if different
                 {
+                    smDebug(smhandle,SMDebugLow,"Config file parameter nr %d differs from taraget's value (target value %d, new value %d)\n",
+                            param.address,currentValue,configFileValue);
+
                     //disable device only only if at least one parameter has changed, and disalbe is configured by CONFIGMODE_DISABLE_DURING_CONFIG flag.
                     //deviceDisabled is compared so it gets disabled only at first parameter, not consequent ones
                     if(mode&CONFIGMODE_DISABLE_DURING_CONFIG && deviceDisabled==smfalse)
                     {
+                    	smDebug(smhandle,SMDebugLow,"Drive will be disabled as requested because of parameter change\n");
+
                         smRead1Parameter( smhandle, smaddress, SMP_CONTROL_BITS1, &CB1Value );
                         smSetParameter( smhandle, smaddress, SMP_CONTROL_BITS1, 0);//disable drive
-                        deviceDisabled==smtrue;
+                        deviceDisabled=smtrue;
                     }
 
                     resetCumulativeStatus( smhandle );
@@ -238,6 +251,7 @@ LIB LoadConfigurationStatus smLoadConfigurationFromBuffer( const smbus smhandle,
                     smint32 cmdSetAddressStatus;
                     smint32 cmdSetValueStatus;
 
+                    smDebug(smhandle,SMDebugMid,"Writing parameter addr %d value %d\n",param.address,configFileValue);
                     //use low level SM commands so we can get execution status of each subpacet:
                     smAppendSMCommandToQueue( smhandle, SM_SET_WRITE_ADDRESS, SMP_RETURN_PARAM_LEN );
                     smAppendSMCommandToQueue( smhandle, SM_WRITE_VALUE_24B, SMPRET_CMD_STATUS );
@@ -277,7 +291,10 @@ LIB LoadConfigurationStatus smLoadConfigurationFromBuffer( const smbus smhandle,
 
     //save to flash if some value was changed
     if(changed>0)
+    {
         smSetParameter( smhandle, smaddress, SMP_SYSTEM_CONTROL, SMP_SYSTEM_CONTROL_SAVECFG );
+        smSleepMs(200);//wait save command to complete on hardware before new commands
+    }
 
     if(mode&CONFIGMODE_CLEAR_FAULTS_AFTER_CONFIG )
     {
@@ -298,7 +315,11 @@ LIB LoadConfigurationStatus smLoadConfigurationFromBuffer( const smbus smhandle,
     //restart drive if necessary or if forced
     if( (statusbits&STAT_PERMANENT_STOP) || (mode&CONFIGMODE_ALWAYS_RESTART_TARGET) )
     {
-        smDebug(smhandle,SMDebugLow,"Restarting device\n");
+        if(statusbits&STAT_PERMANENT_STOP)
+            smDebug(smhandle,SMDebugLow,"Restarting device because drive permanent stop status requires it to continue\n");
+        if(mode&CONFIGMODE_ALWAYS_RESTART_TARGET)
+            smDebug(smhandle,SMDebugLow,"Restarting device because caller has requested restart always\n");
+
         smSetParameter( smhandle, smaddress, SMP_SYSTEM_CONTROL, SMP_SYSTEM_CONTROL_RESTART );
         smSleepMs(SM_DEVICE_POWER_UP_WAIT_MS);//wait power-on
         smPurge(smhandle);
@@ -306,6 +327,9 @@ LIB LoadConfigurationStatus smLoadConfigurationFromBuffer( const smbus smhandle,
 
     if(getCumulativeStatus(smhandle)!=SM_OK)
         return CFGCommunicationError;
+
+
+    smDebug(smhandle,SMDebugMid,"smLoadConfigurationFromBuffer finished\n");
 
     return CFGComplete;
 }
@@ -758,7 +782,7 @@ smbool flashFirmwarePrimaryMCU( smbus smhandle, int deviceaddress, const smuint8
 
             if(faults&FLT_FLASHING_COMMSIDE_FAIL)
             {
-                smDebug(smhandle,SMDebugLow,"flashFirmwarePrimaryMCU: verify failed\n");
+                smDebug(smhandle,SMDebugLow,"flashFirmwarePrimaryMCU: verify failed (faults=%d)\n",faults);
 
                 *progress=0;
                 state=Init;
@@ -882,7 +906,7 @@ FirmwareUploadStatus smFirmwareUploadFromBuffer( const smbus smhandle, const int
         if(GDFFileUID!=0)//check only if GDF has provided this value
         {
             smuint32 targetFWUID;
-            if(smGetDeviceFirmwareUniqueID( smhandle, DFUAddress, &targetFWUID )==smtrue)
+            if(smGetDeviceFirmwareUniqueID( smhandle, smaddress, &targetFWUID )==smtrue)
             {
                 //reset two upper bits because reading SMP will sign-extend them from 30 bits assuming so that we're reading signed 30 bit integer.
                 //but this is unsigned 30 bit so reset top 2 bits to cancel sign extension.
