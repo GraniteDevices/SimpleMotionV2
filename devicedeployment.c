@@ -1018,7 +1018,7 @@ FirmwareUploadStatus smFirmwareUploadFromBuffer( const smbus smhandle, const int
                     FW_already_installed=smtrue;
                 }
                 else
-                    smDebug(smhandle,SMDebugLow,"smFirmwareUploadFromBuffer: firmware differs from the file, uploading\n");
+                    smDebug(smhandle,SMDebugLow,"smFirmwareUploadFromBuffer: firmware differs from the file (file UID %d, installed UID %d), uploading\n",GDFFileUID,targetFWUID);
             }
         }
     }
