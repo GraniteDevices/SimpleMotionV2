@@ -92,8 +92,8 @@ smbool parseParameter( const smuint8 *drcData, const int drcDataLen, int idx, Pa
     //i.e. find start offset of line that starts with "50\" (for idx=50)
     if(idx>999)
     	return smfalse;//parseParam supports only idx 1-999 because startingTag has fixed length
-    char startingTag[5];
-    sprintf(startingTag,"%d\\",idx);
+    char startingTag[6];
+    sprintf(startingTag,"\n%d\\",idx);
     readPosition=findSubstring(drcData,drcDataLen,startingTag);
     if(readPosition<0)//such parameter not found in data
     	return smfalse;
