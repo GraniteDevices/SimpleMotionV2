@@ -79,6 +79,89 @@ int findSubstring( const smuint8 *data, const int dataLen, const char *str )
 	return -1;// not found
 }
 
+//parse real number out of null terminated string formatted like "-123.5436"
+//read ends on first whitespace, \ņ \r or \0
+//returns 0 if fail, 1 if success
+int stringToDouble( const char *str, double *output )
+{
+    double out=0, decimalcoeff=1.0;
+    int i=0;
+    smbool decimalPointFound=smfalse;
+    smbool done=smfalse;
+    while(done==smfalse)
+    {
+        char c=str[i];
+        int number=c-'0';//char to value 0-9
+
+        if(c=='-' && i==0) //is minus
+        {
+            decimalcoeff=-1.0;
+        }
+        else if(number>=0 && number <=9) //is number
+        {
+            out=10.0*out+number;
+            if(decimalPointFound==smtrue)
+                decimalcoeff*=0.1;
+        }
+        else if (c=='.')//is decimal point
+        {
+            decimalPointFound=smtrue;
+        }
+        else if(c=='\n' || c=='\r' || c==' ' || c==0 )//end of string
+        {
+            done=smtrue;
+        }
+        else//bad charachter
+        {
+            return 0;
+        }
+
+        i++;
+    }
+
+    *output=out*decimalcoeff;
+    return 1;
+}
+
+//parse real number out of null terminated string formatted like "-123"
+//read ends on first whitespace, \ņ \r or \0
+//returns 0 if fail, 1 if success
+int stringToInt( const char *str, int *output )
+{
+    int out=0;
+    int i=0;
+    int coeff=1;
+    smbool done=smfalse;
+    while(done==smfalse)
+    {
+        char c=str[i];
+        int number=c-'0';//char to value 0-9
+
+        if(c=='-' && i==0) //is minus
+        {
+            coeff=-1;
+        }
+        else if(number>=0 && number <=9) //is number
+        {
+            out=10*out+number;
+        }
+        else if(c=='\n' || c=='\r' || c==' ' || c==0 )//end of string
+        {
+            done=smtrue;
+        }
+        else//bad charachter
+        {
+            return 0;
+        }
+
+        i++;
+    }
+
+    *output=out*coeff;
+    return 1;
+}
+
+
 smbool parseParameter( const smuint8 *drcData, const int drcDataLen, int idx, Parameter *param )
 {
     char line[maxLineLen];
@@ -92,8 +175,8 @@ smbool parseParameter( const smuint8 *drcData, const int drcDataLen, int idx, Pa
     //i.e. find start offset of line that starts with "50\" (for idx=50)
     if(idx>999)
     	return smfalse;//parseParam supports only idx 1-999 because startingTag has fixed length
-    char startingTag[5];
-    sprintf(startingTag,"%d\\",idx);
+    char startingTag[6];
+    sprintf(startingTag,"\n%d\\",idx);
     readPosition=findSubstring(drcData,drcDataLen,startingTag);
     if(readPosition<0)//such parameter not found in data
     	return smfalse;
@@ -107,25 +190,25 @@ smbool parseParameter( const smuint8 *drcData, const int drcDataLen, int idx, Pa
         //try read address
         sprintf(scanline,"%d\\addr=",idx);
         if(!strncmp(line,scanline,strlen(scanline)) && readbytes > strlen(scanline))//string starts with correct line
-            if(sscanf(line+strlen(scanline),"%d",&param->address)==1)//parse number after the start of line
+            if(stringToInt(line+strlen(scanline),&param->address)==1)//parse number after the start of line
                 gotaddr=smtrue;//number parse success
 
         //try read value
         sprintf(scanline,"%d\\value=",idx);
         if(!strncmp(line,scanline,strlen(scanline)) && readbytes > strlen(scanline))//string starts with correct line
-            if(sscanf(line+strlen(scanline),"%lf",&param->value)==1)//parse number after the start of line
+            if(stringToDouble(line+strlen(scanline),&param->value)==1)//parse number after the start of line
                 gotvalue=smtrue;//number parse success
 
         //try read offset
         sprintf(scanline,"%d\\offset=",idx);
         if(!strncmp(line,scanline,strlen(scanline)) && readbytes > strlen(scanline))//string starts with correct line
-            if(sscanf(line+strlen(scanline),"%lf",&param->offset)==1)//parse number after the start of line
+            if(stringToDouble(line+strlen(scanline),&param->offset)==1)//parse number after the start of line
                 gotoffset=smtrue;//number parse success
 
         //try read scale
         sprintf(scanline,"%d\\scaling=",idx);
         if(!strncmp(line,scanline,strlen(scanline)) && readbytes > strlen(scanline))//string starts with correct line
-            if(sscanf(line+strlen(scanline),"%lf",&param->scale)==1)//parse number after the start of line
+            if(stringToDouble(line+strlen(scanline),&param->scale)==1)//parse number after the start of line
                 gotscale=smtrue;//number parse success
 
         //try read readonly status
@@ -935,7 +1018,7 @@ FirmwareUploadStatus smFirmwareUploadFromBuffer( const smbus smhandle, const int
                     FW_already_installed=smtrue;
                 }
                 else
-                    smDebug(smhandle,SMDebugLow,"smFirmwareUploadFromBuffer: firmware differs from the file, uploading\n");
+                    smDebug(smhandle,SMDebugLow,"smFirmwareUploadFromBuffer: firmware differs from the file (file UID %d, installed UID %d), uploading\n",GDFFileUID,targetFWUID);
             }
         }
     }
