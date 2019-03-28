@@ -316,6 +316,9 @@
  *  -1 bit CB1_CLEARFAULTS
  *  read data is same format as in ALT1
  *
+ *  format 3 (ALT3)
+ *  This is specific for simucube application mode only on available only in some drive models.
+ *
  * Note:
  * Before reading/writing this, check if device supports this by checking capability flag DEVICE_CAPABILITY1_SELECTABLE_FAST_UPDATE_CYCLE_FORMAT.
  *
@@ -326,6 +329,7 @@
 	#define FAST_UPDATE_CYCLE_FORMAT_DEFAULT 0
 	#define FAST_UPDATE_CYCLE_FORMAT_ALT1 1
 	#define FAST_UPDATE_CYCLE_FORMAT_ALT2 2
+	#define FAST_UPDATE_CYCLE_FORMAT_ALT3 3
 
 /* Intro: SMP_BINARY_DATA and SMP_INIT_BINARY_DATA parameters allow reading & writing binary data from pre-defined buffers. i.e. text strings or calibration data blob.
  *

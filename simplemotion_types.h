@@ -100,6 +100,15 @@ typedef union
         smuint32 CB1_Enable:1;
         smuint32 CB1_Clearfaults:1;
     } ALT2_Write;
+
+    //use this when SMP_FAST_UPDATE_CYCLE_FORMAT = FAST_UPDATE_CYCLE_FORMAT_ALT3
+    struct
+    {
+        smint32 SetpointMainTorque:15;
+        smint32 SetpointEffectTorque:15;
+        smuint32 CB1_Enable:1;
+        smuint32 CB1_Clearfaults:1;
+    } ALT3_Write;
 } FastUpdateCycleWriteData;
 
 // output parameter type for smFastUpdateCycleWithStructs
@@ -121,6 +130,15 @@ typedef union
         smuint32 Stat_FaultStop:1;
         smuint32 Stat_ServoReady:1;
     } ALT1_ALT2_Read;
+
+    //use this when SMP_FAST_UPDATE_CYCLE_FORMAT = FAST_UPDATE_CYCLE_FORMAT_ALT1 or FAST_UPDATE_CYCLE_FORMAT_ALT3
+    struct
+    {
+        smint32 PositionFeedback:24;
+        smuint32 PositionFeedbackSamplingTimestamp:6; //encoder sampling cycle, 400 us periods
+        smuint32 Stat_FaultStop:1;
+        smuint32 Stat_ServoReady:1;
+    } ALT3_Read;
 } FastUpdateCycleReadData;
 
 #pragma pack(pop)
