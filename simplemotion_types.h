@@ -73,7 +73,10 @@ typedef void (*BusdeviceClose)(smBusdevicePointer busdevicePointer);
 // input parameter type for smFastUpdateCycleWithStructs
 typedef union
 {
+	//raw data
+    smuint8 U8[4];
     smuint16 U16[2];
+    smuint32 U32;
 
     //use this when SMP_FAST_UPDATE_CYCLE_FORMAT = FAST_UPDATE_CYCLE_FORMAT_DEFAULT
     struct
@@ -114,7 +117,10 @@ typedef union
 // output parameter type for smFastUpdateCycleWithStructs
 typedef union
 {
+	//raw data
+    smuint8 U8[4];
     smuint16 U16[2];
+    smuint32 U32;
 
     //use this when SMP_FAST_UPDATE_CYCLE_FORMAT = FAST_UPDATE_CYCLE_FORMAT_DEFAULT
     struct
