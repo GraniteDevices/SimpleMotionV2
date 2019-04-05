@@ -161,6 +161,29 @@ int stringToInt( const char *str, int *output )
     return 1;
 }
 
+//read DRC file version nr and nubmer of params it contains. if succes, returns smtrue. if invalid file, return smfalse
+smbool parseDRCInfo( const smuint8 *drcData, const int drcDataLen, int *DRCVersion, int *numParams )
+{
+    const char *DRCVersionKey="DRCVersion=";
+    const char *sizeKey="size=";
+
+    int versionposition=findSubstring(drcData,drcDataLen,DRCVersionKey);
+    int sizeposition=findSubstring(drcData,drcDataLen,sizeKey);
+    if( sizeposition<0 || versionposition<0 ) return smfalse;//not found
+
+    if( stringToInt((char*)(&drcData[versionposition]+strlen(DRCVersionKey)),DRCVersion) != 1) return smfalse; //parse failed
+    if( stringToInt((char*)(&drcData[sizeposition]+strlen(sizeKey)),numParams) != 1) return smfalse; //parse failed
+
+    //extra sanity check
+    if( *numParams<1 || *numParams>1000 )
+        return smfalse;
+
+    //extra sanity check
+    if( *DRCVersion<110 || *DRCVersion>10000 ) //110 is lowest released drc version
+        return smfalse;
+
+    return smtrue;
+}
 
 smbool parseParameter( const smuint8 *drcData, const int drcDataLen, int idx, Parameter *param )
 {
@@ -282,9 +305,18 @@ LIB LoadConfigurationStatus smLoadConfigurationFromBuffer( const smbus smhandle,
     int setErrors=0;
     smint32 CB1Value;
     int changed=0;
+    int numParams, DRCVersion;
     *skippedCount=-1;
     *errorCount=-1;
     smbool deviceDisabled=smfalse;
+
+    //parse DRC header
+    if(parseDRCInfo(drcData,drcDataLength,&DRCVersion,&numParams)!=smtrue)
+        return CFGInvalidFile;
+
+    //check version
+    if(DRCVersion!=110)//only known version is 110
+        return CFGInvalidFile;
 
     //test connection
     resetCumulativeStatus(smhandle);
@@ -297,14 +329,16 @@ LIB LoadConfigurationStatus smLoadConfigurationFromBuffer( const smbus smhandle,
 
     smDebug(smhandle,SMDebugLow,"Setting parameters\n");
 
-    int i=1;
     smbool readOk;
-    do
+    for( int i=1; i<numParams; i++ )
     {
         Parameter param;
         readOk=parseParameter(drcData,drcDataLength,i,&param);
 
-        if(readOk==smtrue && param.readOnly==smfalse)
+        if( readOk==smfalse ) //corrupted file
+            return CFGInvalidFile;
+
+        if(param.readOnly==smfalse)
         {
             smint32 currentValue;
 
@@ -360,12 +394,10 @@ LIB LoadConfigurationStatus smLoadConfigurationFromBuffer( const smbus smhandle,
             else//device doesn't have such parameter. perhaps wrong model or fw version.
             {
                 ignoredCount++;
-                smDebug(smhandle,SMDebugLow,"Ignoring parameter parameter value %d to address %d\n",configFileValue,param.address);
+                smDebug(smhandle,SMDebugLow,"Ignoring read-only parameter parameter value %d to address %d\n",configFileValue,param.address);
             }
         }
-
-        i++;
-    } while(readOk==smtrue);
+    }
 
     *skippedCount=ignoredCount;
     *errorCount=setErrors;
