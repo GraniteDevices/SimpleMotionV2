@@ -15,7 +15,7 @@
 
 int globalErrorDetailCode=0;
 
-smbool loadBinaryFile( const char *filename, smuint8 **data, int *numbytes );
+smbool loadBinaryFile( const char *filename, smuint8 **data, int *numbytes, smbool addNullTermination );
 
 int smGetDeploymentToolErrroDetail()
 {
@@ -251,7 +251,7 @@ LoadConfigurationStatus smLoadConfiguration(const smbus smhandle, const int smad
     smuint8 *drcData=NULL;
     int drcDataLength;
 
-    if(loadBinaryFile(filename,&drcData,&drcDataLength)!=smtrue)
+    if(loadBinaryFile(filename,&drcData,&drcDataLength,smtrue)!=smtrue)
         return CFGUnableToOpenFile;
 
     ret = smLoadConfigurationFromBuffer( smhandle, smaddress, drcData, drcDataLength, mode, skippedCount, errorCount );
@@ -708,7 +708,7 @@ void smFirmwareUploadStatusToString(const FirmwareUploadStatus FWUploadStatus, c
 }
 
 
-smbool loadBinaryFile( const char *filename, smuint8 **data, int *numbytes )
+smbool loadBinaryFile(const char *filename, smuint8 **data, int *numbytes , smbool addNullTermination)
 {
     FILE *f;
     f=fopen(filename,"rb");
@@ -723,12 +723,19 @@ smbool loadBinaryFile( const char *filename, smuint8 **data, int *numbytes )
     fseek(f,0,SEEK_SET);
 
     //allocate buffer
-    *data=malloc(length);
+    if(addNullTermination==smtrue)
+        *data=malloc(length+1);//+1 for 0 termination char
+    else
+        *data=malloc(length);
+
     if(*data==NULL)
     {
         fclose(f);
         return smfalse;
     }
+
+    if(addNullTermination==smtrue)
+        (*data)[length]=0;//add 0 termination character at the end, this 0 prevents parse function doing buffer overflow if file is corrupt
 
     //read
     *numbytes=fread(*data,1,length,f);
@@ -914,7 +921,7 @@ FirmwareUploadStatus smFirmwareUpload( const smbus smhandle, const int smaddress
     //load file to buffer if not loaded yet
     if(fileLoaded==smfalse)
     {
-        if(loadBinaryFile(firmware_filename,&fwData,&fwDataLength)!=smtrue)
+        if(loadBinaryFile(firmware_filename,&fwData,&fwDataLength,smfalse)!=smtrue)
             return FWFileNotReadable;
         fileLoaded=smtrue;
     }
