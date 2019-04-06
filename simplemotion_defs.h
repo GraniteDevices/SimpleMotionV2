@@ -748,6 +748,10 @@
 #define SMP_SETPOINT_FILTER_MODE 244
 //static torque reduction effect, scale 0..10000 = 0..100% reduction
 #define SMP_TORQUE_EFFECT_STATIC_TORQUE_REDUCTION 245
+//static torque reduction speed, 1000=default, smaller=slower, higher=faster
+#define SMP_TORQUE_EFFECT_STATIC_TORQUE_REDUCTION_SPEED 246
+//torque nonlinearity. gamma function: normalized_torque_input^(1000/SMP_TORQUE_EFFECT_GAMMA), scale 1000=1.0 gamma.
+#define SMP_TORQUE_EFFECT_GAMMA 247
 
 //secondary feedback loop 300-399
 //NOT IMPLEMENTED YET
