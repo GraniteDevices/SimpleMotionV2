@@ -752,6 +752,8 @@
 #define SMP_TORQUE_EFFECT_STATIC_TORQUE_REDUCTION_SPEED 246
 //torque nonlinearity. gamma function: normalized_torque_input^(1000/SMP_TORQUE_EFFECT_GAMMA), scale 1000=1.0 gamma.
 #define SMP_TORQUE_EFFECT_GAMMA 247
+//modifier for of SMP_TORQUE_EFFECT_DAMPING: reduction of damping as function of SC wheel angle. value in degrees from - to + end. damping will smoothly reduce to 33% outisde of this range. value of 0 will disable this and damping will have it's full value at all angles.
+#define SMP_TORQUE_EFFECT_DAMPING_REDUCTION_BY_ANGLE 248
 
 //secondary feedback loop 300-399
 //NOT IMPLEMENTED YET
