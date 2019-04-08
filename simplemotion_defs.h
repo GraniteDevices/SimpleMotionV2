@@ -316,6 +316,9 @@
  *  -1 bit CB1_CLEARFAULTS
  *  read data is same format as in ALT1
  *
+ *  format 3 (ALT3)
+ *  This is specific for simucube application mode only on available only in some drive models.
+ *
  * Note:
  * Before reading/writing this, check if device supports this by checking capability flag DEVICE_CAPABILITY1_SELECTABLE_FAST_UPDATE_CYCLE_FORMAT.
  *
@@ -326,6 +329,7 @@
 	#define FAST_UPDATE_CYCLE_FORMAT_DEFAULT 0
 	#define FAST_UPDATE_CYCLE_FORMAT_ALT1 1
 	#define FAST_UPDATE_CYCLE_FORMAT_ALT2 2
+	#define FAST_UPDATE_CYCLE_FORMAT_ALT3 3
 
 /* Intro: SMP_BINARY_DATA and SMP_INIT_BINARY_DATA parameters allow reading & writing binary data from pre-defined buffers. i.e. text strings or calibration data blob.
  *
@@ -742,6 +746,18 @@
 #define SMP_TORQUE_EFFECT_INERTIA 243
 //special smoothing filter. 0=disabled, other choices application dependent. this value is not saved in flash at the time of release, set it in run-time.
 #define SMP_SETPOINT_FILTER_MODE 244
+//static torque reduction effect, scale 0..10000 = 0..100% reduction
+#define SMP_TORQUE_EFFECT_STATIC_TORQUE_REDUCTION 245
+//static torque reduction speed, 1000=default, smaller=slower, higher=faster
+#define SMP_TORQUE_EFFECT_STATIC_TORQUE_REDUCTION_SPEED 246
+//torque nonlinearity. gamma function: normalized_torque_input^(1000/SMP_TORQUE_EFFECT_GAMMA), scale 1000=1.0 gamma.
+#define SMP_TORQUE_EFFECT_GAMMA 247
+//separate damping value for center region of motion range. same scale as SMP_TORQUE_EFFECT_DAMPING.
+#define SMP_TORQUE_EFFECT_CENTER_DAMPING 248
+//angle span where SMP_TORQUE_EFFECT_CENTER_DAMPING is applied. outside of span SMP_TORQUE_EFFECT_DAMPING is applied. value in degrees from - to + end. resulting damping will change smoothly by cosine function within the span.
+#define SMP_TORQUE_EFFECT_CENTER_DAMPING_ANGLE_SPAN 249
+//slew rate limit, value in Nm/s. requires that motor torque constant SMP_MOTOR_TORQUE_OR_FORCE_CONSTANT has been set. value 0 disables the limiter (default).
+#define SMP_TORQUE_SLEW_RATE_LIMIT 250
 
 //secondary feedback loop 300-399
 //NOT IMPLEMENTED YET
