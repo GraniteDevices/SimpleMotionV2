@@ -752,8 +752,10 @@
 #define SMP_TORQUE_EFFECT_STATIC_TORQUE_REDUCTION_SPEED 246
 //torque nonlinearity. gamma function: normalized_torque_input^(1000/SMP_TORQUE_EFFECT_GAMMA), scale 1000=1.0 gamma.
 #define SMP_TORQUE_EFFECT_GAMMA 247
-//modifier for of SMP_TORQUE_EFFECT_DAMPING: reduction of damping as function of SC wheel angle. value in degrees from - to + end. damping will smoothly reduce to 33% outisde of this range. value of 0 will disable this and damping will have it's full value at all angles.
-#define SMP_TORQUE_EFFECT_DAMPING_REDUCTION_BY_ANGLE 248
+//separate damping value for center region of motion range. same scale as SMP_TORQUE_EFFECT_DAMPING.
+#define SMP_TORQUE_EFFECT_CENTER_DAMPING 248
+//angle span where SMP_TORQUE_EFFECT_CENTER_DAMPING is applied. outside of span SMP_TORQUE_EFFECT_DAMPING is applied. value in degrees from - to + end. resulting damping will change smoothly by cosine function within the span.
+#define SMP_TORQUE_EFFECT_CENTER_DAMPING_ANGLE_SPAN 249
 
 //secondary feedback loop 300-399
 //NOT IMPLEMENTED YET
