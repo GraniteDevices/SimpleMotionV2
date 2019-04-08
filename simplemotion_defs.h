@@ -756,6 +756,8 @@
 #define SMP_TORQUE_EFFECT_CENTER_DAMPING 248
 //angle span where SMP_TORQUE_EFFECT_CENTER_DAMPING is applied. outside of span SMP_TORQUE_EFFECT_DAMPING is applied. value in degrees from - to + end. resulting damping will change smoothly by cosine function within the span.
 #define SMP_TORQUE_EFFECT_CENTER_DAMPING_ANGLE_SPAN 249
+//slew rate limit, value in Nm/s. requires that motor torque constant SMP_MOTOR_TORQUE_OR_FORCE_CONSTANT has been set. value 0 disables the limiter (default).
+#define SMP_TORQUE_SLEW_RATE_LIMIT 250
 
 //secondary feedback loop 300-399
 //NOT IMPLEMENTED YET
