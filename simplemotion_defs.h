@@ -1068,13 +1068,6 @@
 	#define CAPTURE_BUS_VOLTAGE 9
 	#define CAPTURE_STATUSBITS 10
 	#define CAPTURE_FAULTBITS 11
-	#define CAPTURE_P_OUT 12
-	#define CAPTURE_I_OUT 13
-	#define CAPTURE_D_OUT 14
-	#define CAPTURE_FF_OUT 15
-	#define CAPTURE_RAW_POS 25
-	//8 bit signed values combined, only for return data, not for scope
-	#define CAPTURE_TORQ_AND_FERROR 26
 
 	//rest are availalbe in debug/development firmware only:
 	#define CAPTURE_PWM1 16
@@ -1086,9 +1079,9 @@
 	#define CAPTURE_CURRENT2 22
 	#define CAPTURE_ACTUAL_FLUX 23
 	#define CAPTURE_OUTPUT_FLUX 24
-	#define CAPTURE_TARGET_FLUX 27
-	#define CAPTURE_DEBUG3 28
-	#define CAPTURE_DEBUG4 29
+	#define CAPTURE_TARGET_FLUX 26
+	#define CAPTURE_DEBUG3 27
+	#define CAPTURE_DEBUG4 28
 
 #define SMP_CAPTURE_TRIGGER 5011
 	//choices:
