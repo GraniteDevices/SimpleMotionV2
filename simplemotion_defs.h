@@ -1086,6 +1086,9 @@
 	#define CAPTURE_CURRENT2 22
 	#define CAPTURE_ACTUAL_FLUX 23
 	#define CAPTURE_OUTPUT_FLUX 24
+	#define CAPTURE_TARGET_FLUX 25
+	#define CAPTURE_DEBUG3 26
+	#define CAPTURE_DEBUG4 27
 
 #define SMP_CAPTURE_TRIGGER 5011
 	//choices:
@@ -1095,6 +1098,10 @@
 	#define TRIG_TARGETCHANGE 3
 	#define TRIG_TARGETCHANGE_POS 4
 	#define TRIG_EXTERNAL_INPUT 5
+	// nr 6 reserved for serial command trigger
+	#define TRIG_STATUSBITS_CHANGE 7
+	#define TRIG_DEBUG1 8
+	#define TRIG_DEBUG2 9
 
 #define SMP_CAPTURE_SAMPLERATE 5012
 //rdonly
@@ -1169,6 +1176,7 @@
 	#define DEVICE_CAPABILITY2_HAS_SMP_LIMIT_SW_FUNCTION_SOURCE BV(16) /*true if device supports parameter SMP_LIMIT_SW_FUNCTION_SOURCE*/
 	#define DEVICE_CAPABILITY2_SUPPORT_FB2_AUX_ENCODER BV(17) /* true if secondary feedback device supported */
 	#define DEVICE_CAPABILITY2_RETURN_SMP_STATUS_ON_FAILED_SUBPACKETS BV(18) /* if this is set, each SM subpacket that fails (status not SMP_CMD_STATUS_ACK), will return SMPRET_CMD_STATUS subpacket with the non-SMP_CMD_STATUS_ACK status. otherwise, user configured SM subpacket will be always returned */
+	#define DEVICE_CAPABILITY2_SUPPORT_SCOPE_STATUSBITS_CHANGE_AND_DEBUG12_TRIGGERS BV(19) /* if this is set, scope supports TRIG_STATUSBITS_CHANGE and TRIG_DEBUG1 and TRIG_DEBUG2 */
 
 #define SMP_FIRMWARE_VERSION 6010
 #define SMP_FIRMWARE_BACKWARDS_COMP_VERSION 6011
