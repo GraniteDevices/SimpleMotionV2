@@ -1086,9 +1086,9 @@
 	#define CAPTURE_CURRENT2 22
 	#define CAPTURE_ACTUAL_FLUX 23
 	#define CAPTURE_OUTPUT_FLUX 24
-	#define CAPTURE_TARGET_FLUX 25
-	#define CAPTURE_DEBUG3 26
-	#define CAPTURE_DEBUG4 27
+	#define CAPTURE_TARGET_FLUX 27
+	#define CAPTURE_DEBUG3 28
+	#define CAPTURE_DEBUG4 29
 
 #define SMP_CAPTURE_TRIGGER 5011
 	//choices:
@@ -1098,10 +1098,9 @@
 	#define TRIG_TARGETCHANGE 3
 	#define TRIG_TARGETCHANGE_POS 4
 	#define TRIG_EXTERNAL_INPUT 5
-	// nr 6 reserved for serial command trigger
-	#define TRIG_STATUSBITS_CHANGE 7
-	#define TRIG_DEBUG1 8
-	#define TRIG_DEBUG2 9
+	#define TRIG_STATUSBITS_CHANGE 6
+	#define TRIG_DEBUG1 7
+	#define TRIG_DEBUG2 8
 
 #define SMP_CAPTURE_SAMPLERATE 5012
 //rdonly
