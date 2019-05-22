@@ -752,12 +752,14 @@
 #define SMP_TORQUE_EFFECT_STATIC_TORQUE_REDUCTION_SPEED 246
 //torque nonlinearity. gamma function: normalized_torque_input^(1000/SMP_TORQUE_EFFECT_GAMMA), scale 1000=1.0 gamma.
 #define SMP_TORQUE_EFFECT_GAMMA 247
-//separate damping value for center region of motion range. same scale as SMP_TORQUE_EFFECT_DAMPING.
+//separate damping value for center region of motion range. same scale as SMP_TORQUE_EFFECT_DAMPING. see also SMP_TORQUE_EFFECTS_CENTER_POSITION.
 #define SMP_TORQUE_EFFECT_CENTER_DAMPING 248
 //angle span where SMP_TORQUE_EFFECT_CENTER_DAMPING is applied. outside of span SMP_TORQUE_EFFECT_DAMPING is applied. value in degrees from - to + end. resulting damping will change smoothly by cosine function within the span.
 #define SMP_TORQUE_EFFECT_CENTER_DAMPING_ANGLE_SPAN 249
 //slew rate limit, value in Nm/s. requires that motor torque constant SMP_MOTOR_TORQUE_OR_FORCE_CONSTANT has been set. value 0 disables the limiter (default).
 #define SMP_TORQUE_SLEW_RATE_LIMIT 250
+//center offset of encoder count for torque effects that depend on absolute position information, i.e. center damping. value of this parameter will be substracted from encoder position before effect calculation.
+#define SMP_TORQUE_EFFECTS_CENTER_POSITION 251
 
 //secondary feedback loop 300-399
 //NOT IMPLEMENTED YET
