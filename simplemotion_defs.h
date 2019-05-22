@@ -760,6 +760,10 @@
 #define SMP_TORQUE_SLEW_RATE_LIMIT 250
 //center offset of encoder count for torque effects that depend on absolute position information, i.e. center damping. value of this parameter will be substracted from encoder position before effect calculation.
 #define SMP_TORQUE_EFFECTS_CENTER_POSITION 251
+//various Simucube option flags
+#define SMP_SIMCUBE_OPTION_FLAGS 252
+	#define SMP_SIMCUBE_OPTION_FLAG_DISABLE_HIGH_SENSITITY_HANDS_OFF_WHEEL_DETECTION BV(0) /*if set, lower sensitivity detection ist still used */
+	#define SMP_SIMCUBE_OPTION_FLAG_DISABLE_VARIOUS_SOUNDS BV(1) /* not implemented */
 
 //secondary feedback loop 300-399
 //NOT IMPLEMENTED YET
