@@ -761,9 +761,14 @@
 //center offset of encoder count for torque effects that depend on absolute position information, i.e. center damping. value of this parameter will be substracted from encoder position before effect calculation.
 #define SMP_TORQUE_EFFECTS_CENTER_POSITION 251
 //various Simucube option flags
-#define SMP_SIMCUBE_OPTION_FLAGS 252
-	#define SMP_SIMCUBE_OPTION_FLAG_DISABLE_HIGH_SENSITITY_HANDS_OFF_WHEEL_DETECTION BV(0) /*if set, lower sensitivity detection ist still used */
-	#define SMP_SIMCUBE_OPTION_FLAG_DISABLE_VARIOUS_SOUNDS BV(1) /* not implemented */
+#define SMP_SIMCUBE_OPTIONS 252
+	// two lowest bits of flags define hands off the wheel detection sensitivity (automatically activates temporary safe mode). do not binary OR multiple HANDS_OFF_SENSITIVITY_ values, pick just one.
+	#define SMP_SIMCUBE_OPTIONS_HANDS_OFF_SENSITIVITY_HIGH 3 // default
+	#define SMP_SIMCUBE_OPTIONS_HANDS_OFF_SENSITIVITY_MEDIUM 2
+	#define SMP_SIMCUBE_OPTIONS_HANDS_OFF_SENSITIVITY_LOW 1
+	#define SMP_SIMCUBE_OPTIONS_HANDS_OFF_SENSITIVITY_OFF 0
+	#define MASK_SMP_SIMCUBE_OPTIONS_HANDS_OFF_SENSITIVITY 3 // binary and SMP_SIMCUBE_OPTION_FLAGS and MASK_SMP_SIMCUBE_OPTION_FLAGS_HANDS_OFF_SENSITIVITY to identify which HANDS_OFF_SENSITIVITY setting is set.
+	#define SMP_SIMCUBE_OPTIONS_DISABLE_VARIOUS_SOUNDS BV(2) /* not implemented */
 
 //secondary feedback loop 300-399
 //NOT IMPLEMENTED YET
