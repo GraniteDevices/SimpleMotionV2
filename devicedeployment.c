@@ -330,7 +330,8 @@ LIB LoadConfigurationStatus smLoadConfigurationFromBuffer( const smbus smhandle,
     smDebug(smhandle,SMDebugLow,"Setting parameters\n");
 
     smbool readOk;
-    for( int i=1; i<numParams; i++ )
+    int i;
+    for( i=1; i<numParams; i++ )
     {
         Parameter param;
         readOk=parseParameter(drcData,drcDataLength,i,&param);
@@ -1003,7 +1004,7 @@ FirmwareUploadStatus smFirmwareUploadFromBuffer( const smbus smhandle, const int
         if(stat!=SM_OK)
         {
             smDebug(smhandle,SMDebugLow,"smFirmwareUploadFromBuffer: failed to read target device type ID (the very first SM command in FirmwareUpload failed, no device there?)\n");
-            return abortFWUpload(stat,&state,30);
+            return abortFWUpload(FWConnectionError,&state,30);
         }
 
         smDebug(smhandle,SMDebugLow,"smFirmwareUploadFromBuffer: target device type of %d successfully read\n",deviceType);
