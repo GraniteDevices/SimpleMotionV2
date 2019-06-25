@@ -118,11 +118,11 @@ smBusdevicePointer tcpipPortOpen(const char * devicename, smint32 baudrate_bps, 
 
     res = connect(sockfd, (struct sockaddr *)&server, sizeof(server));
 
-    if (res < 0)
+    if (res < 0) //connection not established (at least yet)
     {
-        if (errno == EINPROGRESS)
+        if (errno == EINPROGRESS) //check if it may be due to non-blocking mode (delayed connect)
         {
-            tv.tv_sec = 5;
+            tv.tv_sec = 5;//max wait time
             tv.tv_usec = 0;
             FD_ZERO(&myset);
             FD_SET((unsigned int)sockfd, &myset);
@@ -130,7 +130,7 @@ smBusdevicePointer tcpipPortOpen(const char * devicename, smint32 baudrate_bps, 
             {
                 lon = sizeof(int);
                 getsockopt(sockfd, SOL_SOCKET, SO_ERROR, (void*)(&valopt), &lon);
-                if (valopt)
+                if (valopt) //if valopt!=0, then there was an error. if it's 0, then connection established successfully (will return here from smtrue eventually)
                 {
                     smDebug(-1,SMDebugLow,"TCP/IP: Setting socket properties failed\n");
                     return SMBUSDEVICE_RETURN_ON_OPEN_FAIL;
@@ -175,12 +175,11 @@ int tcpipPortRead(smBusdevicePointer busdevicePointer, unsigned char *buf, int s
     timeout.tv_sec = readTimeoutMs/1000;
     timeout.tv_usec = (readTimeoutMs%1000) * 1000;
 
-    n = select(sockfd + 1, &input, NULL, NULL, &timeout);//n=-1, select failed. 0=no data within timeout ready, >0 data available
+    n = select(sockfd + 1, &input, NULL, NULL, &timeout);//n=-1, select failed. 0=no data within timeout ready, >0 data available. Note: sockfd+1 is correct usage.
 
-    // Error or timeout
-    if (n < 1)
+    if (n < 1) //n=-1 error, n=0 timeout occurred
     {
-        return(-1);//select failed
+        return(-1);
     }
     if(!FD_ISSET(sockfd, &input))
     {
@@ -220,18 +219,22 @@ smbool tcpipMiscOperation(smBusdevicePointer busdevicePointer, BusDeviceMiscOper
                 timeout.tv_sec = 0;
                 timeout.tv_usec = 0;
 
-                n = select(sockfd + 1, &input, NULL, NULL, &timeout);
+                n = select(sockfd + 1, &input, NULL, NULL, &timeout);//Check whether socket is readable. Note: sockfd+1 is correct usage.
 
-                // Error or timeout
-                if (n < 1)
+                if (n < 0)//  n=-1 select error
                 {
                     return smfalse;//select failed
                 }
+                if (n == 0)//  n=0 no data within timeout
+                {
+                    return smtrue;
+                }
                 if(!FD_ISSET(sockfd, &input))
                 {
-                    return smtrue; //no data available
+                    return smtrue; //no data available, redundant check (see above)?
                 }
-                n = read(sockfd, (char*)discardbuf, 256);
+                //data is available, read it
+                n = read(sockfd, (char*)discardbuf, 256);//TODO: should we read 1 byte at a time to avoid blocking here?
             } while( n>0 );
             return smtrue;
         }
