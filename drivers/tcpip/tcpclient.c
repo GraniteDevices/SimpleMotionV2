@@ -94,7 +94,7 @@ smBusdevicePointer tcpipPortOpen(const char * devicename, smint32 baudrate_bps, 
     sockfd = socket(AF_INET , SOCK_STREAM , IPPROTO_TCP);
     if (sockfd == -1)
     {
-        smDebug(-1,SMDebugLow,"TCP/IP: Socket open failed\n");
+        smDebug(-1,SMDebugLow,"TCP/IP: Socket open failed (sys error: %s)\n",strerror(errno));
         return SMBUSDEVICE_RETURN_ON_OPEN_FAIL;
     }
 
@@ -132,19 +132,19 @@ smBusdevicePointer tcpipPortOpen(const char * devicename, smint32 baudrate_bps, 
                 getsockopt(sockfd, SOL_SOCKET, SO_ERROR, (void*)(&valopt), &lon);
                 if (valopt) //if valopt!=0, then there was an error. if it's 0, then connection established successfully (will return here from smtrue eventually)
                 {
-                    smDebug(-1,SMDebugLow,"TCP/IP: Setting socket properties failed\n");
+                    smDebug(-1,SMDebugLow,"TCP/IP: Setting socket properties failed (sys error: %s)\n",strerror(errno));
                     return SMBUSDEVICE_RETURN_ON_OPEN_FAIL;
                 }
             }
             else
             {
-               smDebug(-1,SMDebugLow,"TCP/IP: Setting socket properties failed\n");
+               smDebug(-1,SMDebugLow,"TCP/IP: Setting socket properties failed (sys error: %s)\n",strerror(errno));
                return SMBUSDEVICE_RETURN_ON_OPEN_FAIL;
             }
         }
         else
         {
-            smDebug(-1,SMDebugLow,"TCP/IP: Connecting socket failed\n");
+            smDebug(-1,SMDebugLow,"TCP/IP: Connecting socket failed (sys error: %s)\n",strerror(errno));
             return SMBUSDEVICE_RETURN_ON_OPEN_FAIL;
         }
     }
