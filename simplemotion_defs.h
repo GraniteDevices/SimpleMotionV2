@@ -731,7 +731,7 @@
 //anti dither limits
 #define SMP_ANTIDITHER_MODE 230
 
-//torque modifiers & effects
+//torque modifiers & effects.
 /*SMP_TORQUE_NOTCH_FILTER contains 3 values in different bit positions:
  * 0-7 (lowest byte), attenuation in 0.1dB steps and value V=1-255 means attenuation of (-V-255)/10 dB gain.  if V set 0, use notch filter instead of peaking with "infinite" attenuation. value 255 disables notch filter.
  * 8-15, Q factor in 0.1 steps. Minimum is 0.1, below that filter is disabled.
@@ -774,6 +774,29 @@
 	#define MASK_SMP_SIMCUBE_OPTIONS_HANDS_OFF_SENSITIVITY 3 // binary and SMP_SIMCUBE_OPTION_FLAGS and MASK_SMP_SIMCUBE_OPTION_FLAGS_HANDS_OFF_SENSITIVITY to identify which HANDS_OFF_SENSITIVITY setting is set.
 	#define SMP_SIMCUBE_OPTIONS_ENABLE_TORQUE_SATURATION_INDICATION_SOUND BV(2)
 	#define SMP_SIMCUBE_OPTIONS_REDUCE_RESONANCE BV(3)
+
+/* Torque setpoint biquad filters that run at full torque controller update frequency.
+ * - Scale of values is 10 000 000=1.0.
+         	b0=1;
+        	b1=b2=a1=a2=0;
+ * - Set values B0=10000000 and B1=B2=A1=A2=0 disable/bypass the filter (FW default)
+ * - Write SMP_TORQUE_BIQUAD_FILTERn_A2 value last, which is the moment changes to all other values are registered synchronously.
+ * - Each change of filter will reset filter state (may cause a bump)
+ * - If DEVICE_CAPABILITY2_TORQUE_BIQUAD_FILTERS_V1, then filters run at 20kHz sample rate and 32 bits floating point precision.
+ *
+ * Note: design filters carefully. Make sure that filter is stable at single precision floating point precision and that it does not have greater than unity DC gain.
+ */
+#define SMP_TORQUE_BIQUAD_FILTER1_B0 260
+#define SMP_TORQUE_BIQUAD_FILTER1_B1 261
+#define SMP_TORQUE_BIQUAD_FILTER1_B2 262
+#define SMP_TORQUE_BIQUAD_FILTER1_A1 263
+#define SMP_TORQUE_BIQUAD_FILTER1_A2 264
+
+#define SMP_TORQUE_BIQUAD_FILTER2_B0 265
+#define SMP_TORQUE_BIQUAD_FILTER2_B1 266
+#define SMP_TORQUE_BIQUAD_FILTER2_B 267
+#define SMP_TORQUE_BIQUAD_FILTER2_A1 268
+#define SMP_TORQUE_BIQUAD_FILTER2_A2 269
 
 //secondary feedback loop 300-399
 //NOT IMPLEMENTED YET
@@ -1185,6 +1208,7 @@
 	#define DEVICE_CAPABILITY2_SUPPORT_FB2_AUX_ENCODER BV(17) /* true if secondary feedback device supported */
 	#define DEVICE_CAPABILITY2_RETURN_SMP_STATUS_ON_FAILED_SUBPACKETS BV(18) /* if this is set, each SM subpacket that fails (status not SMP_CMD_STATUS_ACK), will return SMPRET_CMD_STATUS subpacket with the non-SMP_CMD_STATUS_ACK status. otherwise, user configured SM subpacket will be always returned */
 	#define DEVICE_CAPABILITY2_SUPPORT_SCOPE_STATUSBITS_CHANGE_AND_DEBUG12_TRIGGERS BV(19) /* if this is set, scope supports TRIG_STATUSBITS_CHANGE and TRIG_DEBUG1 and TRIG_DEBUG2 */
+	#define DEVICE_CAPABILITY2_TORQUE_BIQUAD_FILTERS_V1 BV(20) /* if this is set, then params 260-269 are supported */
 
 #define SMP_FIRMWARE_VERSION 6010
 #define SMP_FIRMWARE_BACKWARDS_COMP_VERSION 6011
