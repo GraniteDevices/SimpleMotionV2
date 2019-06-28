@@ -586,6 +586,10 @@
 	//write SM bus SM_CRCINIT constant modifier. special purposes only, don't use if unsure because
 	//it is one time programmable variable (permanently irreversible operation, can't be ever reset to default by provided methods)
 	#define SMP_SYSTEM_CONTROL_MODIFY_CRCINIT 262144
+	//following three commands execute FW version specific functions (i.e. debugging or customized FW functions)
+	#define SMP_SYSTEM_CONTROL_TRIGGER_FW_SPECIFIC_FUNC1 10000000
+	#define SMP_SYSTEM_CONTROL_TRIGGER_FW_SPECIFIC_FUNC2 10000001
+	#define SMP_SYSTEM_CONTROL_TRIGGER_FW_SPECIFIC_FUNC3 10000002
 
 	//follow error tolerance for position control:
 #define SMP_POS_FERROR_TRIP 555
