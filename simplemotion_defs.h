@@ -495,6 +495,7 @@
 #define SMP_INCREMENTAL_POS_TARGET SMP_INCREMENTAL_SETPOINT
 #define SMP_ABSOLUTE_POS_TARGET SMP_ABSOLUTE_SETPOINT
 
+/*for SMP_FAULTS and SMP_STATUS descriptions, see https://granitedevices.com/wiki/Drive_status_%26_fault_bits_explained */
 #define SMP_FAULTS 552
 	//bitfield bits:
 	#define FLT_FOLLOWERROR	BV(1)
@@ -512,6 +513,7 @@
 	#define FLT_RANGE BV(13)
 	#define FLT_PSTAGE_FORCED_OFF BV(14)
 	#define FLT_HOST_COMM_ERROR BV(15)
+	#define FLT_CONFIG BV(16)
 	//IO side macros
 	#define FLT_GC_COMM BV(15)
 	#define FLT_QUEUE_FULL FLT_PROGRAM_OR_MEM
@@ -520,6 +522,8 @@
 	#define FLT_ALLOC FLT_PROGRAM_OR_MEM //memory etc allocation failed
 
 #define SMP_FIRST_FAULT 8115
+
+/*for SMP_FAULTS and SMP_STATUS descriptions, see https://granitedevices.com/wiki/Drive_status_%26_fault_bits_explained */
 #define SMP_STATUS 553
 	//bitfield bits:
 	#define STAT_RESERVED_ BV(0)
@@ -794,7 +798,7 @@
 
 #define SMP_TORQUE_BIQUAD_FILTER2_B0 265
 #define SMP_TORQUE_BIQUAD_FILTER2_B1 266
-#define SMP_TORQUE_BIQUAD_FILTER2_B 267
+#define SMP_TORQUE_BIQUAD_FILTER2_B2 267
 #define SMP_TORQUE_BIQUAD_FILTER2_A1 268
 #define SMP_TORQUE_BIQUAD_FILTER2_A2 269
 
