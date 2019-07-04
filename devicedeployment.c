@@ -80,9 +80,9 @@ int findSubstring( const smuint8 *data, const int dataLen, const char *str )
 }
 
 //parse real number out of null terminated string formatted like "-123.5436"
-//read ends on first whitespace, \ņ \r or \0
+//read ends on first whitespace, \ņ \r \0 or 'e'
 //returns 0 if fail, 1 if success
-int stringToDouble( const char *str, double *output )
+int decimalNumberToDouble( const char *str, double *output )
 {
     double out=0, decimalcoeff=1.0;
     int i=0;
@@ -97,6 +97,9 @@ int stringToDouble( const char *str, double *output )
         {
             decimalcoeff=-1.0;
         }
+        else if(c=='+' && i==0) //is plus, ignore
+        {
+        }
         else if(number>=0 && number <=9) //is number
         {
             out=10.0*out+number;
@@ -107,7 +110,7 @@ int stringToDouble( const char *str, double *output )
         {
             decimalPointFound=smtrue;
         }
-        else if(c=='\n' || c=='\r' || c==' ' || c==0 )//end of string
+        else if(c=='\n' || c=='\r' || c==' ' || c==0 || c=='e' )//end of string
         {
             done=smtrue;
         }
@@ -121,6 +124,44 @@ int stringToDouble( const char *str, double *output )
 
     *output=out*decimalcoeff;
     return 1;
+}
+
+//parse real number out of null terminated string formatted like "-123.5436" or "-12e+5"
+//read ends on first whitespace, \ņ \r or \0
+//returns 0 if fail, 1 if success
+int stringToDouble( const char *str, double *output )
+{
+    int i=0;
+    int exponentAt=-1;
+
+    //detect format: decimal or exponent
+    for(i=0;;i++)
+    {
+        char c=str[i];
+        if(c=='e' )//has exponent format
+        {
+            exponentAt=i;
+            break;
+        }
+        else if(c=='\n' || c=='\r' || c==' ' || c==0 )//end of string
+            break;
+    }
+
+    if(exponentAt==-1)//no exponent
+    {
+        return decimalNumberToDouble(str,output);
+    }
+    else//with exponent, read base and exponent separately
+    {
+        double base, exponent;
+        if( decimalNumberToDouble(str,&base)!=1 ) //read base
+            return 0;//failed
+        if( decimalNumberToDouble(str+i+1,&exponent)!=1 ) //read exponent starting after 'e'
+            return 0;//failed
+
+        *output=base*pow(10,exponent);
+        return 1;
+    }
 }
 
 //parse real number out of null terminated string formatted like "-123"
