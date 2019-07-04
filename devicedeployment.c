@@ -378,7 +378,11 @@ LIB LoadConfigurationStatus smLoadConfigurationFromBuffer( const smbus smhandle,
         readOk=parseParameter(drcData,drcDataLength,i,&param);
 
         if( readOk==smfalse ) //corrupted file
+        {
+            *skippedCount=ignoredCount;
+            *errorCount=setErrors;
             return CFGInvalidFile;
+        }
 
         if(param.readOnly==smfalse)
         {
