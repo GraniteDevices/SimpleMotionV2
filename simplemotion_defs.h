@@ -316,6 +316,9 @@
  *  -1 bit CB1_CLEARFAULTS
  *  read data is same format as in ALT1
  *
+ *  format 3 (ALT3)
+ *  This is specific for simucube application mode only on available only in some drive models.
+ *
  * Note:
  * Before reading/writing this, check if device supports this by checking capability flag DEVICE_CAPABILITY1_SELECTABLE_FAST_UPDATE_CYCLE_FORMAT.
  *
@@ -326,6 +329,7 @@
 	#define FAST_UPDATE_CYCLE_FORMAT_DEFAULT 0
 	#define FAST_UPDATE_CYCLE_FORMAT_ALT1 1
 	#define FAST_UPDATE_CYCLE_FORMAT_ALT2 2
+	#define FAST_UPDATE_CYCLE_FORMAT_ALT3 3
 
 /* Intro: SMP_BINARY_DATA and SMP_INIT_BINARY_DATA parameters allow reading & writing binary data from pre-defined buffers. i.e. text strings or calibration data blob.
  *
@@ -491,6 +495,7 @@
 #define SMP_INCREMENTAL_POS_TARGET SMP_INCREMENTAL_SETPOINT
 #define SMP_ABSOLUTE_POS_TARGET SMP_ABSOLUTE_SETPOINT
 
+/*for SMP_FAULTS and SMP_STATUS descriptions, see https://granitedevices.com/wiki/Drive_status_%26_fault_bits_explained */
 #define SMP_FAULTS 552
 	//bitfield bits:
 	#define FLT_FOLLOWERROR	BV(1)
@@ -508,6 +513,7 @@
 	#define FLT_RANGE BV(13)
 	#define FLT_PSTAGE_FORCED_OFF BV(14)
 	#define FLT_HOST_COMM_ERROR BV(15)
+	#define FLT_CONFIG BV(16)
 	//IO side macros
 	#define FLT_GC_COMM BV(15)
 	#define FLT_QUEUE_FULL FLT_PROGRAM_OR_MEM
@@ -516,6 +522,8 @@
 	#define FLT_ALLOC FLT_PROGRAM_OR_MEM //memory etc allocation failed
 
 #define SMP_FIRST_FAULT 8115
+
+/*for SMP_FAULTS and SMP_STATUS descriptions, see https://granitedevices.com/wiki/Drive_status_%26_fault_bits_explained */
 #define SMP_STATUS 553
 	//bitfield bits:
 	#define STAT_RESERVED_ BV(0)
@@ -540,6 +548,7 @@
 	 */
 	#define STAT_STANDING_STILL BV(16)
 	#define STAT_QUICK_STOP_ACTIVE BV(17)
+	#define STAT_SAFE_TORQUE_MODE_ACTIVE BV(18)
 
 #define SMP_SYSTEM_CONTROL 554 //writing 1 initiates settings save to flash, writing 2=device restart, 4=abort buffered motion
 	//possible values listed
@@ -581,6 +590,10 @@
 	//write SM bus SM_CRCINIT constant modifier. special purposes only, don't use if unsure because
 	//it is one time programmable variable (permanently irreversible operation, can't be ever reset to default by provided methods)
 	#define SMP_SYSTEM_CONTROL_MODIFY_CRCINIT 262144
+	//following three commands execute FW version specific functions (i.e. debugging or customized FW functions)
+	#define SMP_SYSTEM_CONTROL_TRIGGER_FW_SPECIFIC_FUNC1 10000000
+	#define SMP_SYSTEM_CONTROL_TRIGGER_FW_SPECIFIC_FUNC2 10000001
+	#define SMP_SYSTEM_CONTROL_TRIGGER_FW_SPECIFIC_FUNC3 10000002
 
 	//follow error tolerance for position control:
 #define SMP_POS_FERROR_TRIP 555
@@ -722,7 +735,7 @@
 //anti dither limits
 #define SMP_ANTIDITHER_MODE 230
 
-//torque modifiers & effects
+//torque modifiers & effects.
 /*SMP_TORQUE_NOTCH_FILTER contains 3 values in different bit positions:
  * 0-7 (lowest byte), attenuation in 0.1dB steps and value V=1-255 means attenuation of (-V-255)/10 dB gain.  if V set 0, use notch filter instead of peaking with "infinite" attenuation. value 255 disables notch filter.
  * 8-15, Q factor in 0.1 steps. Minimum is 0.1, below that filter is disabled.
@@ -741,17 +754,75 @@
 #define SMP_TORQUE_EFFECT_INERTIA 243
 //special smoothing filter. 0=disabled, other choices application dependent. this value is not saved in flash at the time of release, set it in run-time.
 #define SMP_SETPOINT_FILTER_MODE 244
+//static torque reduction effect, scale 0..10000 = 0..100% reduction
+#define SMP_TORQUE_EFFECT_STATIC_TORQUE_REDUCTION 245
+//static torque reduction speed, 1000=default, smaller=slower, higher=faster
+#define SMP_TORQUE_EFFECT_STATIC_TORQUE_REDUCTION_SPEED 246
+//torque nonlinearity. gamma function: normalized_torque_input^(1000/SMP_TORQUE_EFFECT_GAMMA), scale 1000=1.0 gamma.
+#define SMP_TORQUE_EFFECT_GAMMA 247
+//separate damping value for center region of motion range. same scale as SMP_TORQUE_EFFECT_DAMPING. see also SMP_TORQUE_EFFECTS_CENTER_POSITION.
+#define SMP_TORQUE_EFFECT_CENTER_DAMPING 248
+//angle span where SMP_TORQUE_EFFECT_CENTER_DAMPING is applied. outside of span SMP_TORQUE_EFFECT_DAMPING is applied. value in degrees from - to + end. resulting damping will change smoothly by cosine function within the span.
+#define SMP_TORQUE_EFFECT_CENTER_DAMPING_ANGLE_SPAN 249
+//slew rate limit, value in Nm/s. requires that motor torque constant SMP_MOTOR_TORQUE_OR_FORCE_CONSTANT has been set. value 0 disables the limiter (default).
+#define SMP_TORQUE_SLEW_RATE_LIMIT 250
+//center offset of encoder count for torque effects that depend on absolute position information, i.e. center damping. value of this parameter will be substracted from encoder position before effect calculation.
+#define SMP_TORQUE_EFFECTS_CENTER_POSITION 251
+//various Simucube option flags
+#define SMP_SIMCUBE_OPTIONS 252
+	// two lowest bits of flags define hands off the wheel detection sensitivity (automatically activates temporary safe mode). do not binary OR multiple HANDS_OFF_SENSITIVITY_ values, pick just one.
+	#define SMP_SIMCUBE_OPTIONS_HANDS_OFF_SENSITIVITY_HIGH 3 // default
+	#define SMP_SIMCUBE_OPTIONS_HANDS_OFF_SENSITIVITY_MEDIUM 2
+	#define SMP_SIMCUBE_OPTIONS_HANDS_OFF_SENSITIVITY_LOW 1
+	#define SMP_SIMCUBE_OPTIONS_HANDS_OFF_SENSITIVITY_OFF 0
+	#define MASK_SMP_SIMCUBE_OPTIONS_HANDS_OFF_SENSITIVITY 3 // binary and SMP_SIMCUBE_OPTION_FLAGS and MASK_SMP_SIMCUBE_OPTION_FLAGS_HANDS_OFF_SENSITIVITY to identify which HANDS_OFF_SENSITIVITY setting is set.
+	#define SMP_SIMCUBE_OPTIONS_ENABLE_TORQUE_SATURATION_INDICATION_SOUND BV(2)
+	#define SMP_SIMCUBE_OPTIONS_REDUCE_RESONANCE BV(3)
+
+/* Torque setpoint biquad filters that run at full torque controller update frequency.
+ * - Scale of values is 10 000 000=1.0.
+         	b0=1;
+        	b1=b2=a1=a2=0;
+ * - Set values B0=10000000 and B1=B2=A1=A2=0 disable/bypass the filter (FW default)
+ * - Write SMP_TORQUE_BIQUAD_FILTERn_A2 value last, which is the moment changes to all other values are registered synchronously.
+ * - Each change of filter will reset filter state (may cause a bump)
+ * - If DEVICE_CAPABILITY2_TORQUE_BIQUAD_FILTERS_V1, then filters run at 20kHz sample rate and 32 bits floating point precision.
+ *
+ * Note: design filters carefully. Make sure that filter is stable at single precision floating point precision and that it does not have greater than unity DC gain.
+ */
+#define SMP_TORQUE_BIQUAD_FILTER1_B0 260
+#define SMP_TORQUE_BIQUAD_FILTER1_B1 261
+#define SMP_TORQUE_BIQUAD_FILTER1_B2 262
+#define SMP_TORQUE_BIQUAD_FILTER1_A1 263
+#define SMP_TORQUE_BIQUAD_FILTER1_A2 264
+
+#define SMP_TORQUE_BIQUAD_FILTER2_B0 265
+#define SMP_TORQUE_BIQUAD_FILTER2_B1 266
+#define SMP_TORQUE_BIQUAD_FILTER2_B2 267
+#define SMP_TORQUE_BIQUAD_FILTER2_A1 268
+#define SMP_TORQUE_BIQUAD_FILTER2_A2 269
 
 //secondary feedback loop 300-399
 //NOT IMPLEMENTED YET
 
 //current loop related 400-499
-//direct torque gains, not used after VSD-E
-#define SMP_TORQ_P 401
-#define SMP_TORQ_I 402
-//motor inductance and resistance
+//motor inductance and resistance, in milliohms and millihenries
 #define SMP_MOTOR_RES 405
 #define SMP_MOTOR_IND 406
+
+/* SMP_MOTOR_VOLTAGE_CONSTANT specifies motor Back EMF voltage per Hz (on ac/bldc/stepper motors) and on DC motor voltage per raw velocity feedback unit.
+ * Scale:
+ * - on AC/BLDC/stepper motors value is mV/Hz (peak of sine voltage, phase to neutral).
+ *   (to get good estimate of this value, test how many revs/second (=S) motor turns at given DC supply voltage (U) and calculate:
+ *   SMP_MOTOR_VOLTAGE_CONSTANT = U/2*PWMModulationDepth*1.15*MotorPoleCount/2*S*1000 = 287.5*PWMModulationDepth*U*MotorPoleCount/S.
+ *   Typical values for PWMModulationDepth is 0.95 (actual model specfic value obtainable form GD Wiki drive specs).
+ * - on brush DC motors value is uV/raw_velocity_fb_unit (phase to phase)
+ *
+ * The value is optional and value of 0 means that the constant is unspecified.
+ *
+ * Note: not supported in all devices
+ */
+#define SMP_MOTOR_VOLTAGE_CONSTANT 407
 
 //continuous current limit mA
 #define SMP_TORQUELIMIT_CONT 410
@@ -764,8 +835,8 @@
 #define SMP_TORQUEFAULT_OC_TOLERANCE 421
 /* SMP_MOTOR_TORQUE_OR_FORCE_CONSTANT specifies motor torque (rotary motor) or force (linear motor) constant.
  * Scale:
- * - on rotary motors value is 10000*Nm/A
- * - on linear motors value is 10000*N/A
+ * - on rotary motors value is 10000*Nm/A (peak of sine)
+ * - on linear motors value is 10000*N/A  (peak of sine)
  * Amps are in peak of sine or DC
  *
  * The value is optional and value of 0 means that the constant is unspecified.
@@ -1040,13 +1111,6 @@
 	#define CAPTURE_BUS_VOLTAGE 9
 	#define CAPTURE_STATUSBITS 10
 	#define CAPTURE_FAULTBITS 11
-	#define CAPTURE_P_OUT 12
-	#define CAPTURE_I_OUT 13
-	#define CAPTURE_D_OUT 14
-	#define CAPTURE_FF_OUT 15
-	#define CAPTURE_RAW_POS 25
-	//8 bit signed values combined, only for return data, not for scope
-	#define CAPTURE_TORQ_AND_FERROR 26
 
 	//rest are availalbe in debug/development firmware only:
 	#define CAPTURE_PWM1 16
@@ -1058,6 +1122,9 @@
 	#define CAPTURE_CURRENT2 22
 	#define CAPTURE_ACTUAL_FLUX 23
 	#define CAPTURE_OUTPUT_FLUX 24
+	#define CAPTURE_TARGET_FLUX 26
+	#define CAPTURE_DEBUG3 27
+	#define CAPTURE_DEBUG4 28
 
 #define SMP_CAPTURE_TRIGGER 5011
 	//choices:
@@ -1067,6 +1134,9 @@
 	#define TRIG_TARGETCHANGE 3
 	#define TRIG_TARGETCHANGE_POS 4
 	#define TRIG_EXTERNAL_INPUT 5
+	#define TRIG_STATUSBITS_CHANGE 6
+	#define TRIG_DEBUG1 7
+	#define TRIG_DEBUG2 8
 
 #define SMP_CAPTURE_SAMPLERATE 5012
 //rdonly
@@ -1140,6 +1210,9 @@
 	#define DEVICE_CAPABILITY2_LOW_LEVEL_GPIO BV(15)
 	#define DEVICE_CAPABILITY2_HAS_SMP_LIMIT_SW_FUNCTION_SOURCE BV(16) /*true if device supports parameter SMP_LIMIT_SW_FUNCTION_SOURCE*/
 	#define DEVICE_CAPABILITY2_SUPPORT_FB2_AUX_ENCODER BV(17) /* true if secondary feedback device supported */
+	#define DEVICE_CAPABILITY2_RETURN_SMP_STATUS_ON_FAILED_SUBPACKETS BV(18) /* if this is set, each SM subpacket that fails (status not SMP_CMD_STATUS_ACK), will return SMPRET_CMD_STATUS subpacket with the non-SMP_CMD_STATUS_ACK status. otherwise, user configured SM subpacket will be always returned */
+	#define DEVICE_CAPABILITY2_SUPPORT_SCOPE_STATUSBITS_CHANGE_AND_DEBUG12_TRIGGERS BV(19) /* if this is set, scope supports TRIG_STATUSBITS_CHANGE and TRIG_DEBUG1 and TRIG_DEBUG2 */
+	#define DEVICE_CAPABILITY2_TORQUE_BIQUAD_FILTERS_V1 BV(20) /* if this is set, then params 260-269 are supported */
 
 #define SMP_FIRMWARE_VERSION 6010
 #define SMP_FIRMWARE_BACKWARDS_COMP_VERSION 6011
@@ -1149,6 +1222,15 @@
 #define SMP_FIRMWARE_BUILD_REVISION 6016
 #define SMP_DEVICE_TYPE 6020
 #define SMP_PID_FREQUENCY 6055
+
+/*plays sound effect on motor (if motor active). value=sound nr to be played*/
+#define SMP_PLAY_SOUND_EFFECT 6070
+/* safety function to activate high torque mode (in some drive models only).
+ * use by reading this SMP first, then writing a correctly calculated response.
+ * challenge changes every time a value is written.
+ * if wrong answer or 0 is written, hi torq mode deactivates.
+ */
+#define SMP_ACTIVATE_HITORQ_MODE_CHALLENGE 6071
 
 //affects only in MC_VECTOR & MC_BLDC mode
 //used in drive development only, do not use if unsure
@@ -1165,6 +1247,7 @@
 	#define CURR_LIMIT_REASON_I2T 3
 	#define CURR_LIMIT_REASON_DRIVE_TEMPERATURE 4
 	#define CURR_LIMIT_REASON_POWER_CAP 5
+	#define CURR_LIMIT_REASON_SAFETY 6
 
 /*IO side CPU sends encoder counter at index every time index is encountered. homing uses this info */
 #define SMP_INDEX_PULSE_LOCATION 8005

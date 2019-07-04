@@ -54,7 +54,7 @@ extern "C"{
 LIB smbus smOpenBus( const char * devicename );
 
 /** Same as smOpenBus but with user supplied port driver callbacks */
-LIB smbus smOpenBusWithCallbacks( const char *devicename, BusdeviceOpen busOpenCallback, BusdeviceClose busCloseCallback, BusdeviceReadBuffer busReadCallback, BusdeviceWriteBuffer busWriteCallback );
+LIB smbus smOpenBusWithCallbacks(const char *devicename, BusdeviceOpen busOpenCallback, BusdeviceClose busCloseCallback, BusdeviceReadBuffer busReadCallback, BusdeviceWriteBuffer busWriteCallback , BusdeviceMiscOperation busPurgeCallback);
 
 /** Change baudrate of SM communication port. This does not affect already opened ports but the next smOpenBus will be opened at the new speed. 
 	Calling this is optional. By default SM bus and all slave devices operates at 460800 BPS speed.
@@ -85,7 +85,6 @@ LIB SM_STATUS smSetTimeout( smuint16 millsecs );
   -return value: a SM_STATUS value, i.e. SM_OK if command succeed
 */
 LIB SM_STATUS smCloseBus( const smbus bushandle );
-
 
 /** Return SM lib version number in hexadecimal format.
 Ie V 2.5.1 would be 0x020501 and 1.2.33 0x010233 */

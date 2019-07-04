@@ -14,7 +14,7 @@ typedef smint16 smbusdevicehandle;
 //return 0-1 if fails, otherwise handle number
 smbusdevicehandle smBDOpen( const char *devicename );
 
-smbusdevicehandle smBDOpenWithCallbacks( const char *devicename, BusdeviceOpen busOpenCallback, BusdeviceClose busCloseCallback, BusdeviceReadBuffer busReadCallback, BusdeviceWriteBuffer busWriteCallback );
+smbusdevicehandle smBDOpenWithCallbacks(const char *devicename, BusdeviceOpen busOpenCallback, BusdeviceClose busCloseCallback, BusdeviceReadBuffer busReadCallback, BusdeviceWriteBuffer busWriteCallback , BusdeviceMiscOperation busMiscOperationCallback);
 
 //return true if ok
 smbool smBDClose( const smbusdevicehandle handle );
@@ -31,6 +31,9 @@ smbool smBDTransmit(const smbusdevicehandle handle);
 //returns true if byte read sucessfully
 smbool smBDRead( const smbusdevicehandle handle , smuint8 *byte );
 
+//see info at definition of BusDeviceMiscOperationType
+//returns true if sucessfully
+smbool smBDMiscOperation( const smbusdevicehandle handle, BusDeviceMiscOperationType operation );
 
 //BUS DEVICE INFO FETCH FUNCTIONS:
 

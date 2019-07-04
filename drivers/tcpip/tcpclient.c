@@ -94,7 +94,7 @@ smBusdevicePointer tcpipPortOpen(const char * devicename, smint32 baudrate_bps, 
     sockfd = socket(AF_INET , SOCK_STREAM , IPPROTO_TCP);
     if (sockfd == -1)
     {
-        smDebug(-1,SMDebugLow,"TCP/IP: Socket open failed\n");
+        smDebug(-1,SMDebugLow,"TCP/IP: Socket open failed (sys error: %s)\n",strerror(errno));
         return SMBUSDEVICE_RETURN_ON_OPEN_FAIL;
     }
 
@@ -118,11 +118,11 @@ smBusdevicePointer tcpipPortOpen(const char * devicename, smint32 baudrate_bps, 
 
     res = connect(sockfd, (struct sockaddr *)&server, sizeof(server));
 
-    if (res < 0)
+    if (res < 0) //connection not established (at least yet)
     {
-        if (errno == EINPROGRESS)
+        if (errno == EINPROGRESS) //check if it may be due to non-blocking mode (delayed connect)
         {
-            tv.tv_sec = 5;
+            tv.tv_sec = 5;//max wait time
             tv.tv_usec = 0;
             FD_ZERO(&myset);
             FD_SET((unsigned int)sockfd, &myset);
@@ -130,21 +130,21 @@ smBusdevicePointer tcpipPortOpen(const char * devicename, smint32 baudrate_bps, 
             {
                 lon = sizeof(int);
                 getsockopt(sockfd, SOL_SOCKET, SO_ERROR, (void*)(&valopt), &lon);
-                if (valopt)
+                if (valopt) //if valopt!=0, then there was an error. if it's 0, then connection established successfully (will return here from smtrue eventually)
                 {
-                    smDebug(-1,SMDebugLow,"TCP/IP: Setting socket properties failed\n");
+                    smDebug(-1,SMDebugLow,"TCP/IP: Setting socket properties failed (sys error: %s)\n",strerror(errno));
                     return SMBUSDEVICE_RETURN_ON_OPEN_FAIL;
                 }
             }
             else
             {
-               smDebug(-1,SMDebugLow,"TCP/IP: Setting socket properties failed\n");
+               smDebug(-1,SMDebugLow,"TCP/IP: Setting socket properties failed (sys error: %s)\n",strerror(errno));
                return SMBUSDEVICE_RETURN_ON_OPEN_FAIL;
             }
         }
         else
         {
-            smDebug(-1,SMDebugLow,"TCP/IP: Connecting socket failed\n");
+            smDebug(-1,SMDebugLow,"TCP/IP: Connecting socket failed (sys error: %s)\n",strerror(errno));
             return SMBUSDEVICE_RETURN_ON_OPEN_FAIL;
         }
     }
@@ -160,14 +160,14 @@ smBusdevicePointer tcpipPortOpen(const char * devicename, smint32 baudrate_bps, 
 #endif
 
     *success=smtrue;
-    return (smBusdevicePointer)sockfd;
+    return (smBusdevicePointer)sockfd;//compiler warning expected here on 64 bit compilation but it's ok
 }
 
 // Read bytes from socket
 int tcpipPortRead(smBusdevicePointer busdevicePointer, unsigned char *buf, int size)
 {
     int n;
-    int sockfd=(int)busdevicePointer;
+    int sockfd=(int)busdevicePointer;//compiler warning expected here on 64 bit compilation but it's ok
     fd_set input;
     FD_ZERO(&input);
     FD_SET((unsigned int)sockfd, &input);
@@ -175,16 +175,15 @@ int tcpipPortRead(smBusdevicePointer busdevicePointer, unsigned char *buf, int s
     timeout.tv_sec = readTimeoutMs/1000;
     timeout.tv_usec = (readTimeoutMs%1000) * 1000;
 
-    n = select(sockfd + 1, &input, NULL, NULL, &timeout);
+    n = select(sockfd + 1, &input, NULL, NULL, &timeout);//n=-1, select failed. 0=no data within timeout ready, >0 data available. Note: sockfd+1 is correct usage.
 
-    // Error or timeout
-    if (n < 1)
+    if (n < 1) //n=-1 error, n=0 timeout occurred
     {
         return(-1);
     }
     if(!FD_ISSET(sockfd, &input))
     {
-        return(-1);
+        return(-1);//no data available
     }
 
     n = read(sockfd, (char*)buf, size);
@@ -193,7 +192,7 @@ int tcpipPortRead(smBusdevicePointer busdevicePointer, unsigned char *buf, int s
 
 int tcpipPortWrite(smBusdevicePointer busdevicePointer, unsigned char *buf, int size)
 {
-    int sockfd=(int)busdevicePointer;
+    int sockfd=(int)busdevicePointer;//compiler warning expected here on 64 bit compilation but it's ok
     int sent = write(sockfd, (char*)buf, size);
     if (sent != size)
     {
@@ -202,10 +201,58 @@ int tcpipPortWrite(smBusdevicePointer busdevicePointer, unsigned char *buf, int 
     return sent;
 }
 
+smbool tcpipMiscOperation(smBusdevicePointer busdevicePointer, BusDeviceMiscOperationType operation)
+{
+    switch(operation)
+    {
+    case MiscOperationPurgeRX:
+        {
+            int n;
+            do //loop read as long as there is data coming in
+            {
+                char discardbuf[256];
+                int sockfd=(int)busdevicePointer;//compiler warning expected here on 64 bit compilation but it's ok
+                fd_set input;
+                FD_ZERO(&input);
+                FD_SET((unsigned int)sockfd, &input);
+                struct timeval timeout;
+                timeout.tv_sec = 0;
+                timeout.tv_usec = 0;
+
+                n = select(sockfd + 1, &input, NULL, NULL, &timeout);//Check whether socket is readable. Note: sockfd+1 is correct usage.
+
+                if (n < 0)//  n=-1 select error
+                {
+                    return smfalse;//select failed
+                }
+                if (n == 0)//  n=0 no data within timeout
+                {
+                    return smtrue;
+                }
+                if(!FD_ISSET(sockfd, &input))
+                {
+                    return smtrue; //no data available, redundant check (see above)?
+                }
+                //data is available, read it
+                n = read(sockfd, (char*)discardbuf, 256);//TODO: should we read 1 byte at a time to avoid blocking here?
+            } while( n>0 );
+            return smtrue;
+        }
+        break;
+    case MiscOperationFlushTX:
+        //FlushTX should be taken care with disabled Nagle algoritmh
+        return smtrue;
+        break;
+    default:
+        smDebug( -1, SMDebugLow, "TCP/IP: given MiscOperataion not implemented\n");
+        return smfalse;
+        break;
+    }
+}
 
 void tcpipPortClose(smBusdevicePointer busdevicePointer)
 {
-    int sockfd=(int)busdevicePointer;
+    int sockfd=(int)busdevicePointer;//compiler warning expected here on 64 bit compilation but it's ok
     close(sockfd);
 #if defined(_WIN32)
     WSACleanup();
