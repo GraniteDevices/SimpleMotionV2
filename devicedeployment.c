@@ -1230,6 +1230,33 @@ FirmwareUploadStatus smFirmwareUploadFromBuffer( const smbus smhandle, const int
 }
 
 
+static const struct
+{
+    LoadConfigurationStatus enumVal;
+    const char *str;
+} LoadConfigurationStatusStrings [] = {
+    {CFGComplete, "DRC load complete"},
+    {CFGInvalidFile, "Invalid DRC file"},
+    {CFGCommunicationError, "Communication error"},
+    {CFGIncompatibleFW, "Incompatible firmware"},
+    {CFGUnsupportedTargetDevice, "Unsupported target device"},
+    {CFGUnableToOpenFile, "Unable to open file"},
+    {CFGUnsupportedFileVersion, "Unsupported file version"}
+};
 
-
-
+/**
+ * @brief Convert LoadConfigurationStatus enum to descriptive string
+ * @param stat is the LoadConfigurationStatus value
+ * @return Return constant null terminated UTF8 string with the name of LoadConfigurationStatus enum
+ */
+const char *getLoadConfigurationStatusString( LoadConfigurationStatus stat )
+{
+    static const char unknown[] = "Unknown DCR load status";
+    unsigned int i;
+    for( i = 0; i < sizeof (LoadConfigurationStatusStrings) / sizeof (LoadConfigurationStatusStrings[0]);  i++)
+    {
+        if(LoadConfigurationStatusStrings[i].enumVal==stat)
+            return LoadConfigurationStatusStrings[i].str;
+    }
+    return unknown;
+}
