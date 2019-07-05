@@ -13,6 +13,30 @@
 //waiting time after save config command
 #define SM_DEVICE_SAVE_CONFIG_WAIT_MS 200
 
+
+
+/* DRC file format versions:
+ *
+ * 110 - first public  version
+ *
+ * 111 - 5.7.2019 introduced witg Granity 1.14.3:
+ * - Some values are represented in exponential format like 1.23e-5 (may happen also in 110 but it has not yet occurred).
+ * - Adds FileFeatureBits field. Reading software must support all bits here to properly read file. See list of FileFeatureBits field bits in DRC file below.
+ * - Adds FileFeatureBitsEssential field that is subset of FileFeatureBits and indicates bits that are required to be supported by loading app.
+ */
+
+/* List of FileFeatureBits field bits in DRC file */
+#define DRC_FEATURE_V110_STRUCTURE 1 //key/value fomat is same as in v110 files
+#define DRC_FEATURE_EXPONENTIAL_VALUE_FORMAT 2 //some values are represented in exponential format like 1.23e-5 (may happen also in vanilla 110 but it has not yet occurred)
+#define DRC_FEATURE_HAS_FILE_COMMENT_FIELD 4 //has comment/description field
+
+/* defines for this library */
+#define DRC_LOAD_VERSION_MIN 110
+#define DRC_LOAD_VERSION_MAX 111
+#define DRC_FILE_LOAD_SUPPORTED_FEATUREBITS (DRC_FEATURE_V110_STRUCTURE|DRC_FEATURE_EXPONENTIAL_VALUE_FORMAT) //all bits that are accepted in file to be loaded in this app
+#define DRC_FILE_LOAD_REQUIRED_FEATUREBITS (DRC_FEATURE_V110_STRUCTURE) //bits that are required in file to be loaded in this app
+
+
 int globalErrorDetailCode=0;
 
 smbool loadBinaryFile( const char *filename, smuint8 **data, int *numbytes, smbool addNullTermination );
@@ -202,18 +226,38 @@ int stringToInt( const char *str, int *output )
     return 1;
 }
 
-//read DRC file version nr and nubmer of params it contains. if succes, returns smtrue. if invalid file, return smfalse
-smbool parseDRCInfo( const smuint8 *drcData, const int drcDataLen, int *DRCVersion, int *numParams )
+smbool parseDRCIntKey( const smuint8 *drcData, const int drcDataLen, const char *key, int *outValue )
 {
-    const char *DRCVersionKey="DRCVersion=";
-    const char *sizeKey="size=";
+    int pos=findSubstring(drcData,drcDataLen,key);
+    if(pos<0)
+        return smfalse; //key not found
 
-    int versionposition=findSubstring(drcData,drcDataLen,DRCVersionKey);
-    int sizeposition=findSubstring(drcData,drcDataLen,sizeKey);
-    if( sizeposition<0 || versionposition<0 ) return smfalse;//not found
+    if( stringToInt((char*)(&drcData[pos]+strlen(key)),outValue) != 1)
+        return smfalse; //parse failed
 
-    if( stringToInt((char*)(&drcData[versionposition]+strlen(DRCVersionKey)),DRCVersion) != 1) return smfalse; //parse failed
-    if( stringToInt((char*)(&drcData[sizeposition]+strlen(sizeKey)),numParams) != 1) return smfalse; //parse failed
+    return smtrue;
+}
+
+//read DRC file version nr and nubmer of params it contains. if succes, returns smtrue. if invalid file, return smfalse
+smbool parseDRCInfo( const smuint8 *drcData, const int drcDataLen, int *DRCVersion, int *numParams, int *DRCFileFeatureBits, int *DRCEssentialFileFeatureBits )
+{
+    const char *DRCFileFeatureBitsKey="FileFeatureBits=";
+    const char *DRCEssentialFileFeatureBitsKey="FileFeatureBitsEssential=";
+
+    if( parseDRCIntKey(drcData,drcDataLen,"DRCVersion=",DRCVersion) == smfalse ) return smfalse; //parse failed
+    if( parseDRCIntKey(drcData,drcDataLen,"size=",numParams) == smfalse ) return smfalse; //parse failed
+
+    //v 111 and beyond should have file feature bits defined
+    if(*DRCVersion>=111)
+    {
+        if( parseDRCIntKey(drcData,drcDataLen,"FileFeatureBits=",DRCFileFeatureBits) == smfalse ) return smfalse; //parse failed
+        if( parseDRCIntKey(drcData,drcDataLen,"FileFeatureBitsEssential=",DRCEssentialFileFeatureBits) == smfalse ) return smfalse; //parse failed
+    }
+    else//older format, set it based on knowledge:
+    {
+        *DRCFileFeatureBits=DRC_FEATURE_V110_STRUCTURE;
+        *DRCEssentialFileFeatureBits=DRC_FEATURE_V110_STRUCTURE;
+    }
 
     //extra sanity check
     if( *numParams<1 || *numParams>1000 )
@@ -347,17 +391,30 @@ LIB LoadConfigurationStatus smLoadConfigurationFromBuffer( const smbus smhandle,
     smint32 CB1Value;
     int changed=0;
     int numParams, DRCVersion;
+    int DRCFileFeatureBits, DRCEssentialFileFeatureBits;
     *skippedCount=-1;
     *errorCount=-1;
     smbool deviceDisabled=smfalse;
 
     //parse DRC header
-    if(parseDRCInfo(drcData,drcDataLength,&DRCVersion,&numParams)!=smtrue)
+    if(parseDRCInfo(drcData,drcDataLength,&DRCVersion,&numParams,&DRCFileFeatureBits,&DRCEssentialFileFeatureBits)!=smtrue)
         return CFGInvalidFile;
 
-    //check version
-    if(DRCVersion<110 || DRCVersion>111 )//only known version is 110-111. version 111 only difference is that it may contain exponent representation of values.
+    //check if essential bits have something that is not in feature bits (file sanity check error)
+    if( (~DRCFileFeatureBits) & DRCEssentialFileFeatureBits)
+    {
+        smDebug(smhandle,SMDebugLow,"Broken DRC file (DRC version %d with feature bits %d and essential feature bits of %d)\n",DRCVersion,DRCFileFeatureBits,DRCEssentialFileFeatureBits);
+        return CFGInvalidFile;
+    }
+
+    //check file version & flags
+    if( (DRCVersion<DRC_LOAD_VERSION_MIN || DRCVersion>DRC_LOAD_VERSION_MAX) //version is not in correct range -> reject file
+            || DRCEssentialFileFeatureBits&(~DRC_FILE_LOAD_SUPPORTED_FEATUREBITS) //unaccepted/unknown essential featurebits are present -> reject file
+            || (DRCFileFeatureBits&DRC_FILE_LOAD_REQUIRED_FEATUREBITS)!=DRC_FILE_LOAD_REQUIRED_FEATUREBITS ) //required bits are not present -> reject file
+    {
+        smDebug(smhandle,SMDebugLow,"Unsupported DRC file type or version (DRC version %d with feature bits %d and essential feature bits of %d)\n",DRCVersion,DRCFileFeatureBits,DRCEssentialFileFeatureBits);
         return CFGUnsupportedFileVersion;
+    }
 
     //test connection
     resetCumulativeStatus(smhandle);
