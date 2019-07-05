@@ -356,8 +356,8 @@ LIB LoadConfigurationStatus smLoadConfigurationFromBuffer( const smbus smhandle,
         return CFGInvalidFile;
 
     //check version
-    if(DRCVersion!=110)//only known version is 110
-        return CFGInvalidFile;
+    if(DRCVersion<110 || DRCVersion>111 )//only known version is 110-111. version 111 only difference is that it may contain exponent representation of values.
+        return CFGUnsupportedFileVersion;
 
     //test connection
     resetCumulativeStatus(smhandle);

@@ -103,8 +103,8 @@ typedef enum
     CFGCommunicationError=-2,
     CFGIncompatibleFW=-4,
     CFGUnsupportedTargetDevice=-5,
-    CFGUnableToOpenFile=-6
-
+    CFGUnableToOpenFile=-6,
+    CFGUnsupportedFileVersion=-7
 } LoadConfigurationStatus;
 
 //TODO implement: #define CONFIGMODE_REQUIRE_SAME_FW 1 //will return IncompatibleFW if firmware checksum does not match the one in .drc files. if this error is returned, perform smFirmwareUpload and perform smLoadConfiguration again. Requires DRC file version 111 or later (if not met, returns InvalidFile).
