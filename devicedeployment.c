@@ -505,6 +505,14 @@ LIB LoadConfigurationStatus smLoadConfigurationFromBuffer( const smbus smhandle,
     *skippedCount=ignoredCount;
     *errorCount=setErrors;
 
+    //if device supports SMP_SYSTEM_CONTROL_TRIGGER_PENDING_PARAMETER_ACTIVATION, call it to make sure that all parameters get effective without reboot
+    {
+        smbool result;
+        smCheckDeviceCapabilities( smhandle, smaddress, SMP_DEVICE_CAPABILITIES2, DEVICE_CAPABILITY2_SUPPORT_TRIGGER_PENDING_PARAMETER_ACTIVATION, &result);
+        if(result==smtrue)
+            smSetParameter( smhandle, smaddress, SMP_SYSTEM_CONTROL, SMP_SYSTEM_CONTROL_TRIGGER_PENDING_PARAMETER_ACTIVATION );
+    }
+
     resetCumulativeStatus( smhandle );
 
     //save to flash if some value was changed
@@ -919,7 +927,7 @@ smbool flashFirmwarePrimaryMCU( smbus smhandle, int deviceaddress, const smuint8
 */
             smSetParameter(smhandle,deviceaddress,SMP_BOOTLOADER_FUNCTION,1);//BL func 1 = do mass erase on STM32. On Non-Argon devices it doesn't reset confifuration
 
-        smSleepMs(SM_DEVICE_POWER_UP_WAIT_MS);
+        smSleepMs(SM_DEVICE_POWER_UP_WAIT_MS+2);
 
         //flash
         smSetParameter(smhandle,deviceaddress,SMP_RETURN_PARAM_LEN, SMPRET_CMD_STATUS);
