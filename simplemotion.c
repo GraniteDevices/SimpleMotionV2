@@ -1120,3 +1120,67 @@ LIB SM_STATUS smGetBusDeviceDetails( smint index, SM_BUS_DEVICE_INFO *info )
     else
         return SM_ERR_NODEVICE;
 }
+
+
+LIB SM_STATUS smCheckDeviceCapabilities(const smbus handle, const int nodeAddress,
+                                         const smint32 capabilitiesParameterNr,
+                                         const smint32 requiredCapabilityFlags,
+                                         smbool *resultHasAllCapabilities )
+{
+    SM_STATUS smStat=0;
+    smint32 SMProtocolVersion;
+    *resultHasAllCapabilities=smfalse;//set true later
+
+    smStat|=smRead1Parameter(handle,nodeAddress,SMP_SM_VERSION,&SMProtocolVersion);
+    if(smStat!=SM_OK) return smStat; //error in above call
+
+    if(SMProtocolVersion>=28) //v28+ supports capabilities flags
+    {
+        //all devices with v28+ has two frist capabilities flags
+        if(capabilitiesParameterNr==SMP_DEVICE_CAPABILITIES1 || capabilitiesParameterNr==SMP_DEVICE_CAPABILITIES2)
+        {
+            smint32 capabilities;
+            smStat|=smRead1Parameter(handle,nodeAddress,capabilitiesParameterNr,&capabilities);
+            if(smStat!=SM_OK) return smStat; //error in above call
+
+            if( (capabilities&requiredCapabilityFlags)==requiredCapabilityFlags )//if all required capabilities are supported
+                *resultHasAllCapabilities=smtrue;//set result
+
+            return SM_OK;
+        }
+        else //for rest (future capabilities parameters), test if capabilitiesParameterNr is readable
+        {
+            smint32 capabilities1;
+            smStat|=smRead1Parameter(handle,nodeAddress,SMP_DEVICE_CAPABILITIES1,&capabilities1);
+            if(smStat!=SM_OK) return smStat; //error in above call
+
+            //check if device supports testing whether paramter is available
+            if(capabilities1&DEVICE_CAPABILITY1_SUPPORTS_SMP_PARAMETER_PROPERTIES_MASK)
+            {
+                smint32 paramProperties;
+                //test if parameter is readable
+                smStat|=smRead1Parameter(handle,nodeAddress,capabilitiesParameterNr|SMP_PROPERTIES_MASK,&paramProperties);
+                if(smStat!=SM_OK) return smStat; //error in above call
+
+                if(paramProperties&SMP_PROPERTY_PARAM_IS_READABLE) //requested capabilitiesParameterNr is available
+                {
+                    smint32 capabilities;
+                    smStat|=smRead1Parameter(handle,nodeAddress,capabilitiesParameterNr,&capabilities);
+                    if(smStat!=SM_OK) return smStat; //error in above call
+
+                    if( (capabilities&requiredCapabilityFlags)==requiredCapabilityFlags )//if all required capabilities are supported
+                        *resultHasAllCapabilities=smtrue;//set result
+
+                    return SM_OK;
+                }
+                else
+                    return SM_OK; //requested capabilities parameter is not available, therefore feature requested is not supported in target
+            }
+            else
+                return SM_OK;//capability parameter not available therefore requested capability not available
+        }
+    }
+    else
+        return SM_OK;//capability parameter not available therefore requested capability not available
+}
+
