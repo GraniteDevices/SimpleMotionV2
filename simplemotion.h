@@ -175,6 +175,84 @@ LIB smint smGetNumberOfDetectedBuses();
 */
 LIB SM_STATUS smGetBusDeviceDetails( smint index, SM_BUS_DEVICE_INFO *info );
 
+/**
+ * snprintf alike stringification function for SM_STATUS. Given non-null buffer will be filled to contain
+ * NONE, OK, ERR_NODEVICE, ERR_BUS and so on.
+ *
+ * Returns the number of characters printed excluding the null byte, or would have been printed on minimum.
+ *
+ * Note: when compiled with ENABLE_DEBUG_PRINTS unset (see user_options.h),
+ * smDescribe* functions return 0 and only write a null byte at str[0].
+ *
+ * Example:
+ *
+ * ```
+ * const SM_STATUS status = smRead1Parameter(...);
+ *
+ * const size_t len = 128;
+ * char buffer[len]; // create temporary buffer on stack
+ * if (smDescribeStatus(&buffer, len, status)) {
+ *   printf("reading returned %s", buffer);
+ * }
+ * ```
+ */
+LIB int smDescribeSmStatus(char* str, size_t size, SM_STATUS status);
+
+/**
+ * snprintf alike stringification function for values read from SMP_FAULTS. Given non-null buffer will be
+ * filled to contain FOLLOWERROR, OVERCURRENT, COMMUNICATION, ENCODER and so on.
+ *
+ * Returns the number of characters printed excluding the null byte, or would have been printed on minimum.
+ *
+ * Note: when compiled with ENABLE_DEBUG_PRINTS unset (see user_options.h),
+ * smDescribe* functions return 0 and only write a null byte at str[0].
+ *
+ * Example:
+ *
+ * ```
+ * int32_t faults = 0;
+ * const SM_STATUS status = smRead1Parameter(sm_handle, node_id, SMP_FAULTS, &faults);
+ * if (status != SM_OK) {
+ *   // ...handling omitted...
+ * }
+ *
+ * const size_t len = 256;
+ * char buffer[len];
+ * if (smDescribeFaults(&buffer, len, faults)) {
+ *   printf("read faults: %s\n", buffer);
+ * }
+ *
+ * ```
+ */
+LIB int smDescribeFault(char* str, size_t size, int32_t fault);
+
+/**
+ * snprintf alike stringification function for values read from SMP_STATUS. Given non-null buffer will be
+ * filled to contain TARGET_REACHED, FERROR_RECOVERY, RUN and so on.
+ *
+ * Returns the number of characters printed excluding the null byte, or would had been printed on minimum.
+ *
+ * Note: when compiled with ENABLE_DEBUG_PRINTS unset (see user_options.h),
+ * smDescribe* functions return 0 and only write a null byte at str[0].
+ *
+ * Example:
+ *
+ * ```
+ * int32_t stat = 0;
+ * const SM_STATUS status = smRead1Parameter(sm_handle, node_id, SMP_STATUS, &stat);
+ * if (status != SM_OK) {
+ *   // ...handling omitted...
+ * }
+ *
+ * const size_t len = 256;
+ * char buffer[len];
+ * if (smDescribeStatus(&buffer, len, stat)) {
+ *   printf("read status: %s\n", buffer);
+ * }
+ * ```
+ */
+LIB int smDescribeStatus(char* str, size_t size, int32_t status);
+
 #ifdef __cplusplus
 }
 #endif

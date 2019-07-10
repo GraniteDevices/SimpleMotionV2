@@ -6,6 +6,7 @@
  * header alone can't control linking of external libraries. */
 
 //comment out to disable, gives smaller & faster code
+// Commenting out this will also disable smDescribe* functions.
 #define ENABLE_DEBUG_PRINTS
 
 //max number of simultaneously opened buses. change this and recompiple SMlib if
