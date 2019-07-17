@@ -4,7 +4,7 @@
 #ifndef SIMPLEMOTION_TYPES_H
 #define SIMPLEMOTION_TYPES_H
 
-#include <unistd.h>
+#include <stdint.h>
 
 //possible return values (SM_STATUS type)
 #define SM_NONE 0
