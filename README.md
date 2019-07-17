@@ -1,3 +1,6 @@
+[![Linux Build Status](https://travis-ci.org/GraniteDevices/SimpleMotionV2.svg?branch=master)](https://travis-ci.org/GraniteDevices/SimpleMotionV2)
+[![Windows Build Status](https://ci.appveyor.com/api/projects/status/github/GraniteDevices/SimpleMotionV2)](https://ci.appveyor.com/project/TeroK/simplemotionv2)
+
 SimpleMotionV2
 ==============
 
