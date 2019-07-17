@@ -1,6 +1,6 @@
 CC = gcc
 CFLAGS = -std=c11 -I../ -fsanitize=undefined -fstrict-overflow
-LDFLAGS = -static -L../ -fsanitize=undefined -fstrict-overflow
+LDFLAGS = -L../ -fsanitize=undefined -fstrict-overflow
 # LDLIBS = -lsimplemotionv2
 
 .PHONY: clean
