@@ -1004,7 +1004,9 @@ smbool flashFirmwarePrimaryMCU( smbus smhandle, int deviceaddress, const smuint8
         {
             smSetParameter(smhandle,deviceaddress,SMP_BOOTLOADER_FUNCTION,3);//BL func 3 = verify STM32 FW integrity
             smint32 faults;
-            smRead1Parameter(smhandle,deviceaddress,SMP_FAULTS,&faults);
+            smint32 loc1;
+            smint32 loc2;
+            smRead3Parameters(smhandle, deviceaddress, SMP_FAULTS, &faults, SMP_FAULT_LOCATION1, &loc1, SMP_FAULT_LOCATION2, &loc2);
 
             if(getCumulativeStatus(smhandle)!=SM_OK)
             {
@@ -1015,7 +1017,9 @@ smbool flashFirmwarePrimaryMCU( smbus smhandle, int deviceaddress, const smuint8
 
             if(faults&FLT_FLASHING_COMMSIDE_FAIL)
             {
-                smDebug(smhandle,SMDebugLow,"flashFirmwarePrimaryMCU: verify failed (faults=%d)\n",faults);
+                // fault locations 1 and 2 provide additional context and will be asked for if you file
+                // a support case on non-verifying firmware upload
+                smDebug(smhandle, SMDebugLow, "flashFirmwarePrimaryMCU: verify failed (faults=%d, location1=%d, location2=%d)\n", faults, loc1, loc2);
 
                 *progress=0;
                 state=Init;
