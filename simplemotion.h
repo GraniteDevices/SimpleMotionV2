@@ -175,6 +175,107 @@ LIB smint smGetNumberOfDetectedBuses();
 */
 LIB SM_STATUS smGetBusDeviceDetails( smint index, SM_BUS_DEVICE_INFO *info );
 
+/**
+ * snprintf alike stringification function for SM_STATUS. Given non-null buffer will be filled to contain
+ * NONE, OK, ERR_NODEVICE, ERR_BUS and so on.
+ *
+ * Returns the number of characters printed excluding the null byte, or would have been printed on minimum.
+ *
+ * Note: when compiled with ENABLE_DEBUG_PRINTS unset (see user_options.h),
+ * smDescribe* functions return 0 and only write a null byte at str[0].
+ *
+ * Example:
+ *
+ * ```
+ * const SM_STATUS status = smRead1Parameter(...);
+ *
+ * const size_t len = 128;
+ * char buffer[len]; // create temporary buffer on stack
+ * if (smDescribeStatus(&buffer, len, status)) {
+ *   printf("reading returned %s", buffer);
+ * }
+ * ```
+ */
+LIB int smDescribeSmStatus(char* str, size_t size, SM_STATUS status);
+
+/**
+ * snprintf alike stringification function for values read from SMP_FAULTS. Given non-null buffer will be
+ * filled to contain FOLLOWERROR, OVERCURRENT, COMMUNICATION, ENCODER and so on.
+ *
+ * Returns the number of characters printed excluding the null byte, or would have been printed on minimum.
+ *
+ * Note: when compiled with ENABLE_DEBUG_PRINTS unset (see user_options.h),
+ * smDescribe* functions return 0 and only write a null byte at str[0].
+ *
+ * Example:
+ *
+ * ```
+ * int32_t faults = 0;
+ * const SM_STATUS status = smRead1Parameter(sm_handle, node_id, SMP_FAULTS, &faults);
+ * if (status != SM_OK) {
+ *   // ...handling omitted...
+ * }
+ *
+ * const size_t len = 256;
+ * char buffer[len];
+ * if (smDescribeFaults(&buffer, len, faults)) {
+ *   printf("read faults: %s\n", buffer);
+ * }
+ *
+ * ```
+ */
+LIB int smDescribeFault(char* str, size_t size, int32_t fault);
+
+/**
+ * snprintf alike stringification function for values read from SMP_STATUS. Given non-null buffer will be
+ * filled to contain TARGET_REACHED, FERROR_RECOVERY, RUN and so on.
+ *
+ * Returns the number of characters printed excluding the null byte, or would had been printed on minimum.
+ *
+ * Note: when compiled with ENABLE_DEBUG_PRINTS unset (see user_options.h),
+ * smDescribe* functions return 0 and only write a null byte at str[0].
+ *
+ * Example:
+ *
+ * ```
+ * int32_t stat = 0;
+ * const SM_STATUS status = smRead1Parameter(sm_handle, node_id, SMP_STATUS, &stat);
+ * if (status != SM_OK) {
+ *   // ...handling omitted...
+ * }
+ *
+ * const size_t len = 256;
+ * char buffer[len];
+ * if (smDescribeStatus(&buffer, len, stat)) {
+ *   printf("read status: %s\n", buffer);
+ * }
+ * ```
+ */
+LIB int smDescribeStatus(char* str, size_t size, int32_t status);
+
+/** smCheckDeviceCapabilities will check whether target device has all requested capabilities.
+ *
+ * I.e. code:
+ *  smbool resultHasAllCapabilities;
+ *  smCheckDeviceCapabilities( handle, nodeAddress,
+                                         SMP_DEVICE_CAPABILITIES1,
+                                         DEVICE_CAPABILITY1_AUTOSETUP_COMMUTATION_SENSOR|DEVICE_CAPABILITY1_BUFFERED_MOTION_LINEAR_INTERPOLATION,
+                                         &resultHasAllCapabilities );
+
+  * Will check whether device supports DEVICE_CAPABILITY1_AUTOSETUP_COMMUTATION_SENSOR and DEVICE_CAPABILITY1_BUFFERED_MOTION_LINEAR_INTERPOLATION.
+  * If it supports both, resultHasAllCapabilities will be set smtrue, otherwise it will be set smfalse.
+  *
+  * Note: be careful to enter correct SMP_DEVICE_CAPABILITIESn parameter and correct DEVICE_CAPBILITYn flags as arguments as there is no checking for correctness.
+  * I.e. passing argument SMP_DEVICE_CAPABILITIES1 and flags DEVICE_CAPABILITY1_AUTOSETUP_COMMUTATION_SENSOR|DEVICE_CAPABILITY2_LOW_LEVEL_GPIO will return
+  * erratic output because DEVICE_CAPABILITY2_LOW_LEVEL_GPIO is not present in parameter SMP_DEVICE_CAPABILITIES1.
+  *
+  * Return value is SM_OK if no communication error occurred.
+  */
+LIB SM_STATUS smCheckDeviceCapabilities( const smbus handle, const int nodeAddress,
+                                         const smint32 capabilitiesParameterNr,
+                                         const smint32 requiredCapabilityFlags,
+                                         smbool *resultHasAllCapabilities );
+
 #ifdef __cplusplus
 }
 #endif

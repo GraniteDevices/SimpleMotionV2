@@ -103,9 +103,17 @@ typedef enum
     CFGCommunicationError=-2,
     CFGIncompatibleFW=-4,
     CFGUnsupportedTargetDevice=-5,
-    CFGUnableToOpenFile=-6
-
+    CFGUnableToOpenFile=-6,
+    CFGUnsupportedFileVersion=-7
 } LoadConfigurationStatus;
+
+/**
+ * @brief Convert LoadConfigurationStatus enum to descriptive string
+ * @param stat is the LoadConfigurationStatus value
+ * @return Return constant null terminated UTF8 string with the name of LoadConfigurationStatus enum
+ */
+const char *getLoadConfigurationStatusString( LoadConfigurationStatus stat );
+
 
 //TODO implement: #define CONFIGMODE_REQUIRE_SAME_FW 1 //will return IncompatibleFW if firmware checksum does not match the one in .drc files. if this error is returned, perform smFirmwareUpload and perform smLoadConfiguration again. Requires DRC file version 111 or later (if not met, returns InvalidFile).
 #define CONFIGMODE_ALWAYS_RESTART_TARGET 2 //will perform device restart after setup even when it's not required
@@ -146,7 +154,6 @@ LIB LoadConfigurationStatus smLoadConfigurationFromBuffer(const smbus smhandle, 
  * @return smtrue if success, smfalse if failed (if communication otherwise works, then probably UID feature not present in this firmware version)
  */
 smbool smGetDeviceFirmwareUniqueID( smbus smhandle, int deviceaddress, smuint32 *UID );
-
 
 
 #ifdef __cplusplus

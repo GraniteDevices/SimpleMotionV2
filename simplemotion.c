@@ -3,7 +3,7 @@
 
 #include <stdio.h>
 #include <string.h>
-
+#include <inttypes.h>
 #include "busdevice.h"
 #include "user_options.h"
 #include "sm485.h"
@@ -1120,3 +1120,224 @@ LIB SM_STATUS smGetBusDeviceDetails( smint index, SM_BUS_DEVICE_INFO *info )
     else
         return SM_ERR_NODEVICE;
 }
+
+#ifdef ENABLE_DEBUG_PRINTS
+
+// early exiting snprintf wrapper which will also:
+//  - increment the size variable on success
+//  - early exit on failure
+#define SAFE_SNPRINTF(target, size, remaining, ...) \
+	{ \
+		int _written = snprintf((target), (remaining), __VA_ARGS__); \
+		if (_written < 0) { \
+			return _written; \
+		} \
+		else if ((size_t)_written >= remaining) { \
+			return size + _written; \
+		} \
+		size += _written; \
+	}
+
+// conditional string appending if source & name != 0.
+#define APPEND_IF(source, name, str, target, size, remaining, checked, prefix_len) \
+	{ \
+		if (((source) & (name)) != 0) { \
+			SAFE_SNPRINTF(target, size, remaining, "%s ", &str[prefix_len]); \
+		} \
+		checked |= (name); \
+	}
+
+// removes the single trailing whitespace from the buffer by writing a null on it.
+#define TRIM_TRAILING_WS(str, len) \
+	{ \
+		if (len > 1 && str[len - 1] == ' ') { \
+			str[len - 1] = '\0'; \
+			len--; \
+		} \
+	}
+
+#else
+
+#define SAFE_SNPRINTF(...)
+#define APPEND_IF(...)
+#define TRIM_TRAILING_WS(...)
+
+#endif
+
+// size has been defined as const to help with the name confusion w.r.t macros.
+LIB int smDescribeSmStatus(char* str, const size_t size, SM_STATUS status)
+{
+	size_t len = 0; // mutated by SAFE_SNPRINTF (nested or direct)
+	str[0] = '\0'; // this is probably something snprintf does not always do
+	SM_STATUS checked = 0;
+
+// "local" as in binds the APPEND_IF to local variables declared above
+#define LOCAL_APPEND(name) APPEND_IF(status, name, #name, &str[len], len, size - len, checked, 3)
+
+	if (status == SM_NONE) {
+		// special case: zero
+		SAFE_SNPRINTF(str, len, size - len, "NONE");
+	} else {
+		LOCAL_APPEND(SM_OK);
+		LOCAL_APPEND(SM_ERR_NODEVICE);
+		LOCAL_APPEND(SM_ERR_BUS);
+		LOCAL_APPEND(SM_ERR_COMMUNICATION);
+		LOCAL_APPEND(SM_ERR_PARAMETER);
+		LOCAL_APPEND(SM_ERR_LENGTH);
+	}
+
+#undef LOCAL_APPEND
+
+	SM_STATUS extras = status & ~checked;
+	if (extras != 0) {
+		SAFE_SNPRINTF(&str[len], len, size - len, "EXTRA(%d)", extras);
+	}
+
+	TRIM_TRAILING_WS(str, len);
+
+	return len;
+}
+
+LIB int smDescribeFault(char* str, const size_t size, int32_t faults)
+{
+	size_t len = 0;
+	str[0] = '\0';
+	int32_t checked = 0;
+
+#define LOCAL_APPEND(name) APPEND_IF(faults, name, #name, &str[len], len, size - len, checked, 4)
+
+	LOCAL_APPEND(FLT_FOLLOWERROR);
+	LOCAL_APPEND(FLT_OVERCURRENT);
+	LOCAL_APPEND(FLT_COMMUNICATION)
+	LOCAL_APPEND(FLT_ENCODER)
+	LOCAL_APPEND(FLT_OVERTEMP)
+	LOCAL_APPEND(FLT_UNDERVOLTAGE)
+	LOCAL_APPEND(FLT_OVERVOLTAGE)
+	LOCAL_APPEND(FLT_PROGRAM_OR_MEM)
+	LOCAL_APPEND(FLT_HARDWARE)
+	LOCAL_APPEND(FLT_OVERVELOCITY)
+	LOCAL_APPEND(FLT_INIT)
+	LOCAL_APPEND(FLT_MOTION)
+	LOCAL_APPEND(FLT_RANGE)
+	LOCAL_APPEND(FLT_PSTAGE_FORCED_OFF)
+	LOCAL_APPEND(FLT_HOST_COMM_ERROR)
+	LOCAL_APPEND(FLT_CONFIG)
+	LOCAL_APPEND(FLT_GC_COMM)
+
+#undef LOCAL_APPEND
+
+	const int32_t extras = faults & ~checked;
+	if (extras != 0) {
+		SAFE_SNPRINTF(&str[len], len, size - len, "EXTRA(%" PRId32 ")", extras);
+	}
+
+	TRIM_TRAILING_WS(str, len);
+
+	return len;
+}
+
+LIB int smDescribeStatus(char* str, const size_t size, int32_t status)
+{
+	size_t len = 0;
+	str[0] = '\0';
+	int32_t checked = 0;
+
+#define LOCAL_APPEND(name) APPEND_IF(status, name, #name, &str[len], len, size - len, checked, 5)
+
+	LOCAL_APPEND(STAT_RESERVED_)
+	LOCAL_APPEND(STAT_TARGET_REACHED)
+	LOCAL_APPEND(STAT_FERROR_RECOVERY)
+	LOCAL_APPEND(STAT_RUN)
+	LOCAL_APPEND(STAT_ENABLED)
+	LOCAL_APPEND(STAT_FAULTSTOP)
+	LOCAL_APPEND(STAT_FERROR_WARNING)
+	LOCAL_APPEND(STAT_STO_ACTIVE)
+	LOCAL_APPEND(STAT_SERVO_READY)
+	LOCAL_APPEND(STAT_BRAKING)
+	LOCAL_APPEND(STAT_HOMING)
+	LOCAL_APPEND(STAT_INITIALIZED)
+	LOCAL_APPEND(STAT_VOLTAGES_OK)
+	LOCAL_APPEND(STAT_PERMANENT_STOP)
+	LOCAL_APPEND(STAT_STANDING_STILL)
+	LOCAL_APPEND(STAT_QUICK_STOP_ACTIVE)
+	LOCAL_APPEND(STAT_SAFE_TORQUE_MODE_ACTIVE)
+
+#undef LOCAL_APPEND
+
+	const int32_t extras = status & ~checked;
+	if (extras != 0) {
+		SAFE_SNPRINTF(&str[len], len, size - len, "EXTRA(%" PRId32 ")", extras);
+	}
+
+	TRIM_TRAILING_WS(str, len);
+
+	return len;
+}
+
+#undef APPEND_IF
+#undef SAFE_SNPRINTF
+#undef TRIM_TRAILING_WS
+
+
+LIB SM_STATUS smCheckDeviceCapabilities(const smbus handle, const int nodeAddress,
+                                         const smint32 capabilitiesParameterNr,
+                                         const smint32 requiredCapabilityFlags,
+                                         smbool *resultHasAllCapabilities )
+{
+    SM_STATUS smStat=0;
+    smint32 SMProtocolVersion;
+    *resultHasAllCapabilities=smfalse;//set true later
+
+    smStat|=smRead1Parameter(handle,nodeAddress,SMP_SM_VERSION,&SMProtocolVersion);
+    if(smStat!=SM_OK) return smStat; //error in above call
+
+    if(SMProtocolVersion>=28) //v28+ supports capabilities flags
+    {
+        //all devices with v28+ has two frist capabilities flags
+        if(capabilitiesParameterNr==SMP_DEVICE_CAPABILITIES1 || capabilitiesParameterNr==SMP_DEVICE_CAPABILITIES2)
+        {
+            smint32 capabilities;
+            smStat|=smRead1Parameter(handle,nodeAddress,capabilitiesParameterNr,&capabilities);
+            if(smStat!=SM_OK) return smStat; //error in above call
+
+            if( (capabilities&requiredCapabilityFlags)==requiredCapabilityFlags )//if all required capabilities are supported
+                *resultHasAllCapabilities=smtrue;//set result
+
+            return SM_OK;
+        }
+        else //for rest (future capabilities parameters), test if capabilitiesParameterNr is readable
+        {
+            smint32 capabilities1;
+            smStat|=smRead1Parameter(handle,nodeAddress,SMP_DEVICE_CAPABILITIES1,&capabilities1);
+            if(smStat!=SM_OK) return smStat; //error in above call
+
+            //check if device supports testing whether paramter is available
+            if(capabilities1&DEVICE_CAPABILITY1_SUPPORTS_SMP_PARAMETER_PROPERTIES_MASK)
+            {
+                smint32 paramProperties;
+                //test if parameter is readable
+                smStat|=smRead1Parameter(handle,nodeAddress,capabilitiesParameterNr|SMP_PROPERTIES_MASK,&paramProperties);
+                if(smStat!=SM_OK) return smStat; //error in above call
+
+                if(paramProperties&SMP_PROPERTY_PARAM_IS_READABLE) //requested capabilitiesParameterNr is available
+                {
+                    smint32 capabilities;
+                    smStat|=smRead1Parameter(handle,nodeAddress,capabilitiesParameterNr,&capabilities);
+                    if(smStat!=SM_OK) return smStat; //error in above call
+
+                    if( (capabilities&requiredCapabilityFlags)==requiredCapabilityFlags )//if all required capabilities are supported
+                        *resultHasAllCapabilities=smtrue;//set result
+
+                    return SM_OK;
+                }
+                else
+                    return SM_OK; //requested capabilities parameter is not available, therefore feature requested is not supported in target
+            }
+            else
+                return SM_OK;//capability parameter not available therefore requested capability not available
+        }
+    }
+    else
+        return SM_OK;//capability parameter not available therefore requested capability not available
+}
+
