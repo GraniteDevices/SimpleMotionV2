@@ -587,6 +587,8 @@
 	#define SMP_SYSTEM_CONTROL_START_COMMUTATION_SENSOR_AUTOSETUP 4096
 	//load settings that are saved in device flash memory. useful when changing parameters on the fly and want to restore originals, or when app is started and drive may have unknown parameter modifications active.
 	#define SMP_SYSTEM_CONTROL_RESTORE_SAVED_CONFIG 8192
+	//triggers parameter activation for some buffered/deladed parameters such as SMP_TORQUE_BIQUAD_FILTERnnn parameters that do not immediately take effect to avoid glitches
+	#define SMP_SYSTEM_CONTROL_TRIGGER_PENDING_PARAMETER_ACTIVATION 16384
 	//write SM bus SM_CRCINIT constant modifier. special purposes only, don't use if unsure because
 	//it is one time programmable variable (permanently irreversible operation, can't be ever reset to default by provided methods)
 	#define SMP_SYSTEM_CONTROL_MODIFY_CRCINIT 262144
@@ -784,7 +786,7 @@
          	b0=1;
         	b1=b2=a1=a2=0;
  * - Set values B0=10000000 and B1=B2=A1=A2=0 disable/bypass the filter (FW default)
- * - Write SMP_TORQUE_BIQUAD_FILTERn_A2 value last, which is the moment changes to all other values are registered synchronously.
+ * - These are buffered variables and become effective only on boot and after SMP_SYSTEM_CONTROL_TRIGGER_PENDING_PARAMETER_ACTIVATION
  * - Each change of filter will reset filter state (may cause a bump)
  * - If DEVICE_CAPABILITY2_TORQUE_BIQUAD_FILTERS_V1, then filters run at 20kHz sample rate and 32 bits floating point precision.
  *
@@ -1213,6 +1215,7 @@
 	#define DEVICE_CAPABILITY2_RETURN_SMP_STATUS_ON_FAILED_SUBPACKETS BV(18) /* if this is set, each SM subpacket that fails (status not SMP_CMD_STATUS_ACK), will return SMPRET_CMD_STATUS subpacket with the non-SMP_CMD_STATUS_ACK status. otherwise, user configured SM subpacket will be always returned */
 	#define DEVICE_CAPABILITY2_SUPPORT_SCOPE_STATUSBITS_CHANGE_AND_DEBUG12_TRIGGERS BV(19) /* if this is set, scope supports TRIG_STATUSBITS_CHANGE and TRIG_DEBUG1 and TRIG_DEBUG2 */
 	#define DEVICE_CAPABILITY2_TORQUE_BIQUAD_FILTERS_V1 BV(20) /* if this is set, then params 260-269 are supported */
+	#define DEVICE_CAPABILITY2_SUPPORT_TRIGGER_PENDING_PARAMETER_ACTIVATION BV(21) /* if true, SMP_SYSTEM_CONTROL_TRIGGER_PENDING_PARAMETER_ACTIVATION is available */
 
 #define SMP_FIRMWARE_VERSION 6010
 #define SMP_FIRMWARE_BACKWARDS_COMP_VERSION 6011

@@ -253,6 +253,29 @@ LIB int smDescribeFault(char* str, size_t size, int32_t fault);
  */
 LIB int smDescribeStatus(char* str, size_t size, int32_t status);
 
+/** smCheckDeviceCapabilities will check whether target device has all requested capabilities.
+ *
+ * I.e. code:
+ *  smbool resultHasAllCapabilities;
+ *  smCheckDeviceCapabilities( handle, nodeAddress,
+                                         SMP_DEVICE_CAPABILITIES1,
+                                         DEVICE_CAPABILITY1_AUTOSETUP_COMMUTATION_SENSOR|DEVICE_CAPABILITY1_BUFFERED_MOTION_LINEAR_INTERPOLATION,
+                                         &resultHasAllCapabilities );
+
+  * Will check whether device supports DEVICE_CAPABILITY1_AUTOSETUP_COMMUTATION_SENSOR and DEVICE_CAPABILITY1_BUFFERED_MOTION_LINEAR_INTERPOLATION.
+  * If it supports both, resultHasAllCapabilities will be set smtrue, otherwise it will be set smfalse.
+  *
+  * Note: be careful to enter correct SMP_DEVICE_CAPABILITIESn parameter and correct DEVICE_CAPBILITYn flags as arguments as there is no checking for correctness.
+  * I.e. passing argument SMP_DEVICE_CAPABILITIES1 and flags DEVICE_CAPABILITY1_AUTOSETUP_COMMUTATION_SENSOR|DEVICE_CAPABILITY2_LOW_LEVEL_GPIO will return
+  * erratic output because DEVICE_CAPABILITY2_LOW_LEVEL_GPIO is not present in parameter SMP_DEVICE_CAPABILITIES1.
+  *
+  * Return value is SM_OK if no communication error occurred.
+  */
+LIB SM_STATUS smCheckDeviceCapabilities( const smbus handle, const int nodeAddress,
+                                         const smint32 capabilitiesParameterNr,
+                                         const smint32 requiredCapabilityFlags,
+                                         smbool *resultHasAllCapabilities );
+
 #ifdef __cplusplus
 }
 #endif
