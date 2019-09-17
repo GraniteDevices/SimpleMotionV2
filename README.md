@@ -72,12 +72,12 @@ Examples
 ========
 For practical usage examples, refer to https://github.com/GraniteDevices/SimpleMotionV2Examples
 
-About different braches
-=======================
+About different branches
+========================
 There are multiple branches in this repository. Summary:
 
 * **master:** Latest stable version. The goal here is to keep API stable and backwards compatible with earlier master versions. Master branch will be updated occasionally by merge commit from develop.
-* **develop:** Latest development version, may contain unfinished features & changing API. Be warned that your applicationg using under development features might break.
+* **develop:** Latest development version, may contain unfinished features & changing API. Be warned that your application using under development features might break.
 * **feature/nnn:** Under development features that eventually shall be merged to develop.
 
 Usually it's safest to use master version. If latest additions are necessary, then use develop.
