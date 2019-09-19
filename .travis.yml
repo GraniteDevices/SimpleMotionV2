@@ -1,6 +1,11 @@
 language: c
 
-script: make
+script:
+  # normal library build
+  - make
+  # tests build another version of the library (only a static one) and test
+  # against it with sanitizers
+  - make test
 
 matrix:
   include:
