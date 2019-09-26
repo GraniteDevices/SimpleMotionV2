@@ -7,10 +7,10 @@ SOURCES = $(wildcard *.c) \
 
 # Set library type to static or dynamic, used to
 # set build directory etc.
-ifeq ($(MAKECMDGOALS),libsimplemotionv2.a)
-	LIBRARY_TYPE = static
-else
+ifeq ($(MAKECMDGOALS),libsimplemotionv2.so)
 	LIBRARY_TYPE = dynamic
+else
+	LIBRARY_TYPE = static
 endif
 
 OBJECTS = $(SOURCES:%.c=$(BUILD_DIR)/$(LIBRARY_TYPE)/%.o)
@@ -32,6 +32,8 @@ LDLIBS := -lm
 
 # Linker flags
 LDFLAGS :=
+
+all: libsimplemotionv2.a
 
 libsimplemotionv2.a: $(BUILD_DIR)/libsimplemotionv2.a
 
