@@ -366,6 +366,7 @@
 #define SMP_BINARY_DATA_MODE 19
 	//data blocks:
 	#define BINARY_DATA_MODE_BLOCK_CALIBRATION 0 //id 0 = motor calibration data block. note that starting offset must be multiple of 2 for this block.
+	#define BINARY_DATA_MODE_BLOCK_POWER_HISTOGRAM 1 //id 1 = power consumption histogram data
 	//...more blocks to be defined here
 	//flags:
 	#define BINARY_DATA_MODE_FLAG_ERASE BV(8) //if true, then the defined block will be erased immediately by writing this bit to SMP_BINARY_DATA_MODE. not all blocks support this.
@@ -780,6 +781,9 @@
 	#define MASK_SMP_SIMCUBE_OPTIONS_HANDS_OFF_SENSITIVITY 3 // binary and SMP_SIMCUBE_OPTION_FLAGS and MASK_SMP_SIMCUBE_OPTION_FLAGS_HANDS_OFF_SENSITIVITY to identify which HANDS_OFF_SENSITIVITY setting is set.
 	#define SMP_SIMCUBE_OPTIONS_ENABLE_TORQUE_SATURATION_INDICATION_SOUND BV(2)
 	#define SMP_SIMCUBE_OPTIONS_REDUCE_RESONANCE BV(3)
+	#define SMP_SIMCUBE_OPTIONS_TRACKING_CENTER_DAMPING_POSITION BV(4) // if 1, then fixed center angle offset SMP_TORQUE_EFFECTS_CENTER_POSITION has is superseded by tracking center position
+//friction effect stiffness variable for SC2U. Value 100=normal, 50=low, 200=high.
+#define SMP_TORQUE_EFFECT_FRICTION_STIFFNESS 253
 
 /* Torque setpoint biquad filters that run at full torque controller update frequency.
  * - Scale of values is 10 000 000=1.0.
