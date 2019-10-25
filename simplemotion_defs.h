@@ -550,6 +550,7 @@
 	#define STAT_STANDING_STILL BV(16)
 	#define STAT_QUICK_STOP_ACTIVE BV(17)
 	#define STAT_SAFE_TORQUE_MODE_ACTIVE BV(18)
+	#define STAT_STANDBY BV(19) //automatic standby in simucube
 
 #define SMP_SYSTEM_CONTROL 554 //writing 1 initiates settings save to flash, writing 2=device restart, 4=abort buffered motion
 	//possible values listed
@@ -593,6 +594,7 @@
 	//write SM bus SM_CRCINIT constant modifier. special purposes only, don't use if unsure because
 	//it is one time programmable variable (permanently irreversible operation, can't be ever reset to default by provided methods)
 	#define SMP_SYSTEM_CONTROL_MODIFY_CRCINIT 262144
+	#define SMP_SYSTEM_CONTROL_EXIT_STANDBY 32768 //exit simucube standby mode
 	//following three commands execute FW version specific functions (i.e. debugging or customized FW functions)
 	#define SMP_SYSTEM_CONTROL_TRIGGER_FW_SPECIFIC_FUNC1 10000000
 	#define SMP_SYSTEM_CONTROL_TRIGGER_FW_SPECIFIC_FUNC2 10000001
@@ -1220,6 +1222,7 @@
 	#define DEVICE_CAPABILITY2_SUPPORT_SCOPE_STATUSBITS_CHANGE_AND_DEBUG12_TRIGGERS BV(19) /* if this is set, scope supports TRIG_STATUSBITS_CHANGE and TRIG_DEBUG1 and TRIG_DEBUG2 */
 	#define DEVICE_CAPABILITY2_TORQUE_BIQUAD_FILTERS_V1 BV(20) /* if this is set, then params 260-269 are supported */
 	#define DEVICE_CAPABILITY2_SUPPORT_TRIGGER_PENDING_PARAMETER_ACTIVATION BV(21) /* if true, SMP_SYSTEM_CONTROL_TRIGGER_PENDING_PARAMETER_ACTIVATION is available */
+	#define DEVICE_CAPABILITY2_HAS_STANDBY BV(22) // true if device enters in STAT_STANDBY automatically after idling
 
 #define SMP_FIRMWARE_VERSION 6010
 #define SMP_FIRMWARE_BACKWARDS_COMP_VERSION 6011
