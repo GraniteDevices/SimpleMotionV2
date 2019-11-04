@@ -330,6 +330,7 @@
 	#define FAST_UPDATE_CYCLE_FORMAT_ALT1 1
 	#define FAST_UPDATE_CYCLE_FORMAT_ALT2 2
 	#define FAST_UPDATE_CYCLE_FORMAT_ALT3 3
+	#define FAST_UPDATE_CYCLE_FORMAT_ALT4 4
 
 /* Intro: SMP_BINARY_DATA and SMP_INIT_BINARY_DATA parameters allow reading & writing binary data from pre-defined buffers. i.e. text strings or calibration data blob.
  *
@@ -771,8 +772,11 @@
 #define SMP_TORQUE_EFFECT_CENTER_DAMPING_ANGLE_SPAN 249
 //slew rate limit, value in Nm/s. requires that motor torque constant SMP_MOTOR_TORQUE_OR_FORCE_CONSTANT has been set. value 0 disables the limiter (default).
 #define SMP_TORQUE_SLEW_RATE_LIMIT 250
-//center offset of encoder count for torque effects that depend on absolute position information, i.e. center damping. value of this parameter will be substracted from encoder position before effect calculation.
-#define SMP_TORQUE_EFFECTS_CENTER_POSITION 251
+/* Center offset of wheel in in scale of unsigned 24 bits.
+ * Writing -1 here will automatically set this value so that current position becomes center.
+ * Value of this will affect the value output in fast update command ALT4 format and various simucube specific functions (like center damping and wheel safety rotation limit). */
+#define SMP_SIMUCUBE_WHEEL_CENTER_OFFSET 251
+
 //various Simucube option flags
 #define SMP_SIMCUBE_OPTIONS 252
 	// two lowest bits of flags define hands off the wheel detection sensitivity (automatically activates temporary safe mode). do not binary OR multiple HANDS_OFF_SENSITIVITY_ values, pick just one.
