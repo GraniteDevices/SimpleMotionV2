@@ -2,7 +2,8 @@
 
 SOURCES = $(wildcard *.c) \
 	drivers/serial/pcserialport.c \
-	drivers/tcpip/tcpclient.c
+	drivers/tcpip/tcpclient.c \
+	utils/crc.c
 
 OBJECTS = $(SOURCES:%.c=%.o)
 
