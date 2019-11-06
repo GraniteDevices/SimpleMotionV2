@@ -48,4 +48,4 @@ $(LIB_OUTDIR)/%.o: ../%.c
 
 clean:
 	rm -f $(OBJ) $(LIB_OBJECTS) $(TEST_CASES) libsimplemotionv2.a
-	rmdir $(LIB_OUTDIR)
+	rm -rf $(LIB_OUTDIR)
