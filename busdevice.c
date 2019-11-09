@@ -225,8 +225,9 @@ int smBDGetNumberOfDetectedBuses()
     //only supports FTDI D2XX at the moment
 #ifdef FTDI_D2XX_SUPPORT
     return d2xxGetNumberOfDetectedBuses();
-#endif
+#else
     return 0;
+#endif
 }
 
 bool smBDGetBusDeviceDetails( int index, SM_BUS_DEVICE_INFO *info )
@@ -234,7 +235,10 @@ bool smBDGetBusDeviceDetails( int index, SM_BUS_DEVICE_INFO *info )
     //only supports FTDI D2XX at the moment
 #ifdef FTDI_D2XX_SUPPORT
     return d2xxGetBusDeviceDetails(index,info);
-#endif
+#else
+    (void)index;
+    (void)info;
     return false;
+#endif
 
 }
