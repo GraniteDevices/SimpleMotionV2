@@ -5,6 +5,7 @@
 #define SIMPLEMOTION_TYPES_H
 
 #include <stdint.h>
+#include <stdbool.h>
 
 //possible return values (SM_STATUS type)
 #define SM_NONE 0
