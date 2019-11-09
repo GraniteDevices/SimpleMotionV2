@@ -359,7 +359,7 @@ LoadConfigurationStatus smLoadConfiguration(const smbus smhandle, const int smad
     smuint8 *drcData=NULL;
     int drcDataLength;
 
-    if(loadBinaryFile(filename,&drcData,&drcDataLength,true)!=true)
+    if(!loadBinaryFile(filename,&drcData,&drcDataLength,true))
         return CFGUnableToOpenFile;
 
     ret = smLoadConfigurationFromBuffer( smhandle, smaddress, drcData, drcDataLength, mode, skippedCount, errorCount );
@@ -397,7 +397,7 @@ LIB LoadConfigurationStatus smLoadConfigurationFromBuffer( const smbus smhandle,
     bool deviceDisabled=false;
 
     //parse DRC header
-    if(parseDRCInfo(drcData,drcDataLength,&DRCVersion,&numParams,&DRCFileFeatureBits,&DRCEssentialFileFeatureBits)!=true)
+    if(!parseDRCInfo(drcData,drcDataLength,&DRCVersion,&numParams,&DRCFileFeatureBits,&DRCEssentialFileFeatureBits))
         return CFGInvalidFile;
 
     //check if essential bits have something that is not in feature bits (file sanity check error)
@@ -1068,7 +1068,7 @@ FirmwareUploadStatus smFirmwareUpload( const smbus smhandle, const int smaddress
     //load file to buffer if not loaded yet
     if(fileLoaded==false)
     {
-        if(loadBinaryFile(firmware_filename,&fwData,&fwDataLength,false)!=true)
+        if(!loadBinaryFile(firmware_filename,&fwData,&fwDataLength,false))
             return FWFileNotReadable;
         fileLoaded=true;
     }

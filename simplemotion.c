@@ -411,30 +411,30 @@ SM_STATUS smSendSMCMD( smbus handle, smuint8 cmdid, smuint8 addr, smuint8 datale
 
 
     smDebug(handle,SMDebugHigh,"  Outbound packet raw data: CMDID (%d) ",cmdid);
-    if( smWriteByte(handle,cmdid, &sendcrc) != true ) return recordStatus(handle,SM_ERR_BUS);
+    if(!smWriteByte(handle,cmdid, &sendcrc)) return recordStatus(handle,SM_ERR_BUS);
 
     if(cmdid&SMCMD_MASK_N_PARAMS)
     {
         smDebug(DEBUG_PRINT_RAW,SMDebugHigh,"SIZE (%d bytes) ", datalen);
-        if( smWriteByte(handle,datalen, &sendcrc) != true ) return recordStatus(handle,SM_ERR_BUS);
+        if(!smWriteByte(handle,datalen, &sendcrc)) return recordStatus(handle,SM_ERR_BUS);
     }
 
     smDebug(DEBUG_PRINT_RAW,SMDebugHigh,"ADDR (%d) ",addr);
-    if( smWriteByte(handle,addr, &sendcrc) != true ) return recordStatus(handle,SM_ERR_BUS);
+    if(!smWriteByte(handle,addr, &sendcrc)) return recordStatus(handle,SM_ERR_BUS);
 
     smDebug(DEBUG_PRINT_RAW,SMDebugHigh,"PAYLOAD (");
     for(i=0;i<datalen;i++)
     {
         smDebug(DEBUG_PRINT_RAW,SMDebugHigh,"%02x ",cmddata[i]);
-        if( smWriteByte(handle,cmddata[i], &sendcrc) != true ) return recordStatus(handle,SM_ERR_BUS);
+        if(!smWriteByte(handle,cmddata[i], &sendcrc)) return recordStatus(handle,SM_ERR_BUS);
     }
     smDebug(DEBUG_PRINT_RAW,SMDebugHigh,") ");
     smDebug(DEBUG_PRINT_RAW,SMDebugHigh,"CRC (%02x %02x)\n",sendcrc>>8, sendcrc&0xff);
-    if( smWriteByte(handle,sendcrc>>8, NULL)  != true ) return recordStatus(handle,SM_ERR_BUS);
-    if( smWriteByte(handle,sendcrc&0xff,NULL) != true ) return recordStatus(handle,SM_ERR_BUS);
+    if(!smWriteByte(handle,sendcrc>>8, NULL)) return recordStatus(handle,SM_ERR_BUS);
+    if(!smWriteByte(handle,sendcrc&0xff,NULL)) return recordStatus(handle,SM_ERR_BUS);
 
     //transmit bytes to bus that were written in buffer by smWriteByte calls
-    if( smTransmitBuffer(handle) != true ) return recordStatus(handle,SM_ERR_BUS);
+    if(!smTransmitBuffer(handle)) return recordStatus(handle,SM_ERR_BUS);
 
     return recordStatus(handle,SM_OK);
 }
@@ -467,7 +467,7 @@ SM_STATUS smFastUpdateCycle( smbus handle, smuint8 nodeAddress, smuint16 write1,
     //send
     for(i=0;i<7;i++)
     {
-        if( smWriteByte(handle,cmd[i], NULL) != true )
+        if(!smWriteByte(handle,cmd[i], NULL))
             return recordStatus(handle,SM_ERR_BUS);
     }
     smTransmitBuffer(handle);//this sends the bytes entered with smWriteByte
@@ -479,7 +479,7 @@ SM_STATUS smFastUpdateCycle( smbus handle, smuint8 nodeAddress, smuint16 write1,
         smuint8 rx;
         success=smBDRead(smBus[handle].bdHandle,&rx);
         cmd[i]=rx;
-        if(success!=true)
+        if(!success)
         {
             smDebug(handle,SMDebugLow,"Not enough data received on smFastUpdateCycle");
             return recordStatus(handle,SM_ERR_BUS|SM_ERR_LENGTH);//no enough data received
@@ -608,7 +608,7 @@ SM_STATUS smTransmitReceiveCommandQueue( const smbus bushandle, const smaddr tar
     //check if bus handle is valid & opened
     if(smIsHandleOpen(bushandle)==false) return recordStatus(bushandle,SM_ERR_NODEVICE);
 
-    if(smBus[bushandle].transmitBufFull!=true) //dont send/receive commands if queue was overflowed by user error
+    if(!smBus[bushandle].transmitBufFull) //dont send/receive commands if queue was overflowed by user error
     {
         stat=smSendSMCMD(bushandle,cmdid,targetaddress, smBus[bushandle].cmd_send_queue_bytes, smBus[bushandle].recv_rsbuf ); //send commands to bus
         if(stat!=SM_OK) return recordStatus(bushandle,stat);
@@ -617,7 +617,7 @@ SM_STATUS smTransmitReceiveCommandQueue( const smbus bushandle, const smaddr tar
     smBus[bushandle].cmd_send_queue_bytes=0;
     smBus[bushandle].cmd_recv_queue_bytes=0;//counted upwards at every smGetQueued.. and compared to payload size
 
-    if(smBus[bushandle].transmitBufFull!=true && targetaddress!=0)//dont send/receive commands if queue was overflowed by user error, or if target is broadcast address (0) where no slave will respond and it's ok
+    if(!smBus[bushandle].transmitBufFull && targetaddress!=0)//dont send/receive commands if queue was overflowed by user error, or if target is broadcast address (0) where no slave will respond and it's ok
     {
         stat=smReceiveReturnPacket(bushandle);//blocking wait & receive return values from bus
         if(stat!=SM_OK) return recordStatus(bushandle,stat); //maybe timeouted
