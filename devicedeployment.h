@@ -94,7 +94,7 @@ LIB void smFirmwareUploadStatusToString(const FirmwareUploadStatus FWUploadStatu
  * @param fwDataLenght number of bytes in fwData
  * @return Enum FirmwareUploadStatus that indicates errors or Complete status. Typecast to integer to get progress value 0-100.
  */
-FirmwareUploadStatus smFirmwareUploadFromBuffer( const smbus smhandle, const int smaddress, smuint8 *fwData, const int fwDataLength );
+FirmwareUploadStatus smFirmwareUploadFromBuffer( const smbus smhandle, const int smaddress, uint8_t *fwData, const int fwDataLength );
 
 typedef enum
 {
@@ -143,7 +143,7 @@ LIB LoadConfigurationStatus smLoadConfiguration( const smbus smhandle, const int
  *
  * Requires DRC file version 111 or later to use CONFIGMODE_REQUIRE_SAME_FW.
  */
-LIB LoadConfigurationStatus smLoadConfigurationFromBuffer(const smbus smhandle, const int smaddress, const smuint8 *drcData, const int drcDataLength, unsigned int mode, int *skippedCount, int *errorCount );
+LIB LoadConfigurationStatus smLoadConfigurationFromBuffer(const smbus smhandle, const int smaddress, const uint8_t *drcData, const int drcDataLength, unsigned int mode, int *skippedCount, int *errorCount );
 
 
 /**
@@ -153,7 +153,7 @@ LIB LoadConfigurationStatus smLoadConfigurationFromBuffer(const smbus smhandle, 
  * @param UID result will be written to this pointer
  * @return true if success, false if failed (if communication otherwise works, then probably UID feature not present in this firmware version)
  */
-bool smGetDeviceFirmwareUniqueID( smbus smhandle, int deviceaddress, smuint32 *UID );
+bool smGetDeviceFirmwareUniqueID( smbus smhandle, int deviceaddress, uint32_t *UID );
 
 
 #ifdef __cplusplus

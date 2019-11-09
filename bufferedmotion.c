@@ -5,7 +5,7 @@
 #include "sm485.h"
 
 /** initialize buffered motion for one axis with address and samplerate (Hz) */
-SM_STATUS smBufferedInit(BufferedMotionAxis *newAxis, smbus handle, smaddr deviceAddress, smint32 sampleRate, smint16 readParamAddr, smuint8 readDataLength )
+SM_STATUS smBufferedInit(BufferedMotionAxis *newAxis, smbus handle, smaddr deviceAddress, int32_t sampleRate, int16_t readParamAddr, uint8_t readDataLength )
 {
     //value out of range
     if(sampleRate<1 || sampleRate>2500)
@@ -99,9 +99,9 @@ SM_STATUS smBufferedRunAndSyncClocks(BufferedMotionAxis *axis)
     return smGetBufferClock( axis->bushandle, axis->deviceAddress, &axis->driveClock );
 }
 
-SM_STATUS smBufferedGetFree(BufferedMotionAxis *axis, smint32 *numBytesFree )
+SM_STATUS smBufferedGetFree(BufferedMotionAxis *axis, int32_t *numBytesFree )
 {
-    smint32 freebytes;
+    int32_t freebytes;
 
     if(smRead1Parameter(axis->bushandle,axis->deviceAddress,SMP_BUFFER_FREE_BYTES,&freebytes)!=SM_OK)
     {
@@ -117,7 +117,7 @@ SM_STATUS smBufferedGetFree(BufferedMotionAxis *axis, smint32 *numBytesFree )
     return getCumulativeStatus(axis->bushandle);
 }
 
-smint32 smBufferedGetMaxFillSize(BufferedMotionAxis *axis, smint32 numBytesFree )
+int32_t smBufferedGetMaxFillSize(BufferedMotionAxis *axis, int32_t numBytesFree )
 {
     //even if we have lots of free space in buffer, we can only send up to SM485_MAX_PAYLOAD_BYTES bytes at once in one SM transmission
     if(numBytesFree>SM485_MAX_PAYLOAD_BYTES)
@@ -132,7 +132,7 @@ smint32 smBufferedGetMaxFillSize(BufferedMotionAxis *axis, smint32 numBytesFree 
         return (numBytesFree-2-3-2-3-2)/4;//if read data uninitialized, it takes extra n bytes to init on next fill, so reduce it here
 }
 
-smint32 smBufferedGetBytesConsumed(BufferedMotionAxis *axis, smint32 numFillPoints )
+int32_t smBufferedGetBytesConsumed(BufferedMotionAxis *axis, int32_t numFillPoints )
 {
     //calculate number of bytes that the number of fill points will consume from buffer
     if(axis->readParamInitialized)
@@ -142,9 +142,9 @@ smint32 smBufferedGetBytesConsumed(BufferedMotionAxis *axis, smint32 numFillPoin
 }
 
 
-SM_STATUS smBufferedFillAndReceive(BufferedMotionAxis *axis, smint32 numFillPoints, smint32 *fillPoints, smint32 *numReceivedPoints, smint32 *receivedPoints, smint32 *bytesFilled )
+SM_STATUS smBufferedFillAndReceive(BufferedMotionAxis *axis, int32_t numFillPoints, int32_t *fillPoints, int32_t *numReceivedPoints, int32_t *receivedPoints, int32_t *bytesFilled )
 {
-    smint32 bytesUsed=0;
+    int32_t bytesUsed=0;
 
     //if(freeBytesInDeviceBuffer>=cmdBufferSizeBytes)
 //        emit message(Warning,"Buffer underrun on axis "+QString::number(ax));
@@ -199,7 +199,7 @@ SM_STATUS smBufferedFillAndReceive(BufferedMotionAxis *axis, smint32 numFillPoin
     //read all available return data from stream (commands that have been axecuted in drive so far)
     //return data works like FIFO for all sent commands (each sent stream command will produce return data packet that we fetch here)
     {
-        smint32 bufferedReturnBytesReceived,readval;
+        int32_t bufferedReturnBytesReceived,readval;
         int n=0;
 
         //read return data buffer

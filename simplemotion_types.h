@@ -24,14 +24,14 @@ typedef uint8_t smuint8;
 typedef int32_t smint32;
 typedef int16_t smint16;
 typedef int8_t smint8;
-typedef smint32 smint;
+typedef int32_t smint;
 typedef bool smbool;
 
 // These are kept only for legacy compatibility; use <stdbool.h> for better versions
 #define smtrue 1
 #define smfalse 0
 typedef int SM_STATUS;
-typedef smuint8 smaddr;
+typedef uint8_t smaddr;
 
 // output parameter type of smGetBusDeviceDetails
 typedef struct
@@ -64,9 +64,9 @@ typedef enum _BusDeviceMiscOperationType {MiscOperationFlushTX,MiscOperationPurg
 
 //define communication interface device driver callback types
 typedef void* smBusdevicePointer;
-typedef smBusdevicePointer (*BusdeviceOpen)(const char *port_device_name, smint32 baudrate_bps, bool *success);
-typedef smint32 (*BusdeviceReadBuffer)(smBusdevicePointer busdevicePointer, unsigned char *buf, smint32 size);
-typedef smint32 (*BusdeviceWriteBuffer)(smBusdevicePointer busdevicePointer, unsigned char *buf, smint32 size);
+typedef smBusdevicePointer (*BusdeviceOpen)(const char *port_device_name, int32_t baudrate_bps, bool *success);
+typedef int32_t (*BusdeviceReadBuffer)(smBusdevicePointer busdevicePointer, unsigned char *buf, int32_t size);
+typedef int32_t (*BusdeviceWriteBuffer)(smBusdevicePointer busdevicePointer, unsigned char *buf, int32_t size);
 typedef bool (*BusdeviceMiscOperation)(smBusdevicePointer busdevicePointer, BusDeviceMiscOperationType operation );
 typedef void (*BusdeviceClose)(smBusdevicePointer busdevicePointer);
 
@@ -77,52 +77,52 @@ typedef void (*BusdeviceClose)(smBusdevicePointer busdevicePointer);
 typedef union
 {
 	//raw data
-    smuint8 U8[4];
-    smuint16 U16[2];
-    smuint32 U32;
+    uint8_t U8[4];
+    uint16_t U16[2];
+    uint32_t U32;
 
     //use this when SMP_FAST_UPDATE_CYCLE_FORMAT = FAST_UPDATE_CYCLE_FORMAT_DEFAULT
     struct
     {
-        smint32 SetPoint:16;
-        smuint32 _unused:16;
+        int32_t SetPoint:16;
+        uint32_t _unused:16;
     } DEFAULT_Write;
 
     //use this when SMP_FAST_UPDATE_CYCLE_FORMAT = FAST_UPDATE_CYCLE_FORMAT_ALT1
     struct
     {
-        smint32 Setpoint:28;
-        smuint32 CB1_Enable:1;
-        smuint32 CB1_ClearFaults:1;
-        smuint32 CB1_QuickStopSet:1;
-        smuint32 CB1_BypassTrajPlanner:1;
+        int32_t Setpoint:28;
+        uint32_t CB1_Enable:1;
+        uint32_t CB1_ClearFaults:1;
+        uint32_t CB1_QuickStopSet:1;
+        uint32_t CB1_BypassTrajPlanner:1;
     } ALT1_Write;
 
     //use this when SMP_FAST_UPDATE_CYCLE_FORMAT = FAST_UPDATE_CYCLE_FORMAT_ALT2
     struct
     {
-        smint32 SetpointMainTorque:15;
-        smint32 SetpointEffectTorque:15;
-        smuint32 CB1_Enable:1;
-        smuint32 CB1_Clearfaults:1;
+        int32_t SetpointMainTorque:15;
+        int32_t SetpointEffectTorque:15;
+        uint32_t CB1_Enable:1;
+        uint32_t CB1_Clearfaults:1;
     } ALT2_Write;
 
     //use this when SMP_FAST_UPDATE_CYCLE_FORMAT = FAST_UPDATE_CYCLE_FORMAT_ALT3
     struct
     {
-        smint32 SetpointMainTorque:15;
-        smint32 SetpointEffectTorque:15;
-        smuint32 CB1_Enable:1;
-        smuint32 CB1_Clearfaults:1;
+        int32_t SetpointMainTorque:15;
+        int32_t SetpointEffectTorque:15;
+        uint32_t CB1_Enable:1;
+        uint32_t CB1_Clearfaults:1;
     } ALT3_Write;
 
 	//use this when SMP_FAST_UPDATE_CYCLE_FORMAT = FAST_UPDATE_CYCLE_FORMAT_ALT4
 	struct
 	{
-		smint32 SetpointMainTorque:15;
-		smint32 SetpointEffectTorque:15;
-		smuint32 CB1_Enable:1;
-		smuint32 CB1_Clearfaults:1;
+		int32_t SetpointMainTorque:15;
+		int32_t SetpointEffectTorque:15;
+		uint32_t CB1_Enable:1;
+		uint32_t CB1_Clearfaults:1;
 	} ALT4_Write;
 } FastUpdateCycleWriteData;
 
@@ -130,41 +130,41 @@ typedef union
 typedef union
 {
 	//raw data
-    smuint8 U8[4];
-    smuint16 U16[2];
-    smuint32 U32;
+    uint8_t U8[4];
+    uint16_t U16[2];
+    uint32_t U32;
 
     //use this when SMP_FAST_UPDATE_CYCLE_FORMAT = FAST_UPDATE_CYCLE_FORMAT_DEFAULT
     struct
     {
-        smint32 PositionFeedback:16;
-        smuint32 StatusRegister:16;
+        int32_t PositionFeedback:16;
+        uint32_t StatusRegister:16;
     } DEFAULT_Read;
 
     //use this when SMP_FAST_UPDATE_CYCLE_FORMAT = FAST_UPDATE_CYCLE_FORMAT_ALT1 or FAST_UPDATE_CYCLE_FORMAT_ALT2
     struct
     {
-        smint32 PositionFeedback:30;
-        smuint32 Stat_FaultStop:1;
-        smuint32 Stat_ServoReady:1;
+        int32_t PositionFeedback:30;
+        uint32_t Stat_FaultStop:1;
+        uint32_t Stat_ServoReady:1;
     } ALT1_ALT2_Read;
 
     //use this when SMP_FAST_UPDATE_CYCLE_FORMAT = FAST_UPDATE_CYCLE_FORMAT_ALT1 or FAST_UPDATE_CYCLE_FORMAT_ALT3
     struct
     {
-        smint32 PositionFeedback:24;
-        smuint32 PositionFeedbackSamplingTimestamp:6; //encoder sampling cycle, 400 us periods
-        smuint32 Stat_FaultStop:1;
-        smuint32 Stat_ServoReady:1;
+        int32_t PositionFeedback:24;
+        uint32_t PositionFeedbackSamplingTimestamp:6; //encoder sampling cycle, 400 us periods
+        uint32_t Stat_FaultStop:1;
+        uint32_t Stat_ServoReady:1;
     } ALT3_Read;
 
 	//use this when SMP_FAST_UPDATE_CYCLE_FORMAT = FAST_UPDATE_CYCLE_FORMAT_ALT1 or FAST_UPDATE_CYCLE_FORMAT_ALT4
 	struct
 	{
-		smuint32 PositionFeedback:24; // scale is full 24 bits per motor revolution. is not hard absolute like it's in ALT3, and will reset to 0 in centering and with offset SMP.
-		smuint32 PositionFeedbackSamplingTimestamp:6; //encoder sampling cycle, 400 us periods
-		smuint32 Stat_FaultStop:1;
-		smuint32 Stat_ServoReady:1;
+		uint32_t PositionFeedback:24; // scale is full 24 bits per motor revolution. is not hard absolute like it's in ALT3, and will reset to 0 in centering and with offset SMP.
+		uint32_t PositionFeedbackSamplingTimestamp:6; //encoder sampling cycle, 400 us periods
+		uint32_t Stat_FaultStop:1;
+		uint32_t Stat_ServoReady:1;
 	} ALT4_Read;
 } FastUpdateCycleReadData;
 

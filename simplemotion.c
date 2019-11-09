@@ -12,7 +12,7 @@
 
 #include "simplemotion_private.h"
 
-SM_STATUS smParseReturnData( smbus handle, smuint8 data );
+SM_STATUS smParseReturnData( smbus handle, uint8_t data );
 
 #define HANDLE_STAT(stat) if(stat!=SM_OK)return (stat);
 #define HANDLE_STAT_AND_RET(stat,returndata) { if(returndata==RET_INVALID_CMD||returndata==RET_INVALID_PARAM) return SM_ERR_PARAMETER; if(stat!=SM_OK) return (stat); }
@@ -21,12 +21,12 @@ enum RecvState {WaitCmdId,WaitAddr,WaitPayloadSize,WaitPayload,WaitCrcHi,WaitCrc
 FILE *smDebugOut=NULL;
 
 //useful macros from extracting/storing multibyte values from/to byte buffer
-#define bufput32bit(buf, pos, val) *((smuint32*)(smuint8*)((buf)+(pos)))=((smuint32)(val))
-#define bufput16bit(buf, pos, val) *((smuint16*)(smuint8*)((buf)+(pos)))=((smuint16)(val))
-#define bufput8bit(buf, pos, val) *((smuint8*)(smuint8*)((buf)+(pos)))=((smuint8)(val))
-#define bufget32bit(buf, pos) (*((smuint32*)(smuint8*)((buf)+(pos))))
-#define bufget16bit(buf, pos) (*((smuint16*)(smuint8*)((buf)+(pos))))
-#define bufget8bit(buf, pos) (*((smuint8*)(smuint8*)((buf)+(pos))))
+#define bufput32bit(buf, pos, val) *((uint32_t*)(uint8_t*)((buf)+(pos)))=((uint32_t)(val))
+#define bufput16bit(buf, pos, val) *((uint16_t*)(uint8_t*)((buf)+(pos)))=((uint16_t)(val))
+#define bufput8bit(buf, pos, val) *((uint8_t*)(uint8_t*)((buf)+(pos)))=((uint8_t)(val))
+#define bufget32bit(buf, pos) (*((uint32_t*)(uint8_t*)((buf)+(pos))))
+#define bufget16bit(buf, pos) (*((uint16_t*)(uint8_t*)((buf)+(pos))))
+#define bufget8bit(buf, pos) (*((uint8_t*)(uint8_t*)((buf)+(pos))))
 
 
 bool smIsHandleOpen( const smbus handle );
@@ -40,19 +40,19 @@ typedef struct SM_BUS_
 
     enum RecvState recv_state,recv_state_next;
 
-    smint16 recv_payloadsize;
-    smint16 recv_storepos;
-    smuint8 recv_rsbuf[SM485_RSBUFSIZE];
-    smuint8 recv_cmdid;
-    smuint8 recv_addr;
-    smuint16 recv_crc;
-    smuint16 recv_read_crc_hi;
+    int16_t recv_payloadsize;
+    int16_t recv_storepos;
+    uint8_t recv_rsbuf[SM485_RSBUFSIZE];
+    uint8_t recv_cmdid;
+    uint8_t recv_addr;
+    uint16_t recv_crc;
+    uint16_t recv_read_crc_hi;
     bool receiveComplete;
     bool transmitBufFull;//set true if user uploads too much commands in one SM transaction. if true, on execute commands, nothing will be sent to bus to prevent unvanted clipped commands and buffer will be cleared
     char busDeviceName[SM_BUSDEVICENAME_LEN];
 
-    smint16 cmd_send_queue_bytes;//for queued device commands
-    smint16 cmd_recv_queue_bytes;//recv_queue_bytes counted upwards at every smGetQueued.. and compared to payload size
+    int16_t cmd_send_queue_bytes;//for queued device commands
+    int16_t cmd_recv_queue_bytes;//recv_queue_bytes counted upwards at every smGetQueued.. and compared to payload size
 
 
     SM_STATUS cumulativeSmStatus;
@@ -60,7 +60,7 @@ typedef struct SM_BUS_
 
 
 SM_BUS smBus[SM_MAX_BUSES];
-smuint16 readTimeoutMs=SM_READ_TIMEOUT;
+uint16_t readTimeoutMs=SM_READ_TIMEOUT;
 
 //init on first smOpenBus call
 bool smInitialized=false;
@@ -145,7 +145,7 @@ void smResetSM485variables(smbus handle)
     smBus[handle].cmd_recv_queue_bytes=0;
 }
 
-smuint16 calcCRC16(smuint8 data, smuint16 crc)
+uint16_t calcCRC16(uint8_t data, uint16_t crc)
 {
     unsigned int i; /* will index into CRC lookup */
 
@@ -155,10 +155,10 @@ smuint16 calcCRC16(smuint8 data, smuint16 crc)
     return crc;
 }
 
-smuint16 calcCRC16Buf(const char *buffer, smuint16 buffer_length)
+uint16_t calcCRC16Buf(const char *buffer, uint16_t buffer_length)
 {
-    smuint8 crc_hi = 0xFF; /* high CRC byte initialized */
-    smuint8 crc_lo = 0xFF; /* low CRC byte initialized */
+    uint8_t crc_hi = 0xFF; /* high CRC byte initialized */
+    uint8_t crc_lo = 0xFF; /* low CRC byte initialized */
     unsigned int i; /* will index into CRC lookup */
 
     /* pass through message buffer */
@@ -171,10 +171,10 @@ smuint16 calcCRC16Buf(const char *buffer, smuint16 buffer_length)
     return (crc_hi << 8 | crc_lo);
 }
 
-smuint8 calcCRC8Buf( smuint8 *buf, int len, int crcinit )
+uint8_t calcCRC8Buf( uint8_t *buf, int len, int crcinit )
 {
     int i;
-    smuint8 crc=crcinit;
+    uint8_t crc=crcinit;
 
     for(i=0;i<len;i++)
     {
@@ -184,7 +184,7 @@ smuint8 calcCRC8Buf( smuint8 *buf, int len, int crcinit )
     return crc;
 }
 
-SM_STATUS smSetTimeout( smuint16 millsecs )
+SM_STATUS smSetTimeout( uint16_t millsecs )
 {
     if(millsecs<=5000 && millsecs>=1)
     {
@@ -194,7 +194,7 @@ SM_STATUS smSetTimeout( smuint16 millsecs )
     return SM_ERR_PARAMETER;
 }
 
-smuint32 smGetVersion()
+uint32_t smGetVersion()
 {
     return SM_VERSION;
 }
@@ -345,7 +345,7 @@ LIB SM_STATUS smFlushTX( const smbus bushandle )
 }
 
 
-char *cmdidToStr(smuint8 cmdid )
+char *cmdidToStr(uint8_t cmdid )
 {
     char *str;
     switch(cmdid)
@@ -372,7 +372,7 @@ char *cmdidToStr(smuint8 cmdid )
 
 //write one byte to tx buffer
 //returns true on success
-bool smWriteByte( const smbus handle, const smuint8 byte, smuint16 *crc )
+bool smWriteByte( const smbus handle, const uint8_t byte, uint16_t *crc )
 {
     //check if bus handle is valid & opened
     if(!smIsHandleOpen(handle)) return SM_ERR_NODEVICE;
@@ -395,10 +395,10 @@ bool smTransmitBuffer( const smbus handle )
     return success;
 }
 
-SM_STATUS smSendSMCMD( smbus handle, smuint8 cmdid, smuint8 addr, smuint8 datalen, smuint8 *cmddata )
+SM_STATUS smSendSMCMD( smbus handle, uint8_t cmdid, uint8_t addr, uint8_t datalen, uint8_t *cmddata )
 {
     int i;
-    smuint16 sendcrc;
+    uint16_t sendcrc;
 
     //check if bus handle is valid & opened
     if(!smIsHandleOpen(handle)) return SM_ERR_NODEVICE;
@@ -439,13 +439,13 @@ SM_STATUS smSendSMCMD( smbus handle, smuint8 cmdid, smuint8 addr, smuint8 datale
     return recordStatus(handle,SM_OK);
 }
 
-LIB SM_STATUS smFastUpdateCycleWithStructs( smbus handle, smuint8 nodeAddress, FastUpdateCycleWriteData write, FastUpdateCycleReadData *read)
+LIB SM_STATUS smFastUpdateCycleWithStructs( smbus handle, uint8_t nodeAddress, FastUpdateCycleWriteData write, FastUpdateCycleReadData *read)
 {
     return smFastUpdateCycle( handle, nodeAddress, write.U16[0], write.U16[1], &read->U16[0], &read->U16[1]);
 }
 
 
-SM_STATUS smFastUpdateCycle( smbus handle, smuint8 nodeAddress, smuint16 write1, smuint16 write2, smuint16 *read1, smuint16 *read2)
+SM_STATUS smFastUpdateCycle( smbus handle, uint8_t nodeAddress, uint16_t write1, uint16_t write2, uint16_t *read1, uint16_t *read2)
 {
     //check if bus handle is valid & opened
     if(!smIsHandleOpen(handle)) return SM_ERR_NODEVICE;
@@ -456,7 +456,7 @@ SM_STATUS smFastUpdateCycle( smbus handle, smuint8 nodeAddress, smuint16 write1,
 
 
     //form the tx packet
-    smuint8 cmd[8];
+    uint8_t cmd[8];
     int i;
     cmd[0]=SMCMD_FAST_UPDATE_CYCLE;
     cmd[1]=nodeAddress;
@@ -476,7 +476,7 @@ SM_STATUS smFastUpdateCycle( smbus handle, smuint8 nodeAddress, smuint16 write1,
     for(i=0;i<6;i++)
     {
         bool success;
-        smuint8 rx;
+        uint8_t rx;
         success=smBDRead(smBus[handle].bdHandle,&rx);
         cmd[i]=rx;
         if(!success)
@@ -487,7 +487,7 @@ SM_STATUS smFastUpdateCycle( smbus handle, smuint8 nodeAddress, smuint16 write1,
     }
 
     //parse
-    smuint8 localCRC=calcCRC8Buf(cmd,5,0x52);
+    uint8_t localCRC=calcCRC8Buf(cmd,5,0x52);
     if( cmd[5]!=localCRC|| cmd[0]!=SMCMD_FAST_UPDATE_CYCLE_RET )
     {
         smDebug(handle,SMDebugLow,"Corrupt data received on smFastUpdateCycle. RX CRC %02x (expected %02x), RX ID %02x, (expected %02x)\n",cmd[5],localCRC,cmd[0],SMCMD_FAST_UPDATE_CYCLE_RET);
@@ -519,7 +519,7 @@ SM_STATUS smReceiveErrorHandler( smbus handle, bool flushrx )
     {
         bool success;
         do{
-            smuint8 rx;
+            uint8_t rx;
             success=smBDRead(smBus[handle].bdHandle,&rx);
         }while(success);
     }
@@ -529,7 +529,7 @@ SM_STATUS smReceiveErrorHandler( smbus handle, bool flushrx )
 }
 
 
-SM_STATUS smAppendSMCommandToQueue( smbus handle, int smpCmdType,smint32 paramvalue  )
+SM_STATUS smAppendSMCommandToQueue( smbus handle, int smpCmdType,int32_t paramvalue  )
 {
     int cmdlength;
 
@@ -601,7 +601,7 @@ SMPayloadCommandRet32 smConvertToPayloadRet32_16(SMPayloadCommandRet16 in)
 }
 
 //for library internal use only
-SM_STATUS smTransmitReceiveCommandQueue( const smbus bushandle, const smaddr targetaddress, smuint8 cmdid )
+SM_STATUS smTransmitReceiveCommandQueue( const smbus bushandle, const smaddr targetaddress, uint8_t cmdid )
 {
     SM_STATUS stat;
 
@@ -648,19 +648,19 @@ SM_STATUS smUploadCommandQueueToDeviceBuffer( const smbus bushandle, const smadd
 }
 
 //return number of how many bytes waiting to be read with smGetQueuedSMCommandReturnValue
-SM_STATUS smBytesReceived( const smbus bushandle, smint32 *bytesinbuffer )
+SM_STATUS smBytesReceived( const smbus bushandle, int32_t *bytesinbuffer )
 {
     if(!smIsHandleOpen(bushandle)) return recordStatus(bushandle,SM_ERR_NODEVICE);
 
-    smint32 bytes=smBus[bushandle].recv_payloadsize - smBus[bushandle].cmd_recv_queue_bytes;//how many bytes waiting to be read with smGetQueuedSMCommandReturnValue
+    int32_t bytes=smBus[bushandle].recv_payloadsize - smBus[bushandle].cmd_recv_queue_bytes;//how many bytes waiting to be read with smGetQueuedSMCommandReturnValue
     *bytesinbuffer=bytes;
 
     return recordStatus(bushandle,SM_OK);
 }
 
-SM_STATUS smGetQueuedSMCommandReturnValue(  const smbus bushandle, smint32 *retValue )
+SM_STATUS smGetQueuedSMCommandReturnValue(  const smbus bushandle, int32_t *retValue )
 {
-    smuint8 rxbyte, rettype;
+    uint8_t rxbyte, rettype;
 
     //check if bus handle is valid & opened
     if(!smIsHandleOpen(bushandle)) return SM_ERR_NODEVICE;
@@ -688,7 +688,7 @@ SM_STATUS smGetQueuedSMCommandReturnValue(  const smbus bushandle, smint32 *retV
     {
         //extract return packet and convert to 32 bit and return
         SMPayloadCommandRet16 read;
-        smuint8 *readBuf=(smuint8*)&read;
+        uint8_t *readBuf=(uint8_t*)&read;
         readBuf[1]=rxbyte;
         readBuf[0]=bufget8bit(smBus[bushandle].recv_rsbuf, smBus[bushandle].cmd_recv_queue_bytes++);
         smDebug(bushandle,SMDebugTrace,"  RET16B: %d\n",read.retData);
@@ -700,7 +700,7 @@ SM_STATUS smGetQueuedSMCommandReturnValue(  const smbus bushandle, smint32 *retV
     {
         //extract return packet and convert to 32 bit and return
         SMPayloadCommandRet24 read;
-        smuint8 *readBuf=(smuint8*)&read;
+        uint8_t *readBuf=(uint8_t*)&read;
         readBuf[2]=rxbyte;
         readBuf[1]=bufget8bit(smBus[bushandle].recv_rsbuf, smBus[bushandle].cmd_recv_queue_bytes++);
         readBuf[0]=bufget8bit(smBus[bushandle].recv_rsbuf, smBus[bushandle].cmd_recv_queue_bytes++);
@@ -713,7 +713,7 @@ SM_STATUS smGetQueuedSMCommandReturnValue(  const smbus bushandle, smint32 *retV
     {
         //extract return packet and convert to 32 bit and return
         SMPayloadCommandRet32 read;
-        smuint8 *readBuf=(smuint8*)&read;
+        uint8_t *readBuf=(uint8_t*)&read;
         readBuf[3]=rxbyte;
         readBuf[2]=bufget8bit(smBus[bushandle].recv_rsbuf, smBus[bushandle].cmd_recv_queue_bytes++);
         readBuf[1]=bufget8bit(smBus[bushandle].recv_rsbuf, smBus[bushandle].cmd_recv_queue_bytes++);
@@ -727,7 +727,7 @@ SM_STATUS smGetQueuedSMCommandReturnValue(  const smbus bushandle, smint32 *retV
     {
         //extract return packet and convert to 32 bit and return
         SMPayloadCommandRet8 read;
-        smuint8 *readBuf=(smuint8*)&read;
+        uint8_t *readBuf=(uint8_t*)&read;
         readBuf[0]=rxbyte;
         smDebug(bushandle,SMDebugTrace,"  RET_OTHER: %d\n",read.retData);
 
@@ -747,7 +747,7 @@ SM_STATUS smReceiveReturnPacket( smbus bushandle )
     smDebug(bushandle, SMDebugHigh, "  Reading reply packet\n");
     do
     {
-        smuint8 ret;
+        uint8_t ret;
         SM_STATUS stat;
 
         bool succ=smBDRead(smBus[bushandle].bdHandle,&ret);
@@ -783,7 +783,7 @@ LIB void smSetDebugOutput( smVerbosityLevel level, FILE *stream )
 
 //short returndata16=0, payload=0;
 //can be called at any frequency
-SM_STATUS smParseReturnData( smbus handle, smuint8 data )
+SM_STATUS smParseReturnData( smbus handle, uint8_t data )
 {
     //check if bus handle is valid & opened
     if(!smIsHandleOpen(handle)) return SM_ERR_NODEVICE;
@@ -883,7 +883,7 @@ SM_STATUS smParseReturnData( smbus handle, smuint8 data )
 
 
 //reply consumes 16 bytes in payload buf, so max calls per cycle is 7
-SM_STATUS smAppendGetParamCommandToQueue( smbus handle, smint16 paramAddress )
+SM_STATUS smAppendGetParamCommandToQueue( smbus handle, int16_t paramAddress )
 {
     SM_STATUS stat=SM_NONE;
 
@@ -900,9 +900,9 @@ SM_STATUS smAppendGetParamCommandToQueue( smbus handle, smint16 paramAddress )
     return recordStatus(handle,stat);
 }
 
-SM_STATUS smGetQueuedGetParamReturnValue(  const smbus bushandle, smint32 *retValue )
+SM_STATUS smGetQueuedGetParamReturnValue(  const smbus bushandle, int32_t *retValue )
 {
-    smint32 retVal=0;
+    int32_t retVal=0;
     SM_STATUS stat=SM_NONE;
 
     //check if bus handle is valid & opened
@@ -918,7 +918,7 @@ SM_STATUS smGetQueuedGetParamReturnValue(  const smbus bushandle, smint32 *retVa
 }
 
 //consumes 6 bytes in payload buf, so max calls per cycle is 20
-SM_STATUS smAppendSetParamCommandToQueue( smbus handle, smint16 paramAddress, smint32 paramValue )
+SM_STATUS smAppendSetParamCommandToQueue( smbus handle, int16_t paramAddress, int32_t paramValue )
 {
     SM_STATUS stat=SM_NONE;
 
@@ -931,9 +931,9 @@ SM_STATUS smAppendSetParamCommandToQueue( smbus handle, smint16 paramAddress, sm
 }
 
 
-SM_STATUS smGetQueuedSetParamReturnValue(  const smbus bushandle, smint32 *retValue )
+SM_STATUS smGetQueuedSetParamReturnValue(  const smbus bushandle, int32_t *retValue )
 {
-    smint32 retVal=0;
+    int32_t retVal=0;
     SM_STATUS stat=SM_NONE;
 
     //check if bus handle is valid & opened
@@ -948,7 +948,7 @@ SM_STATUS smGetQueuedSetParamReturnValue(  const smbus bushandle, smint32 *retVa
 }
 
 
-SM_STATUS smGetBufferClock( const smbus handle, const smaddr targetaddr, smuint16 *clock )
+SM_STATUS smGetBufferClock( const smbus handle, const smaddr targetaddr, uint16_t *clock )
 {
     SM_STATUS stat;
 
@@ -964,7 +964,7 @@ SM_STATUS smGetBufferClock( const smbus handle, const smaddr targetaddr, smuint1
     if(stat!=SM_OK) return recordStatus(handle,stat); //maybe timeouted
 
     if(clock!=NULL)
-	memcpy(clock,smBus[handle].recv_rsbuf,sizeof(smuint16));
+	memcpy(clock,smBus[handle].recv_rsbuf,sizeof(uint16_t));
 
     smBus[handle].recv_storepos=0;
 
@@ -973,7 +973,7 @@ SM_STATUS smGetBufferClock( const smbus handle, const smaddr targetaddr, smuint1
 
 /** Simple read & write of parameters with internal queueing, so only one call needed.
 Use these for non-time critical operations. */
-SM_STATUS smRead1Parameter( const smbus handle, const smaddr nodeAddress, const smint16 paramId1, smint32 *paramVal1 )
+SM_STATUS smRead1Parameter( const smbus handle, const smaddr nodeAddress, const int16_t paramId1, int32_t *paramVal1 )
 {
     SM_STATUS smStat=0;
 
@@ -991,7 +991,7 @@ SM_STATUS smRead1Parameter( const smbus handle, const smaddr nodeAddress, const 
     return recordStatus(handle,smStat);
 }
 
-SM_STATUS smRead2Parameters( const smbus handle, const smaddr nodeAddress, const smint16 paramId1, smint32 *paramVal1,const smint16 paramId2, smint32 *paramVal2 )
+SM_STATUS smRead2Parameters( const smbus handle, const smaddr nodeAddress, const int16_t paramId1, int32_t *paramVal1,const int16_t paramId2, int32_t *paramVal2 )
 {
     SM_STATUS smStat=0;
 
@@ -1011,7 +1011,7 @@ SM_STATUS smRead2Parameters( const smbus handle, const smaddr nodeAddress, const
     return recordStatus(handle,smStat);
 }
 
-SM_STATUS smRead3Parameters( const smbus handle, const smaddr nodeAddress, const smint16 paramId1, smint32 *paramVal1,const smint16 paramId2, smint32 *paramVal2 ,const smint16 paramId3, smint32 *paramVal3 )
+SM_STATUS smRead3Parameters( const smbus handle, const smaddr nodeAddress, const int16_t paramId1, int32_t *paramVal1,const int16_t paramId2, int32_t *paramVal2 ,const int16_t paramId3, int32_t *paramVal3 )
 {
     SM_STATUS smStat=0;
 
@@ -1033,9 +1033,9 @@ SM_STATUS smRead3Parameters( const smbus handle, const smaddr nodeAddress, const
     return recordStatus(handle,smStat);
 }
 
-SM_STATUS smSetParameter( const smbus handle, const smaddr nodeAddress, const smint16 paramId, smint32 paramVal )
+SM_STATUS smSetParameter( const smbus handle, const smaddr nodeAddress, const int16_t paramId, int32_t paramVal )
 {
-    smint32 nul;
+    int32_t nul;
     SM_STATUS smStat=0;
 
     smDebug(handle,SMDebugMid,"smSetParameter: writing parameter [%hu]=%d into SM address %d.\n",(unsigned short)paramId,(int)paramVal,(int)nodeAddress);
@@ -1089,14 +1089,14 @@ SM_STATUS resetCumulativeStatus( const smbus handle )
 
 
 /** Return number of bus devices found. details of each device may be consequently fetched by smGetBusDeviceDetails() */
-smint smGetNumberOfDetectedBuses()
+int smGetNumberOfDetectedBuses()
 {
     return smBDGetNumberOfDetectedBuses();
 }
 
 /** Fetch information of detected bus nodes at certain index. Example:
 
-    smint num=smGetNumberOfDetectedBuses();
+    int num=smGetNumberOfDetectedBuses();
     for(int i=0;i<num;i++)
     {
         SM_BUS_DEVICE_INFO info;
@@ -1111,7 +1111,7 @@ smint smGetNumberOfDetectedBuses()
         }
     }
 */
-LIB SM_STATUS smGetBusDeviceDetails( smint index, SM_BUS_DEVICE_INFO *info )
+LIB SM_STATUS smGetBusDeviceDetails( int index, SM_BUS_DEVICE_INFO *info )
 {
     bool ok=smBDGetBusDeviceDetails(index,info);
 
@@ -1280,12 +1280,12 @@ LIB int smDescribeStatus(char* str, const size_t size, int32_t status)
 
 
 LIB SM_STATUS smCheckDeviceCapabilities(const smbus handle, const int nodeAddress,
-                                         const smint32 capabilitiesParameterNr,
-                                         const smint32 requiredCapabilityFlags,
+                                         const int32_t capabilitiesParameterNr,
+                                         const int32_t requiredCapabilityFlags,
                                          bool *resultHasAllCapabilities )
 {
     SM_STATUS smStat=0;
-    smint32 SMProtocolVersion;
+    int32_t SMProtocolVersion;
     *resultHasAllCapabilities=false;//set true later
 
     smStat|=smRead1Parameter(handle,nodeAddress,SMP_SM_VERSION,&SMProtocolVersion);
@@ -1296,7 +1296,7 @@ LIB SM_STATUS smCheckDeviceCapabilities(const smbus handle, const int nodeAddres
         //all devices with v28+ has two frist capabilities flags
         if(capabilitiesParameterNr==SMP_DEVICE_CAPABILITIES1 || capabilitiesParameterNr==SMP_DEVICE_CAPABILITIES2)
         {
-            smint32 capabilities;
+            int32_t capabilities;
             smStat|=smRead1Parameter(handle,nodeAddress,capabilitiesParameterNr,&capabilities);
             if(smStat!=SM_OK) return smStat; //error in above call
 
@@ -1307,21 +1307,21 @@ LIB SM_STATUS smCheckDeviceCapabilities(const smbus handle, const int nodeAddres
         }
         else //for rest (future capabilities parameters), test if capabilitiesParameterNr is readable
         {
-            smint32 capabilities1;
+            int32_t capabilities1;
             smStat|=smRead1Parameter(handle,nodeAddress,SMP_DEVICE_CAPABILITIES1,&capabilities1);
             if(smStat!=SM_OK) return smStat; //error in above call
 
             //check if device supports testing whether paramter is available
             if(capabilities1&DEVICE_CAPABILITY1_SUPPORTS_SMP_PARAMETER_PROPERTIES_MASK)
             {
-                smint32 paramProperties;
+                int32_t paramProperties;
                 //test if parameter is readable
                 smStat|=smRead1Parameter(handle,nodeAddress,capabilitiesParameterNr|SMP_PROPERTIES_MASK,&paramProperties);
                 if(smStat!=SM_OK) return smStat; //error in above call
 
                 if(paramProperties&SMP_PROPERTY_PARAM_IS_READABLE) //requested capabilitiesParameterNr is available
                 {
-                    smint32 capabilities;
+                    int32_t capabilities;
                     smStat|=smRead1Parameter(handle,nodeAddress,capabilitiesParameterNr,&capabilities);
                     if(smStat!=SM_OK) return smStat; //error in above call
 

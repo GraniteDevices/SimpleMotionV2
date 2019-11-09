@@ -49,10 +49,10 @@
  * then check that connected device complies with the test (pseudo code):
  *
  *
-	smuint32 NEWEST_SUPPORTED_SMV2_VERSION=M;
-	smuint32 OLDEST_SUPPORTED_SMV2_VERSION=N;
-	smuint32 smv2version=getParam(SMP_SM_VERSION);
-	smuint32 smv2compatversion=getParam(SMP_SM_COMPAT_VERSION);
+	uint32_t NEWEST_SUPPORTED_SMV2_VERSION=M;
+	uint32_t OLDEST_SUPPORTED_SMV2_VERSION=N;
+	uint32_t smv2version=getParam(SMP_SM_VERSION);
+	uint32_t smv2compatversion=getParam(SMP_SM_COMPAT_VERSION);
 
 	if(smv2version>NEWEST_SUPPORTED_SMV2_VERSION && smv2compatversion>NEWEST_SUPPORTED_SMV2_VERSION)
 	{
@@ -375,7 +375,7 @@
 /* SMP_BINARY_DATA_MODE_ARGS is a helper macro to generate value for SMP_BINARY_DATA_MODE. Example:
  * smSetParameter( .., .., SMP_BINARY_DATA_MODE, SMP_BINARY_DATA_MODE_ARGS( BINARY_DATA_MODE_BLOCK_CALIBRATION, BINARY_DATA_MODE_FLAG_ERASE, 500 )
 */
-#define SMP_BINARY_DATA_MODE_ARGS(block,flags,offset) ((smuint32(block)&0xff) | (smuint32(flags)&0xff00) | ((smuint32(offset)<<16)&0xffff0000))
+#define SMP_BINARY_DATA_MODE_ARGS(block,flags,offset) ((uint32_t(block)&0xff) | (uint32_t(flags)&0xff00) | ((uint32_t(offset)<<16)&0xffff0000))
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // SimpleMotion device specific parameter definitions start below. Note: all parameters are not available in all device types/versions. To test which are available,

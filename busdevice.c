@@ -25,8 +25,8 @@ typedef struct _SMBusDevice
     //pointer used by bus device drivers
     smBusdevicePointer busDevicePointer;
 
-    smuint8 txBuffer[TANSMIT_BUFFER_LENGTH];
-    smint32 txBufferUsed;//how many bytes in buffer currently
+    uint8_t txBuffer[TANSMIT_BUFFER_LENGTH];
+    int32_t txBufferUsed;//how many bytes in buffer currently
 
     BusdeviceOpen busOpenCallback;
     BusdeviceReadBuffer busReadCallback;
@@ -149,7 +149,7 @@ bool smBDClose( const smbusdevicehandle handle )
 
 //write one byte to buffer and send later with smBDTransmit()
 //returns true on success
-bool smBDWrite(const smbusdevicehandle handle, const smuint8 byte )
+bool smBDWrite(const smbusdevicehandle handle, const uint8_t byte )
 {
 	//check if handle valid & open
 	if(!smIsBDHandleOpen(handle)) return false;
@@ -186,7 +186,7 @@ bool smBDTransmit(const smbusdevicehandle handle)
 
 //read one byte from bus. if byte not immediately available, block return up to SM_READ_TIMEOUT millisecs to wait data
 //returns true if byte read sucessfully
-bool smBDRead( const smbusdevicehandle handle, smuint8 *byte )
+bool smBDRead( const smbusdevicehandle handle, uint8_t *byte )
 {
 	//check if handle valid & open
 	if(!smIsBDHandleOpen(handle)) return false;
@@ -220,7 +220,7 @@ bool smBDMiscOperation(const smbusdevicehandle handle , BusDeviceMiscOperationTy
 //BUS DEVICE INFO FETCH FUNCTIONS:
 
 //Return number of bus devices found. details of each device may be consequently fetched by smGetBusDeviceDetails()
-smint smBDGetNumberOfDetectedBuses()
+int smBDGetNumberOfDetectedBuses()
 {
     //only supports FTDI D2XX at the moment
 #ifdef FTDI_D2XX_SUPPORT
@@ -229,7 +229,7 @@ smint smBDGetNumberOfDetectedBuses()
     return 0;
 }
 
-bool smBDGetBusDeviceDetails( smint index, SM_BUS_DEVICE_INFO *info )
+bool smBDGetBusDeviceDetails( int index, SM_BUS_DEVICE_INFO *info )
 {
     //only supports FTDI D2XX at the moment
 #ifdef FTDI_D2XX_SUPPORT

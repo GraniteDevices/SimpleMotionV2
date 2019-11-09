@@ -39,7 +39,7 @@
 
 int globalErrorDetailCode=0;
 
-bool loadBinaryFile( const char *filename, smuint8 **data, int *numbytes, bool addNullTermination );
+bool loadBinaryFile( const char *filename, uint8_t **data, int *numbytes, bool addNullTermination );
 
 int smGetDeploymentToolErrroDetail()
 {
@@ -48,7 +48,7 @@ int smGetDeploymentToolErrroDetail()
 
 //return -1 if EOF
 //readPosition should be initialized to 0 and not touched by caller after that. this func will increment it after each call.
-unsigned int readFileLine( const smuint8 *data, const int dataLen, int *readPosition, int charlimit, char *output, bool *eof)
+unsigned int readFileLine( const uint8_t *data, const int dataLen, int *readPosition, int charlimit, char *output, bool *eof)
 {
     int len=0;
     char c;
@@ -91,7 +91,7 @@ typedef struct
 #define maxLineLen 100
 
 //returns byte offset where str starts, or -1 if not found before data ends
-int findSubstring( const smuint8 *data, const int dataLen, const char *str )
+int findSubstring( const uint8_t *data, const int dataLen, const char *str )
 {
 	int strLen=strlen(str);
 	int i;
@@ -226,7 +226,7 @@ int stringToInt( const char *str, int *output )
     return 1;
 }
 
-bool parseDRCIntKey( const smuint8 *drcData, const int drcDataLen, const char *key, int *outValue )
+bool parseDRCIntKey( const uint8_t *drcData, const int drcDataLen, const char *key, int *outValue )
 {
     int pos=findSubstring(drcData,drcDataLen,key);
     if(pos<0)
@@ -239,7 +239,7 @@ bool parseDRCIntKey( const smuint8 *drcData, const int drcDataLen, const char *k
 }
 
 //read DRC file version nr and nubmer of params it contains. if succes, returns true. if invalid file, return false
-bool parseDRCInfo( const smuint8 *drcData, const int drcDataLen, int *DRCVersion, int *numParams, int *DRCFileFeatureBits, int *DRCEssentialFileFeatureBits )
+bool parseDRCInfo( const uint8_t *drcData, const int drcDataLen, int *DRCVersion, int *numParams, int *DRCFileFeatureBits, int *DRCEssentialFileFeatureBits )
 {
     const char *DRCFileFeatureBitsKey="FileFeatureBits=";
     const char *DRCEssentialFileFeatureBitsKey="FileFeatureBitsEssential=";
@@ -270,7 +270,7 @@ bool parseDRCInfo( const smuint8 *drcData, const int drcDataLen, int *DRCVersion
     return true;
 }
 
-bool parseParameter( const smuint8 *drcData, const int drcDataLen, int idx, Parameter *param )
+bool parseParameter( const uint8_t *drcData, const int drcDataLen, int idx, Parameter *param )
 {
     char line[maxLineLen];
     char scanline[maxLineLen];
@@ -356,7 +356,7 @@ bool parseParameter( const smuint8 *drcData, const int drcDataLen, int idx, Para
 LoadConfigurationStatus smLoadConfiguration(const smbus smhandle, const int smaddress, const char *filename, unsigned int mode , int *skippedCount, int *errorCount)
 {
     LoadConfigurationStatus ret;
-    smuint8 *drcData=NULL;
+    uint8_t *drcData=NULL;
     int drcDataLength;
 
     if(!loadBinaryFile(filename,&drcData,&drcDataLength,true))
@@ -379,16 +379,16 @@ LoadConfigurationStatus smLoadConfiguration(const smbus smhandle, const int smad
  *
  * Requires DRC file version 111 or later to use CONFIGMODE_REQUIRE_SAME_FW.
  */
-LIB LoadConfigurationStatus smLoadConfigurationFromBuffer( const smbus smhandle, const int smaddress, const smuint8 *drcData, const int drcDataLength, unsigned int mode, int *skippedCount, int *errorCount )
+LIB LoadConfigurationStatus smLoadConfigurationFromBuffer( const smbus smhandle, const int smaddress, const uint8_t *drcData, const int drcDataLength, unsigned int mode, int *skippedCount, int *errorCount )
 {
     smDebug(smhandle,SMDebugLow,"smLoadConfigurationFromBuffer for SM address %d called\n",smaddress);
 
     //test connection
-    smint32 devicetype;
+    int32_t devicetype;
     SM_STATUS stat;
     int ignoredCount=0;
     int setErrors=0;
-    smint32 CB1Value;
+    int32_t CB1Value;
     int changed=0;
     int numParams, DRCVersion;
     int DRCFileFeatureBits, DRCEssentialFileFeatureBits;
@@ -443,7 +443,7 @@ LIB LoadConfigurationStatus smLoadConfigurationFromBuffer( const smbus smhandle,
 
         if(!param.readOnly)
         {
-            smint32 currentValue;
+            int32_t currentValue;
 
             int configFileValue=round(param.value*param.scale-param.offset);
 
@@ -467,9 +467,9 @@ LIB LoadConfigurationStatus smLoadConfigurationFromBuffer( const smbus smhandle,
                     }
 
                     resetCumulativeStatus( smhandle );
-                    smint32 dummy;
-                    smint32 cmdSetAddressStatus;
-                    smint32 cmdSetValueStatus;
+                    int32_t dummy;
+                    int32_t cmdSetAddressStatus;
+                    int32_t cmdSetValueStatus;
 
                     smDebug(smhandle,SMDebugMid,"Writing parameter addr %d value %d\n",param.address,configFileValue);
                     //use low level SM commands so we can get execution status of each subpacet:
@@ -535,7 +535,7 @@ LIB LoadConfigurationStatus smLoadConfigurationFromBuffer( const smbus smhandle,
         smSetParameter( smhandle, smaddress, SMP_CONTROL_BITS1, CB1Value );//restore controbits1 (enable if it was enabled before)
     }
 
-    smint32 statusbits;
+    int32_t statusbits;
     smRead1Parameter( smhandle, smaddress, SMP_STATUS, &statusbits );
 
     //restart drive if necessary or if forced
@@ -567,17 +567,17 @@ LIB LoadConfigurationStatus smLoadConfigurationFromBuffer( const smbus smhandle,
  * @param UID result will be written to this pointer
  * @return true if success, false if failed (if communication otherwise works, then probably UID feature not present in this firmware version). Note: some devices' DFU/bootloader mode don't support this command but main firmware do.
  */
-bool smGetDeviceFirmwareUniqueID( smbus smhandle, int deviceaddress, smuint32 *UID )
+bool smGetDeviceFirmwareUniqueID( smbus smhandle, int deviceaddress, uint32_t *UID )
 {
     smDebug(smhandle,SMDebugMid,"smGetDeviceFirmwareUniqueID called\n");
 
-    smint32 fwBinaryChecksum, commandStatus;
+    int32_t fwBinaryChecksum, commandStatus;
     resetCumulativeStatus(smhandle);
     smSetParameter( smhandle, deviceaddress, SMP_CUMULATIVE_STATUS, 0);//reset any SM access error that might SM target might have active so we can test whether following command succeeds
     smSetParameter( smhandle, deviceaddress, SMP_SYSTEM_CONTROL, SMP_SYSTEM_CONTROL_GET_SPECIAL_DATA);
     smRead2Parameters( smhandle, deviceaddress, SMP_DEBUGPARAM1, &fwBinaryChecksum, SMP_CUMULATIVE_STATUS, &commandStatus );
 
-    *UID=(smuint32) fwBinaryChecksum;
+    *UID=(uint32_t) fwBinaryChecksum;
 
     if(getCumulativeStatus(smhandle)==SM_OK && commandStatus==SMP_CMD_STATUS_ACK)//if commandStatus==SMP_CMD_STATUS_ACK fails, then FW or curren mode of device doesn't support reading this
         return true;
@@ -593,26 +593,26 @@ bool smGetDeviceFirmwareUniqueID( smbus smhandle, int deviceaddress, smuint32 *U
 */
 
 
-smuint8 bufferGet8( smuint8 **buf )
+uint8_t bufferGet8( uint8_t **buf )
 {
-    smuint8 ret=(*buf)[0];
+    uint8_t ret=(*buf)[0];
     *buf++;
     return ret;
 }
 
-smuint16 bufferGet16( smuint8 **buf )
+uint16_t bufferGet16( uint8_t **buf )
 {
     UnionOf4Bytes d;
     d.U8[0]=(*buf)[0];
     d.U8[1]=(*buf)[1];
 
-    smuint16 ret=d.U16[0];
+    uint16_t ret=d.U16[0];
 
     *buf+=2;
     return ret;
 }
 
-smuint32 bufferGet32( smuint8 **buf )
+uint32_t bufferGet32( uint8_t **buf )
 {
     UnionOf4Bytes d;
     d.U8[0]=(*buf)[0];
@@ -620,39 +620,39 @@ smuint32 bufferGet32( smuint8 **buf )
     d.U8[2]=(*buf)[2];
     d.U8[3]=(*buf)[3];
 
-    smuint32 ret=d.U32;
+    uint32_t ret=d.U32;
 
     *buf+=4;
     return ret;
 }
 
 
-FirmwareUploadStatus parseFirmwareFile(smuint8 *data, smuint32 numbytes, smuint32 connectedDeviceTypeId,
-                                        smuint32 *primaryMCUDataOffset, smuint32 *primaryMCUDataLenth,
-                                        smuint32 *secondaryMCUDataOffset,smuint32 *secondaryMCUDataLength,
-                                        smuint32 *FWUniqueID )
+FirmwareUploadStatus parseFirmwareFile(uint8_t *data, uint32_t numbytes, uint32_t connectedDeviceTypeId,
+                                        uint32_t *primaryMCUDataOffset, uint32_t *primaryMCUDataLenth,
+                                        uint32_t *secondaryMCUDataOffset,uint32_t *secondaryMCUDataLength,
+                                        uint32_t *FWUniqueID )
 {
     smDebug(-1,SMDebugMid,"parseFirmwareFile called\n");
 
     //see https://granitedevices.com/wiki/Firmware_file_format_(.gdf)
 
-    smuint32 filetype;
-    filetype=((smuint32*)data)[0];
+    uint32_t filetype;
+    filetype=((uint32_t*)data)[0];
     if(filetype!=0x57464447) //check header string "GDFW"
         return FWInvalidFile;
 
-    smuint32 filever, deviceid;
+    uint32_t filever, deviceid;
     *FWUniqueID=0;//updated later if available
 
-    filever=((smuint16*)data)[2];
+    filever=((uint16_t*)data)[2];
 
     if(filever==300)//handle GDF version 300 here
     {
-        smuint32 primaryMCUSize, secondaryMCUSize;
+        uint32_t primaryMCUSize, secondaryMCUSize;
 
-        deviceid=((smuint16*)data)[3];
-        primaryMCUSize=((smuint32*)data)[2];
-        secondaryMCUSize=((smuint32*)data)[3];
+        deviceid=((uint16_t*)data)[3];
+        primaryMCUSize=((uint32_t*)data)[2];
+        secondaryMCUSize=((uint32_t*)data)[3];
         if(secondaryMCUSize==0xffffffff)
             secondaryMCUSize=0;//it is not present
 
@@ -660,12 +660,12 @@ FirmwareUploadStatus parseFirmwareFile(smuint8 *data, smuint32 numbytes, smuint3
             return FWIncompatibleFW;
 
         //get checksum and check it
-        smuint32 cksum,cksumcalc=0;
-        smuint32 i;
-        smuint32 cksumOffset=4+2+2+4+4+primaryMCUSize+secondaryMCUSize;
+        uint32_t cksum,cksumcalc=0;
+        uint32_t i;
+        uint32_t cksumOffset=4+2+2+4+4+primaryMCUSize+secondaryMCUSize;
         if(cksumOffset>numbytes-4)
             return FWInvalidFile;
-        cksum=((smuint32*)(data+cksumOffset))[0];
+        cksum=((uint32_t*)(data+cksumOffset))[0];
 
         for(i=0;i< numbytes-4;i++)
         {
@@ -742,15 +742,15 @@ FirmwareUploadStatus parseFirmwareFile(smuint8 *data, smuint32 numbytes, smuint3
          * bits 1-31: reserved
          *
          */
-        smuint8 *dataPtr=&data[6];//start at byte 6 because first 6 bytes are already read
-        smuint8 *dataCRCPtr=&data[numbytes-4];
-        smuint32 numOfChunks;
-        smuint32 deviceid_max;
-        smuint32 chunkType;
-        smuint32 chunkTypeStringLen;
-        smuint32 chunkSize;
-        smuint16 chunkOptions;
-        smuint32 i;
+        uint8_t *dataPtr=&data[6];//start at byte 6 because first 6 bytes are already read
+        uint8_t *dataCRCPtr=&data[numbytes-4];
+        uint32_t numOfChunks;
+        uint32_t deviceid_max;
+        uint32_t chunkType;
+        uint32_t chunkTypeStringLen;
+        uint32_t chunkSize;
+        uint16_t chunkOptions;
+        uint32_t i;
 
         //check file compatibility
         if(bufferGet16(&dataPtr)!=400)
@@ -789,13 +789,13 @@ FirmwareUploadStatus parseFirmwareFile(smuint8 *data, smuint32 numbytes, smuint3
             }
             else if(chunkType==100)//main MCU FW
             {
-                *primaryMCUDataOffset=(smuint32)(dataPtr-data);
+                *primaryMCUDataOffset=(uint32_t)(dataPtr-data);
                 *primaryMCUDataLenth=chunkSize;
                 dataPtr+=chunkSize;//skip to next chunk
             }
             else if(chunkType==200)//secondary MCU FW
             {
-                *secondaryMCUDataOffset=(smuint32)(dataPtr-data);
+                *secondaryMCUDataOffset=(uint32_t)(dataPtr-data);
                 *secondaryMCUDataLength=chunkSize;
                 dataPtr+=chunkSize;//skip to next chunk
             }
@@ -813,7 +813,7 @@ FirmwareUploadStatus parseFirmwareFile(smuint8 *data, smuint32 numbytes, smuint3
             }
         }
 
-        if((smuint32)(dataPtr-data)!=numbytes-4)//check if chunks total size match file size
+        if((uint32_t)(dataPtr-data)!=numbytes-4)//check if chunks total size match file size
             return FWInvalidFile;
     }
     else
@@ -851,7 +851,7 @@ void smFirmwareUploadStatusToString(const FirmwareUploadStatus FWUploadStatus, c
 }
 
 
-bool loadBinaryFile(const char *filename, smuint8 **data, int *numbytes , bool addNullTermination)
+bool loadBinaryFile(const char *filename, uint8_t **data, int *numbytes , bool addNullTermination)
 {
     FILE *f;
     f=fopen(filename,"rb");
@@ -897,10 +897,10 @@ bool loadBinaryFile(const char *filename, smuint8 **data, int *numbytes , bool a
 
 
 //flashing STM32 (host side mcu)
-bool flashFirmwarePrimaryMCU( smbus smhandle, int deviceaddress, const smuint8 *data, smint32 size, int *progress )
+bool flashFirmwarePrimaryMCU( smbus smhandle, int deviceaddress, const uint8_t *data, int32_t size, int *progress )
 {
-    smint32 ret;
-    static smint32 deviceType, fwVersion;
+    int32_t ret;
+    static int32_t deviceType, fwVersion;
     static int uploadIndex;
     int c;
     const int BL_CHUNK_LEN=32;
@@ -954,12 +954,12 @@ bool flashFirmwarePrimaryMCU( smbus smhandle, int deviceaddress, const smuint8 *
             smAppendSMCommandToQueue( smhandle, SMPCMD_SETPARAMADDR, SMP_BOOTLOADER_UPLOAD );
             for(c=0;c<BL_CHUNK_LEN;c++)
             {
-                smuint16 upword;
+                uint16_t upword;
                 //pad end of file with constant to make full chunk
                 if(uploadIndex>=size)
                     upword=0xeeee;
                 else
-                    upword=((smuint16*)data)[uploadIndex];
+                    upword=((uint16_t*)data)[uploadIndex];
                 smAppendSMCommandToQueue( smhandle, SMPCMD_24B, upword );
                 uploadIndex++;
             }
@@ -1003,9 +1003,9 @@ bool flashFirmwarePrimaryMCU( smbus smhandle, int deviceaddress, const smuint8 *
         if(fwVersion>=1210)
         {
             smSetParameter(smhandle,deviceaddress,SMP_BOOTLOADER_FUNCTION,3);//BL func 3 = verify STM32 FW integrity
-            smint32 faults;
-            smint32 loc1;
-            smint32 loc2;
+            int32_t faults;
+            int32_t loc1;
+            int32_t loc2;
             smRead3Parameters(smhandle, deviceaddress, SMP_FAULTS, &faults, SMP_FAULT_LOCATION1, &loc1, SMP_FAULT_LOCATION2, &loc2);
 
             if(getCumulativeStatus(smhandle)!=SM_OK)
@@ -1060,7 +1060,7 @@ FirmwareUploadStatus abortFWUpload( FirmwareUploadStatus stat, UploadState *stat
  */
 FirmwareUploadStatus smFirmwareUpload( const smbus smhandle, const int smaddress, const char *firmware_filename )
 {
-    static smuint8 *fwData=NULL;
+    static uint8_t *fwData=NULL;
     static int fwDataLength;
     static bool fileLoaded=false;
     FirmwareUploadStatus state;
@@ -1095,12 +1095,12 @@ FirmwareUploadStatus smFirmwareUpload( const smbus smhandle, const int smaddress
  * @param fwDataLenght number of bytes in fwData
  * @return Enum FirmwareUploadStatus that indicates errors or Complete status. Typecast to integer to get progress value 0-100.
  */
-FirmwareUploadStatus smFirmwareUploadFromBuffer( const smbus smhandle, const int smaddress, smuint8 *fwData, const int fwDataLength )
+FirmwareUploadStatus smFirmwareUploadFromBuffer( const smbus smhandle, const int smaddress, uint8_t *fwData, const int fwDataLength )
 {
-    static smuint32 primaryMCUDataOffset, primaryMCUDataLenth;
-    static smuint32 secondaryMCUDataOffset,secondaryMCUDataLength;
+    static uint32_t primaryMCUDataOffset, primaryMCUDataLenth;
+    static uint32_t secondaryMCUDataOffset,secondaryMCUDataLength;
     static UploadState state=StatIdle;//state machine status
-    static smint32 deviceType=0;
+    static int32_t deviceType=0;
     static int DFUAddress;
     static int progress=0;
     static bool FW_already_installed=false;
@@ -1123,7 +1123,7 @@ FirmwareUploadStatus smFirmwareUploadFromBuffer( const smbus smhandle, const int
 
         smDebug(smhandle,SMDebugLow,"smFirmwareUploadFromBuffer: target device type of %d successfully read\n",deviceType);
 
-        smuint32 GDFFileUID;
+        uint32_t GDFFileUID;
         FirmwareUploadStatus stat=parseFirmwareFile(fwData, fwDataLength, deviceType,
                                   &primaryMCUDataOffset, &primaryMCUDataLenth,
                                   &secondaryMCUDataOffset, &secondaryMCUDataLength,
@@ -1142,7 +1142,7 @@ FirmwareUploadStatus smFirmwareUploadFromBuffer( const smbus smhandle, const int
         //check if that FW is already installed
         if(GDFFileUID!=0)//check only if GDF has provided this value
         {
-            smuint32 targetFWUID;
+            uint32_t targetFWUID;
             if(smGetDeviceFirmwareUniqueID( smhandle, smaddress, &targetFWUID ))
             {
                 //reset two upper bits because reading SMP will sign-extend them from 30 bits assuming so that we're reading signed 30 bit integer.
@@ -1155,7 +1155,7 @@ FirmwareUploadStatus smFirmwareUploadFromBuffer( const smbus smhandle, const int
                     smDebug(smhandle,SMDebugLow,"smFirmwareUploadFromBuffer: Same FW is already installed, skipping install\n");
 
                     //check if device is in NORMAL mode already
-                    smint32 busMode;
+                    int32_t busMode;
                     stat=smRead1Parameter(smhandle,smaddress,SMP_BUS_MODE,&busMode);
                     if(stat==SM_OK && busMode==SMP_BUS_MODE_NORMAL)
                     {
@@ -1182,7 +1182,7 @@ FirmwareUploadStatus smFirmwareUploadFromBuffer( const smbus smhandle, const int
         smDebug(smhandle,SMDebugLow,"smFirmwareUploadFromBuffer: StatFirstConnectAttempt\n");
 
         //check if device is in DFU mode already
-        smint32 busMode;
+        int32_t busMode;
         stat=smRead2Parameters(smhandle,smaddress,SMP_BUS_MODE,&busMode, SMP_DEVICE_TYPE, &deviceType);
         if(stat==SM_OK && busMode==SMP_BUS_MODE_DFU)
         {
@@ -1219,7 +1219,7 @@ FirmwareUploadStatus smFirmwareUploadFromBuffer( const smbus smhandle, const int
         smPurge(smhandle);
 
         //check if device is in DFU mode already
-        smint32 busMode;
+        int32_t busMode;
         stat=smRead2Parameters(smhandle,smaddress, SMP_BUS_MODE,&busMode, SMP_DEVICE_TYPE, &deviceType);
         if(stat==SM_OK && busMode==SMP_BUS_MODE_DFU)//is DFU mode
         {
@@ -1245,7 +1245,7 @@ FirmwareUploadStatus smFirmwareUploadFromBuffer( const smbus smhandle, const int
         //scan thru addresses where SM device may appear in DFU mode if not appearing in it's original address
         for(i=245;i<=255;i++)
         {
-            smint32 busMode;
+            int32_t busMode;
             stat=smRead2Parameters(smhandle,i, SMP_BUS_MODE,&busMode, SMP_DEVICE_TYPE, &deviceType);
             if(stat==SM_OK && busMode==0)//busmode 0 is DFU mode
             {
