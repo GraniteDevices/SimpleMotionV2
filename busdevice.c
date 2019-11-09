@@ -85,13 +85,13 @@ smbusdevicehandle smBDOpenWithCallbacks(const char *devicename, BusdeviceOpen bu
     bool success;
 
     //true on first call
-    if(bdInitialized==false)
+    if(!bdInitialized)
         smBDinit();
 
     //find free handle
     for(handle=0;handle<SM_MAX_BUSES;handle++)
     {
-        if(BusDevice[handle].opened==false) break;//choose this
+        if(!BusDevice[handle].opened) break;//choose this
     }
 
     //all handles in use
@@ -106,7 +106,7 @@ smbusdevicehandle smBDOpenWithCallbacks(const char *devicename, BusdeviceOpen bu
 
     //try opening
     BusDevice[handle].busDevicePointer=BusDevice[handle].busOpenCallback( devicename, SMBusBaudrate, &success );
-    if( success==false )
+    if(!success)
     {
         return -1; //failed to open
     }
@@ -116,7 +116,7 @@ smbusdevicehandle smBDOpenWithCallbacks(const char *devicename, BusdeviceOpen bu
     BusDevice[handle].cumulativeSmStatus=0;
 
     //purge
-    if(smBDMiscOperation(handle,MiscOperationPurgeRX)==false)
+    if(!smBDMiscOperation(handle,MiscOperationPurgeRX))
     {
         smBDClose(handle);
         return -1; //failed to purge
@@ -137,7 +137,7 @@ bool smIsBDHandleOpen( const smbusdevicehandle handle )
 bool smBDClose( const smbusdevicehandle handle )
 {
 	//check if handle valid & open
-	if( smIsBDHandleOpen(handle)==false ) return false;
+	if(!smIsBDHandleOpen(handle)) return false;
 
     BusDevice[handle].busCloseCallback(BusDevice[handle].busDevicePointer );
     BusDevice[handle].opened=false;
@@ -152,7 +152,7 @@ bool smBDClose( const smbusdevicehandle handle )
 bool smBDWrite(const smbusdevicehandle handle, const smuint8 byte )
 {
 	//check if handle valid & open
-	if( smIsBDHandleOpen(handle)==false ) return false;
+	if(!smIsBDHandleOpen(handle)) return false;
 
     if(BusDevice[handle].txBufferUsed<TANSMIT_BUFFER_LENGTH)
     {
@@ -170,7 +170,7 @@ bool smBDWrite(const smbusdevicehandle handle, const smuint8 byte )
 bool smBDTransmit(const smbusdevicehandle handle)
 {
     //check if handle valid & open
-    if( smIsBDHandleOpen(handle)==false ) return false;
+    if(!smIsBDHandleOpen(handle)) return false;
 
     if(BusDevice[handle].busWriteCallback(BusDevice[handle].busDevicePointer,BusDevice[handle].txBuffer, BusDevice[handle].txBufferUsed)==BusDevice[handle].txBufferUsed)
     {
@@ -189,7 +189,7 @@ bool smBDTransmit(const smbusdevicehandle handle)
 bool smBDRead( const smbusdevicehandle handle, smuint8 *byte )
 {
 	//check if handle valid & open
-	if( smIsBDHandleOpen(handle)==false ) return false;
+	if(!smIsBDHandleOpen(handle)) return false;
 
     int n;
     n=BusDevice[handle].busReadCallback(BusDevice[handle].busDevicePointer, byte, 1);
@@ -209,7 +209,7 @@ bool smBDRead( const smbusdevicehandle handle, smuint8 *byte )
 bool smBDMiscOperation(const smbusdevicehandle handle , BusDeviceMiscOperationType operation)
 {
     //check if handle valid & open
-    if( smIsBDHandleOpen(handle)==false ) return false;
+    if(!smIsBDHandleOpen(handle)) return false;
 
     BusDevice[handle].txBufferUsed=0;
 

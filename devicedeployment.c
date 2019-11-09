@@ -112,7 +112,7 @@ int decimalNumberToDouble( const char *str, double *output )
     int i=0;
     bool decimalPointFound=false;
     bool done=false;
-    while(done==false)
+    while(!done)
     {
         char c=str[i];
         int number=c-'0';//char to value 0-9
@@ -197,7 +197,7 @@ int stringToInt( const char *str, int *output )
     int i=0;
     int coeff=1;
     bool done=false;
-    while(done==false)
+    while(!done)
     {
         char c=str[i];
         int number=c-'0';//char to value 0-9
@@ -244,14 +244,14 @@ bool parseDRCInfo( const smuint8 *drcData, const int drcDataLen, int *DRCVersion
     const char *DRCFileFeatureBitsKey="FileFeatureBits=";
     const char *DRCEssentialFileFeatureBitsKey="FileFeatureBitsEssential=";
 
-    if( parseDRCIntKey(drcData,drcDataLen,"DRCVersion=",DRCVersion) == false ) return false; //parse failed
-    if( parseDRCIntKey(drcData,drcDataLen,"size=",numParams) == false ) return false; //parse failed
+    if(!parseDRCIntKey(drcData,drcDataLen,"DRCVersion=",DRCVersion)) return false; //parse failed
+    if(!parseDRCIntKey(drcData,drcDataLen,"size=",numParams)) return false; //parse failed
 
     //v 111 and beyond should have file feature bits defined
     if(*DRCVersion>=111)
     {
-        if( parseDRCIntKey(drcData,drcDataLen,"FileFeatureBits=",DRCFileFeatureBits) == false ) return false; //parse failed
-        if( parseDRCIntKey(drcData,drcDataLen,"FileFeatureBitsEssential=",DRCEssentialFileFeatureBits) == false ) return false; //parse failed
+        if(!parseDRCIntKey(drcData,drcDataLen,"FileFeatureBits=",DRCFileFeatureBits)) return false; //parse failed
+        if(!parseDRCIntKey(drcData,drcDataLen,"FileFeatureBitsEssential=",DRCEssentialFileFeatureBits)) return false; //parse failed
     }
     else//older format, set it based on knowledge:
     {
@@ -333,7 +333,7 @@ bool parseParameter( const smuint8 *drcData, const int drcDataLen, int idx, Para
             gotreadonly=true;
         }
     }
-    while( (gotvalue==false || gotaddr==false || gotreadonly==false || gotscale==false || gotoffset==false) && eof==false );
+    while ((!gotvalue || !gotaddr || !gotreadonly || !gotscale || !gotoffset) && !eof);
 
     if(gotvalue&&gotaddr&&gotoffset&&gotscale&&gotreadonly)
     {
@@ -434,14 +434,14 @@ LIB LoadConfigurationStatus smLoadConfigurationFromBuffer( const smbus smhandle,
         Parameter param;
         readOk=parseParameter(drcData,drcDataLength,i,&param);
 
-        if( readOk==false ) //corrupted file
+        if(!readOk) //corrupted file
         {
             *skippedCount=ignoredCount;
             *errorCount=setErrors;
             return CFGInvalidFile;
         }
 
-        if(param.readOnly==false)
+        if(!param.readOnly)
         {
             smint32 currentValue;
 
@@ -457,7 +457,7 @@ LIB LoadConfigurationStatus smLoadConfigurationFromBuffer( const smbus smhandle,
 
                     //disable device only only if at least one parameter has changed, and disalbe is configured by CONFIGMODE_DISABLE_DURING_CONFIG flag.
                     //deviceDisabled is compared so it gets disabled only at first parameter, not consequent ones
-                    if(mode&CONFIGMODE_DISABLE_DURING_CONFIG && deviceDisabled==false)
+                    if(mode&CONFIGMODE_DISABLE_DURING_CONFIG && !deviceDisabled)
                     {
                     	smDebug(smhandle,SMDebugLow,"Drive will be disabled as requested because of parameter change\n");
 
@@ -1066,7 +1066,7 @@ FirmwareUploadStatus smFirmwareUpload( const smbus smhandle, const int smaddress
     FirmwareUploadStatus state;
 
     //load file to buffer if not loaded yet
-    if(fileLoaded==false)
+    if(!fileLoaded)
     {
         if(!loadBinaryFile(firmware_filename,&fwData,&fwDataLength,false))
             return FWFileNotReadable;
@@ -1270,7 +1270,7 @@ FirmwareUploadStatus smFirmwareUploadFromBuffer( const smbus smhandle, const int
         smDebug(smhandle,SMDebugMid,"smFirmwareUploadFromBuffer: StatUpload\n");
 
         bool ret=flashFirmwarePrimaryMCU(smhandle,DFUAddress,fwData+primaryMCUDataOffset,primaryMCUDataLenth,&progress);
-        if(ret==false)//failed
+        if(!ret)//failed
         {
             smDebug(smhandle,SMDebugLow,"smFirmwareUploadFromBuffer: StatUpload failed\n");
             return abortFWUpload(FWConnectionError,&state,1000);

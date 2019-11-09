@@ -150,11 +150,11 @@ SM_STATUS smBufferedFillAndReceive(BufferedMotionAxis *axis, smint32 numFillPoin
 //        emit message(Warning,"Buffer underrun on axis "+QString::number(ax));
 
     //freeBytesInDeviceBuffer-=8;
-//      if(drives[ax].bufferedStreamInitialized==false)
+//      if(!drives[ax].bufferedStreamInitialized)
 //            cmdBufferSizeBytes=freeBytesInDeviceBuffer;//get empty buffer size
 
     //first initialize the stream if not done yet
-    if(axis->readParamInitialized==false)
+    if(!axis->readParamInitialized)
     {
         //set acceleration to "infinite" to avoid modification of user supplied trajectory inside drive
         smAppendSMCommandToQueue(axis->bushandle,SMPCMD_SETPARAMADDR,SMP_RETURN_PARAM_ADDR);
