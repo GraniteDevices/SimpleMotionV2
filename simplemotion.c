@@ -106,7 +106,7 @@ void smDebug( smbus handle, smVerbosityLevel verbositylevel, char *format, ...)
         va_end(fmtargs);
         if(handle>=0)
         {
-            if(smIsHandleOpen(handle)==true)
+            if(smIsHandleOpen(handle))
             {
                 fprintf(smDebugOut,"%s: %s",smBus[handle].busDeviceName, buffer);
             }
@@ -324,7 +324,7 @@ LIB SM_STATUS smPurge( const smbus bushandle )
     //check if bus handle is valid & opened
     if(smIsHandleOpen(bushandle)==false) return recordStatus(bushandle,SM_ERR_NODEVICE);
 
-    if(smBDMiscOperation( bushandle, MiscOperationPurgeRX )==true)
+    if(smBDMiscOperation( bushandle, MiscOperationPurgeRX ))
         return recordStatus(bushandle,SM_OK);
     else
         return recordStatus(bushandle,SM_ERR_BUS);
@@ -338,7 +338,7 @@ LIB SM_STATUS smFlushTX( const smbus bushandle )
     //check if bus handle is valid & opened
     if(smIsHandleOpen(bushandle)==false) return recordStatus(bushandle,SM_ERR_NODEVICE);
 
-    if(smBDMiscOperation( bushandle, MiscOperationFlushTX )==true)
+    if(smBDMiscOperation( bushandle, MiscOperationFlushTX ))
         return recordStatus(bushandle,SM_OK);
     else
         return recordStatus(bushandle,SM_ERR_BUS);
@@ -515,13 +515,13 @@ SM_STATUS smReceiveErrorHandler( smbus handle, bool flushrx )
 
 
     //empty pending rx buffer to avoid further parse errors
-    if(flushrx==true)
+    if(flushrx)
     {
         bool success;
         do{
             smuint8 rx;
             success=smBDRead(smBus[handle].bdHandle,&rx);
-        }while(success==true);
+        }while(success);
     }
     smResetSM485variables(handle);
     smBus[handle].receiveComplete=true;
@@ -1115,7 +1115,7 @@ LIB SM_STATUS smGetBusDeviceDetails( smint index, SM_BUS_DEVICE_INFO *info )
 {
     bool ok=smBDGetBusDeviceDetails(index,info);
 
-    if(ok==true)
+    if(ok)
         return SM_OK;
     else
         return SM_ERR_NODEVICE;

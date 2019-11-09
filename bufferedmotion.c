@@ -79,10 +79,10 @@ SM_STATUS smBufferedDeinit( BufferedMotionAxis *axis )
     smBufferedAbort(axis);
 
     //restore drive in pre-init state
-    if(axis->initialized==true)
+    if(axis->initialized)
     {
         smSetParameter(axis->bushandle,axis->deviceAddress,SMP_TRAJ_PLANNER_ACCEL,axis->driveAccelerationBeforeInit);
-        if(axis->driveFlagsModifiedAtInit==true)//if flags parameter modified, then restore the origianl value
+        if(axis->driveFlagsModifiedAtInit)//if flags parameter modified, then restore the origianl value
             smSetParameter(axis->bushandle,axis->deviceAddress,SMP_DRIVE_FLAGS,axis->driveFlagsBeforeInit);
     }
 
@@ -124,7 +124,7 @@ smint32 smBufferedGetMaxFillSize(BufferedMotionAxis *axis, smint32 numBytesFree 
         numBytesFree=SM485_MAX_PAYLOAD_BYTES;
 
     //calculate number of points that can be uploaded to buffer (max size SM485_MAX_PAYLOAD_BYTES bytes and fill consumption is 2+4+2+3*(n-1) bytes)
-    if(axis->readParamInitialized==true)
+    if(axis->readParamInitialized)
         //*numPoints=(freebytes-2-4-2)/3+1;
         return numBytesFree/4;
     else
@@ -135,7 +135,7 @@ smint32 smBufferedGetMaxFillSize(BufferedMotionAxis *axis, smint32 numBytesFree 
 smint32 smBufferedGetBytesConsumed(BufferedMotionAxis *axis, smint32 numFillPoints )
 {
     //calculate number of bytes that the number of fill points will consume from buffer
-    if(axis->readParamInitialized==true)
+    if(axis->readParamInitialized)
         return numFillPoints*4;
     else
         return numFillPoints*4 +2+3+2+3+2;//if read data uninitialized, it takes extra n bytes to init on next fill, so reduce it here

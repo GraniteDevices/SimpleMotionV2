@@ -67,7 +67,7 @@ unsigned int readFileLine( const smuint8 *data, const int dataLen, int *readPosi
         }
 
         //eol or eof
-        if( (*eof)==true || c=='\n' || c=='\r' || len>=charlimit-1 )
+        if(*eof || c=='\n' || c=='\r' || len>=charlimit-1)
         {
             output[len]=0;//terminate str
             return len;
@@ -127,7 +127,7 @@ int decimalNumberToDouble( const char *str, double *output )
         else if(number>=0 && number <=9) //is number
         {
             out=10.0*out+number;
-            if(decimalPointFound==true)
+            if(decimalPointFound)
                 decimalcoeff*=0.1;
         }
         else if (c=='.')//is decimal point
@@ -335,7 +335,7 @@ bool parseParameter( const smuint8 *drcData, const int drcDataLen, int idx, Para
     }
     while( (gotvalue==false || gotaddr==false || gotreadonly==false || gotscale==false || gotoffset==false) && eof==false );
 
-    if(gotvalue==true&&gotaddr==true&&gotoffset==true&&gotscale==true&&gotreadonly==true)
+    if(gotvalue&&gotaddr&&gotoffset&&gotscale&&gotreadonly)
     {
         return true;
     }
@@ -509,7 +509,7 @@ LIB LoadConfigurationStatus smLoadConfigurationFromBuffer( const smbus smhandle,
     {
         bool result;
         smCheckDeviceCapabilities( smhandle, smaddress, SMP_DEVICE_CAPABILITIES2, DEVICE_CAPABILITY2_SUPPORT_TRIGGER_PENDING_PARAMETER_ACTIVATION, &result);
-        if(result==true)
+        if(result)
             smSetParameter( smhandle, smaddress, SMP_SYSTEM_CONTROL, SMP_SYSTEM_CONTROL_TRIGGER_PENDING_PARAMETER_ACTIVATION );
     }
 
@@ -529,7 +529,7 @@ LIB LoadConfigurationStatus smLoadConfigurationFromBuffer( const smbus smhandle,
     }
 
     //re-enable drive
-    if(mode&CONFIGMODE_DISABLE_DURING_CONFIG && deviceDisabled==true)
+    if(mode&CONFIGMODE_DISABLE_DURING_CONFIG && deviceDisabled)
     {
         smDebug(smhandle,SMDebugLow,"Restoring CONTROL_BITS1 to value 0x%x\n",CB1Value);
         smSetParameter( smhandle, smaddress, SMP_CONTROL_BITS1, CB1Value );//restore controbits1 (enable if it was enabled before)
@@ -866,7 +866,7 @@ bool loadBinaryFile(const char *filename, smuint8 **data, int *numbytes , bool a
     fseek(f,0,SEEK_SET);
 
     //allocate buffer
-    if(addNullTermination==true)
+    if(addNullTermination)
         *data=malloc(length+1);//+1 for 0 termination char
     else
         *data=malloc(length);
@@ -877,7 +877,7 @@ bool loadBinaryFile(const char *filename, smuint8 **data, int *numbytes , bool a
         return false;
     }
 
-    if(addNullTermination==true)
+    if(addNullTermination)
         (*data)[length]=0;//add 0 termination character at the end, this 0 prevents parse function doing buffer overflow if file is corrupt
 
     //read
@@ -1077,7 +1077,7 @@ FirmwareUploadStatus smFirmwareUpload( const smbus smhandle, const int smaddress
     state=smFirmwareUploadFromBuffer( smhandle, smaddress, fwData, fwDataLength );
 
     //if process complete, due to finish or error -> unload file.
-    if(((int)state<0 || state==FWComplete) && fileLoaded==true)
+    if(((int)state<0 || state==FWComplete) && fileLoaded)
     {
         free(fwData);
         fileLoaded=false;
@@ -1143,7 +1143,7 @@ FirmwareUploadStatus smFirmwareUploadFromBuffer( const smbus smhandle, const int
         if(GDFFileUID!=0)//check only if GDF has provided this value
         {
             smuint32 targetFWUID;
-            if(smGetDeviceFirmwareUniqueID( smhandle, smaddress, &targetFWUID )==true)
+            if(smGetDeviceFirmwareUniqueID( smhandle, smaddress, &targetFWUID ))
             {
                 //reset two upper bits because reading SMP will sign-extend them from 30 bits assuming so that we're reading signed 30 bit integer.
                 //but this is unsigned 30 bit so reset top 2 bits to cancel sign extension.
