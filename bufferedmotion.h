@@ -10,8 +10,8 @@ extern "C"{
 //typedef enum _smBufferedState {BufferedStop=0,BufferedRun=1} smBufferedState;
 
 typedef struct _BufferedMotionAxis {
-    smbool initialized;
-    smbool readParamInitialized;
+    bool initialized;
+    bool readParamInitialized;
     smint32 numberOfDiscardableReturnDataPackets;
     smint32 numberOfPendingReadPackets;//number of read data packets that should be arriving from device (to read rest of pending data, use smBufferedFillAndReceive(numFillPoints=0) until this variable this goes to zero)
     smbus bushandle;
@@ -20,7 +20,7 @@ typedef struct _BufferedMotionAxis {
     smint16 readParamAddr;
     smuint8 readParamLength;
     smint32 driveFlagsBeforeInit;
-    smbool driveFlagsModifiedAtInit;//true if deInit should restore driveFlagsBeforeInit
+    bool driveFlagsModifiedAtInit;//true if deInit should restore driveFlagsBeforeInit
     smint32 driveAccelerationBeforeInit;
     smuint16 driveClock;//clock counter is updated at smBufferedRunAndSyncClocks only for the one axis that is used with that func. clock is running up at 10kHz count rate, meaning that it rolls over every 6.5536 secs
     smint32 bufferLength;//buffer lenght in bytes of the device. note this may be different in different devices types. so call smBufferedGetFree on the device that has the smallest buffer. however as of 2.2016 all GD drives have 2048 bytes buffers.

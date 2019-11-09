@@ -24,8 +24,10 @@ typedef uint8_t smuint8;
 typedef int32_t smint32;
 typedef int16_t smint16;
 typedef int8_t smint8;
-typedef int8_t smbool;
 typedef smint32 smint;
+typedef bool smbool;
+
+// These are kept only for legacy compatibility; use <stdbool.h> for better versions
 #define smtrue 1
 #define smfalse 0
 typedef int SM_STATUS;
@@ -34,7 +36,7 @@ typedef smuint8 smaddr;
 // output parameter type of smGetBusDeviceDetails
 typedef struct
 {
-    smbool is_simplemotion_device;//smtrue if usable in SM lib
+    bool is_simplemotion_device;//true if usable in SM lib
     char device_name[64];//name that should be fed to smOpenBus
     char description[128];//such as "SimpleMotion USB"
 } SM_BUS_DEVICE_INFO;
@@ -52,20 +54,20 @@ typedef enum _smVerbosityLevel {SMDebugOff,SMDebugLow,SMDebugMid,SMDebugHigh,SMD
  *
  * MiscOperationFlushTX = blocking call to make sure that all data has been physically transmitter
  *   before returing the function. Max blocking duration is the value set with smSetTimeout.
- *   If flush operation timeouted, return smfalse (fail), otherwise smtrue (success).
- * MiscOperationPurgeRX = discard all incoming data that is waiting to be read. Return smtrue on success,
- *   smfalse on fail.
+ *   If flush operation timeouted, return false (fail), otherwise true (success).
+ * MiscOperationPurgeRX = discard all incoming data that is waiting to be read. Return true on success,
+ *   false on fail.
  *
- * If operation is unsupported by the callback, return smfalse.
+ * If operation is unsupported by the callback, return false.
  */
 typedef enum _BusDeviceMiscOperationType {MiscOperationFlushTX,MiscOperationPurgeRX} BusDeviceMiscOperationType;
 
 //define communication interface device driver callback types
 typedef void* smBusdevicePointer;
-typedef smBusdevicePointer (*BusdeviceOpen)(const char *port_device_name, smint32 baudrate_bps, smbool *success);
+typedef smBusdevicePointer (*BusdeviceOpen)(const char *port_device_name, smint32 baudrate_bps, bool *success);
 typedef smint32 (*BusdeviceReadBuffer)(smBusdevicePointer busdevicePointer, unsigned char *buf, smint32 size);
 typedef smint32 (*BusdeviceWriteBuffer)(smBusdevicePointer busdevicePointer, unsigned char *buf, smint32 size);
-typedef smbool (*BusdeviceMiscOperation)(smBusdevicePointer busdevicePointer, BusDeviceMiscOperationType operation );
+typedef bool (*BusdeviceMiscOperation)(smBusdevicePointer busdevicePointer, BusDeviceMiscOperationType operation );
 typedef void (*BusdeviceClose)(smBusdevicePointer busdevicePointer);
 
 //must use packed mode for bitfields in structs for smFastUpdateCycleWithStructs

@@ -151,9 +151,9 @@ LIB LoadConfigurationStatus smLoadConfigurationFromBuffer(const smbus smhandle, 
  * @param smhandle SM bus handle, must be opened before call
  * @param smaddress Target SM device address. Can be device in DFU mode or main operating mode. For Argon, one device in a bus must be started into DFU mode by DIP switches and smaddress must be set to 255.
  * @param UID result will be written to this pointer
- * @return smtrue if success, smfalse if failed (if communication otherwise works, then probably UID feature not present in this firmware version)
+ * @return true if success, false if failed (if communication otherwise works, then probably UID feature not present in this firmware version)
  */
-smbool smGetDeviceFirmwareUniqueID( smbus smhandle, int deviceaddress, smuint32 *UID );
+bool smGetDeviceFirmwareUniqueID( smbus smhandle, int deviceaddress, smuint32 *UID );
 
 
 #ifdef __cplusplus

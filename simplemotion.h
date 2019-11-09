@@ -27,7 +27,7 @@ extern "C"{
 #endif
 
 
-//BusdeviceOpen callback should return this if port open fails (in addition to setting *success to smfalse):
+//BusdeviceOpen callback should return this if port open fails (in addition to setting *success to false):
 #define SMBUSDEVICE_RETURN_ON_OPEN_FAIL NULL
 
 
@@ -256,14 +256,14 @@ LIB int smDescribeStatus(char* str, size_t size, int32_t status);
 /** smCheckDeviceCapabilities will check whether target device has all requested capabilities.
  *
  * I.e. code:
- *  smbool resultHasAllCapabilities;
+ *  bool resultHasAllCapabilities;
  *  smCheckDeviceCapabilities( handle, nodeAddress,
                                          SMP_DEVICE_CAPABILITIES1,
                                          DEVICE_CAPABILITY1_AUTOSETUP_COMMUTATION_SENSOR|DEVICE_CAPABILITY1_BUFFERED_MOTION_LINEAR_INTERPOLATION,
                                          &resultHasAllCapabilities );
 
   * Will check whether device supports DEVICE_CAPABILITY1_AUTOSETUP_COMMUTATION_SENSOR and DEVICE_CAPABILITY1_BUFFERED_MOTION_LINEAR_INTERPOLATION.
-  * If it supports both, resultHasAllCapabilities will be set smtrue, otherwise it will be set smfalse.
+  * If it supports both, resultHasAllCapabilities will be set true, otherwise it will be set false.
   *
   * Note: be careful to enter correct SMP_DEVICE_CAPABILITIESn parameter and correct DEVICE_CAPBILITYn flags as arguments as there is no checking for correctness.
   * I.e. passing argument SMP_DEVICE_CAPABILITIES1 and flags DEVICE_CAPABILITY1_AUTOSETUP_COMMUTATION_SENSOR|DEVICE_CAPABILITY2_LOW_LEVEL_GPIO will return
@@ -274,7 +274,7 @@ LIB int smDescribeStatus(char* str, size_t size, int32_t status);
 LIB SM_STATUS smCheckDeviceCapabilities( const smbus handle, const int nodeAddress,
                                          const smint32 capabilitiesParameterNr,
                                          const smint32 requiredCapabilityFlags,
-                                         smbool *resultHasAllCapabilities );
+                                         bool *resultHasAllCapabilities );
 
 #ifdef __cplusplus
 }

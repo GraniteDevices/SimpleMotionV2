@@ -29,14 +29,14 @@ FILE *smDebugOut=NULL;
 #define bufget8bit(buf, pos) (*((smuint8*)(smuint8*)((buf)+(pos))))
 
 
-smbool smIsHandleOpen( const smbus handle );
+bool smIsHandleOpen( const smbus handle );
 
 SM_STATUS smReceiveReturnPacket( smbus bushandle );
 
 typedef struct SM_BUS_
 {
     smbusdevicehandle bdHandle;
-    smbool opened;
+    bool opened;
 
     enum RecvState recv_state,recv_state_next;
 
@@ -47,8 +47,8 @@ typedef struct SM_BUS_
     smuint8 recv_addr;
     smuint16 recv_crc;
     smuint16 recv_read_crc_hi;
-    smbool receiveComplete;
-    smbool transmitBufFull;//set true if user uploads too much commands in one SM transaction. if true, on execute commands, nothing will be sent to bus to prevent unvanted clipped commands and buffer will be cleared
+    bool receiveComplete;
+    bool transmitBufFull;//set true if user uploads too much commands in one SM transaction. if true, on execute commands, nothing will be sent to bus to prevent unvanted clipped commands and buffer will be cleared
     char busDeviceName[SM_BUSDEVICENAME_LEN];
 
     smint16 cmd_send_queue_bytes;//for queued device commands
@@ -63,7 +63,7 @@ SM_BUS smBus[SM_MAX_BUSES];
 smuint16 readTimeoutMs=SM_READ_TIMEOUT;
 
 //init on first smOpenBus call
-smbool smInitialized=smfalse;
+bool smInitialized=false;
 
 //if debug message has priority this or above will be printed to debug stream
 smVerbosityLevel smDebugThreshold=SMDebugTrace;
@@ -106,7 +106,7 @@ void smDebug( smbus handle, smVerbosityLevel verbositylevel, char *format, ...)
         va_end(fmtargs);
         if(handle>=0)
         {
-            if(smIsHandleOpen(handle)==smtrue)
+            if(smIsHandleOpen(handle)==true)
             {
                 fprintf(smDebugOut,"%s: %s",smBus[handle].busDeviceName, buffer);
             }
@@ -139,8 +139,8 @@ void smResetSM485variables(smbus handle)
     smBus[handle].recv_addr=255;
     smBus[handle].recv_crc=SM485_CRCINIT;
     smBus[handle].recv_read_crc_hi=0xffff;//bottom bits will be contains only 1 byte when read
-    smBus[handle].receiveComplete=smfalse;
-    smBus[handle].transmitBufFull=smfalse;
+    smBus[handle].receiveComplete=false;
+    smBus[handle].transmitBufFull=false;
     smBus[handle].cmd_send_queue_bytes=0;
     smBus[handle].cmd_recv_queue_bytes=0;
 }
@@ -206,16 +206,16 @@ void smBusesInit()
     int i;
     for(i=0;i<SM_MAX_BUSES;i++)
     {
-        smBus[i].opened=smfalse;;
+        smBus[i].opened=false;;
         smResetSM485variables(i);
     }
-    smInitialized=smtrue;
+    smInitialized=true;
 }
 
-smbool smIsHandleOpen( const smbus handle )
+bool smIsHandleOpen( const smbus handle )
 {
-    if(handle<0) return smfalse;
-    if(handle>=SM_MAX_BUSES) return smfalse;
+    if(handle<0) return false;
+    if(handle>=SM_MAX_BUSES) return false;
     return smBus[handle].opened;
 }
 
@@ -229,13 +229,13 @@ smbus smOpenBus( const char * devicename )
     int handle;
 
     //true on first call
-    if(smInitialized==smfalse)
+    if(smInitialized==false)
         smBusesInit();
 
     //find free handle
     for(handle=0;handle<SM_MAX_BUSES;handle++)
     {
-        if(smBus[handle].opened==smfalse) break;//choose this
+        if(smBus[handle].opened==false) break;//choose this
     }
     //all handles in use
     if(handle>=SM_MAX_BUSES) return -1;
@@ -247,7 +247,7 @@ smbus smOpenBus( const char * devicename )
     //success
     strncpy( smBus[handle].busDeviceName, devicename, SM_BUSDEVICENAME_LEN );
     smBus[handle].busDeviceName[SM_BUSDEVICENAME_LEN-1]=0;//null terminate string
-    smBus[handle].opened=smtrue;
+    smBus[handle].opened=true;
     return handle;
 }
 
@@ -257,13 +257,13 @@ smbus smOpenBusWithCallbacks( const char *devicename, BusdeviceOpen busOpenCallb
     int handle;
 
     //true on first call
-    if(smInitialized==smfalse)
+    if(smInitialized==false)
         smBusesInit();
 
     //find free handle
     for(handle=0;handle<SM_MAX_BUSES;handle++)
     {
-        if(smBus[handle].opened==smfalse) break;//choose this
+        if(smBus[handle].opened==false) break;//choose this
     }
     //all handles in use
     if(handle>=SM_MAX_BUSES) return -1;
@@ -275,7 +275,7 @@ smbus smOpenBusWithCallbacks( const char *devicename, BusdeviceOpen busOpenCallb
     //success
     strncpy( smBus[handle].busDeviceName, devicename, SM_BUSDEVICENAME_LEN );
     smBus[handle].busDeviceName[SM_BUSDEVICENAME_LEN-1]=0;//null terminate string
-    smBus[handle].opened=smtrue;
+    smBus[handle].opened=true;
     return handle;
 }
 
@@ -307,11 +307,11 @@ LIB void smSetBaudrate( unsigned long pbs )
 LIB SM_STATUS smCloseBus( const smbus bushandle )
 {
     //check if bus handle is valid & opened
-    if(smIsHandleOpen(bushandle)==smfalse) return recordStatus(bushandle,SM_ERR_NODEVICE);
+    if(smIsHandleOpen(bushandle)==false) return recordStatus(bushandle,SM_ERR_NODEVICE);
 
-    smBus[bushandle].opened=smfalse;
+    smBus[bushandle].opened=false;
 
-    if( smBDClose(smBus[bushandle].bdHandle) == smfalse ) return recordStatus(bushandle,SM_ERR_BUS);
+    if( smBDClose(smBus[bushandle].bdHandle) == false ) return recordStatus(bushandle,SM_ERR_BUS);
 
     return SM_OK;
 }
@@ -322,9 +322,9 @@ LIB SM_STATUS smCloseBus( const smbus bushandle )
 LIB SM_STATUS smPurge( const smbus bushandle )
 {
     //check if bus handle is valid & opened
-    if(smIsHandleOpen(bushandle)==smfalse) return recordStatus(bushandle,SM_ERR_NODEVICE);
+    if(smIsHandleOpen(bushandle)==false) return recordStatus(bushandle,SM_ERR_NODEVICE);
 
-    if(smBDMiscOperation( bushandle, MiscOperationPurgeRX )==smtrue)
+    if(smBDMiscOperation( bushandle, MiscOperationPurgeRX )==true)
         return recordStatus(bushandle,SM_OK);
     else
         return recordStatus(bushandle,SM_ERR_BUS);
@@ -336,9 +336,9 @@ LIB SM_STATUS smPurge( const smbus bushandle )
 LIB SM_STATUS smFlushTX( const smbus bushandle )
 {
     //check if bus handle is valid & opened
-    if(smIsHandleOpen(bushandle)==smfalse) return recordStatus(bushandle,SM_ERR_NODEVICE);
+    if(smIsHandleOpen(bushandle)==false) return recordStatus(bushandle,SM_ERR_NODEVICE);
 
-    if(smBDMiscOperation( bushandle, MiscOperationFlushTX )==smtrue)
+    if(smBDMiscOperation( bushandle, MiscOperationFlushTX )==true)
         return recordStatus(bushandle,SM_OK);
     else
         return recordStatus(bushandle,SM_ERR_BUS);
@@ -372,12 +372,12 @@ char *cmdidToStr(smuint8 cmdid )
 
 //write one byte to tx buffer
 //returns true on success
-smbool smWriteByte( const smbus handle, const smuint8 byte, smuint16 *crc )
+bool smWriteByte( const smbus handle, const smuint8 byte, smuint16 *crc )
 {
     //check if bus handle is valid & opened
-    if(smIsHandleOpen(handle)==smfalse) return SM_ERR_NODEVICE;
+    if(smIsHandleOpen(handle)==false) return SM_ERR_NODEVICE;
 
-    smbool success=smBDWrite(smBus[handle].bdHandle,byte);
+    bool success=smBDWrite(smBus[handle].bdHandle,byte);
     if(crc!=NULL)
         *crc = calcCRC16(byte,*crc);
 
@@ -386,12 +386,12 @@ smbool smWriteByte( const smbus handle, const smuint8 byte, smuint16 *crc )
 
 //write tx buffer to bus
 //returns true on success
-smbool smTransmitBuffer( const smbus handle )
+bool smTransmitBuffer( const smbus handle )
 {
     //check if bus handle is valid & opened
-    if(smIsHandleOpen(handle)==smfalse) return SM_ERR_NODEVICE;
+    if(smIsHandleOpen(handle)==false) return SM_ERR_NODEVICE;
 
-    smbool success=smBDTransmit(smBus[handle].bdHandle);
+    bool success=smBDTransmit(smBus[handle].bdHandle);
     return success;
 }
 
@@ -401,7 +401,7 @@ SM_STATUS smSendSMCMD( smbus handle, smuint8 cmdid, smuint8 addr, smuint8 datale
     smuint16 sendcrc;
 
     //check if bus handle is valid & opened
-    if(smIsHandleOpen(handle)==smfalse) return SM_ERR_NODEVICE;
+    if(smIsHandleOpen(handle)==false) return SM_ERR_NODEVICE;
 
     sendcrc=SM485_CRCINIT;
 
@@ -411,30 +411,30 @@ SM_STATUS smSendSMCMD( smbus handle, smuint8 cmdid, smuint8 addr, smuint8 datale
 
 
     smDebug(handle,SMDebugHigh,"  Outbound packet raw data: CMDID (%d) ",cmdid);
-    if( smWriteByte(handle,cmdid, &sendcrc) != smtrue ) return recordStatus(handle,SM_ERR_BUS);
+    if( smWriteByte(handle,cmdid, &sendcrc) != true ) return recordStatus(handle,SM_ERR_BUS);
 
     if(cmdid&SMCMD_MASK_N_PARAMS)
     {
         smDebug(DEBUG_PRINT_RAW,SMDebugHigh,"SIZE (%d bytes) ", datalen);
-        if( smWriteByte(handle,datalen, &sendcrc) != smtrue ) return recordStatus(handle,SM_ERR_BUS);
+        if( smWriteByte(handle,datalen, &sendcrc) != true ) return recordStatus(handle,SM_ERR_BUS);
     }
 
     smDebug(DEBUG_PRINT_RAW,SMDebugHigh,"ADDR (%d) ",addr);
-    if( smWriteByte(handle,addr, &sendcrc) != smtrue ) return recordStatus(handle,SM_ERR_BUS);
+    if( smWriteByte(handle,addr, &sendcrc) != true ) return recordStatus(handle,SM_ERR_BUS);
 
     smDebug(DEBUG_PRINT_RAW,SMDebugHigh,"PAYLOAD (");
     for(i=0;i<datalen;i++)
     {
         smDebug(DEBUG_PRINT_RAW,SMDebugHigh,"%02x ",cmddata[i]);
-        if( smWriteByte(handle,cmddata[i], &sendcrc) != smtrue ) return recordStatus(handle,SM_ERR_BUS);
+        if( smWriteByte(handle,cmddata[i], &sendcrc) != true ) return recordStatus(handle,SM_ERR_BUS);
     }
     smDebug(DEBUG_PRINT_RAW,SMDebugHigh,") ");
     smDebug(DEBUG_PRINT_RAW,SMDebugHigh,"CRC (%02x %02x)\n",sendcrc>>8, sendcrc&0xff);
-    if( smWriteByte(handle,sendcrc>>8, NULL)  != smtrue ) return recordStatus(handle,SM_ERR_BUS);
-    if( smWriteByte(handle,sendcrc&0xff,NULL) != smtrue ) return recordStatus(handle,SM_ERR_BUS);
+    if( smWriteByte(handle,sendcrc>>8, NULL)  != true ) return recordStatus(handle,SM_ERR_BUS);
+    if( smWriteByte(handle,sendcrc&0xff,NULL) != true ) return recordStatus(handle,SM_ERR_BUS);
 
     //transmit bytes to bus that were written in buffer by smWriteByte calls
-    if( smTransmitBuffer(handle) != smtrue ) return recordStatus(handle,SM_ERR_BUS);
+    if( smTransmitBuffer(handle) != true ) return recordStatus(handle,SM_ERR_BUS);
 
     return recordStatus(handle,SM_OK);
 }
@@ -448,7 +448,7 @@ LIB SM_STATUS smFastUpdateCycleWithStructs( smbus handle, smuint8 nodeAddress, F
 SM_STATUS smFastUpdateCycle( smbus handle, smuint8 nodeAddress, smuint16 write1, smuint16 write2, smuint16 *read1, smuint16 *read2)
 {
     //check if bus handle is valid & opened
-    if(smIsHandleOpen(handle)==smfalse) return SM_ERR_NODEVICE;
+    if(smIsHandleOpen(handle)==false) return SM_ERR_NODEVICE;
 
     smDebug(handle, SMDebugHigh, "> %s (addr=%d, w1=%d, w2=%d)\n",cmdidToStr(SMCMD_FAST_UPDATE_CYCLE),
             nodeAddress,
@@ -467,7 +467,7 @@ SM_STATUS smFastUpdateCycle( smbus handle, smuint8 nodeAddress, smuint16 write1,
     //send
     for(i=0;i<7;i++)
     {
-        if( smWriteByte(handle,cmd[i], NULL) != smtrue )
+        if( smWriteByte(handle,cmd[i], NULL) != true )
             return recordStatus(handle,SM_ERR_BUS);
     }
     smTransmitBuffer(handle);//this sends the bytes entered with smWriteByte
@@ -475,11 +475,11 @@ SM_STATUS smFastUpdateCycle( smbus handle, smuint8 nodeAddress, smuint16 write1,
     smDebug(handle, SMDebugHigh, "  Reading reply packet\n");
     for(i=0;i<6;i++)
     {
-        smbool success;
+        bool success;
         smuint8 rx;
         success=smBDRead(smBus[handle].bdHandle,&rx);
         cmd[i]=rx;
-        if(success!=smtrue)
+        if(success!=true)
         {
             smDebug(handle,SMDebugLow,"Not enough data received on smFastUpdateCycle");
             return recordStatus(handle,SM_ERR_BUS|SM_ERR_LENGTH);//no enough data received
@@ -508,23 +508,23 @@ SM_STATUS smFastUpdateCycle( smbus handle, smuint8 nodeAddress, smuint16 write1,
 
 
 
-SM_STATUS smReceiveErrorHandler( smbus handle, smbool flushrx )
+SM_STATUS smReceiveErrorHandler( smbus handle, bool flushrx )
 {
     //check if bus handle is valid & opened
-    if(smIsHandleOpen(handle)==smfalse) return SM_ERR_NODEVICE;
+    if(smIsHandleOpen(handle)==false) return SM_ERR_NODEVICE;
 
 
     //empty pending rx buffer to avoid further parse errors
-    if(flushrx==smtrue)
+    if(flushrx==true)
     {
-        smbool success;
+        bool success;
         do{
             smuint8 rx;
             success=smBDRead(smBus[handle].bdHandle,&rx);
-        }while(success==smtrue);
+        }while(success==true);
     }
     smResetSM485variables(handle);
-    smBus[handle].receiveComplete=smtrue;
+    smBus[handle].receiveComplete=true;
     return recordStatus(handle,SM_ERR_COMMUNICATION);
 }
 
@@ -534,7 +534,7 @@ SM_STATUS smAppendSMCommandToQueue( smbus handle, int smpCmdType,smint32 paramva
     int cmdlength;
 
     //check if bus handle is valid & opened
-    if(smIsHandleOpen(handle)==smfalse) return SM_ERR_NODEVICE;
+    if(smIsHandleOpen(handle)==false) return SM_ERR_NODEVICE;
 
     switch(smpCmdType)
     {
@@ -555,7 +555,7 @@ SM_STATUS smAppendSMCommandToQueue( smbus handle, int smpCmdType,smint32 paramva
     //check if space if buffer
     if(smBus[handle].cmd_send_queue_bytes>(SM485_MAX_PAYLOAD_BYTES-cmdlength) )
     {
-        smBus[handle].transmitBufFull=smtrue; //when set true, smExecute will do nothing but clear transmit buffer. so this prevents any of overflowed commands getting thru
+        smBus[handle].transmitBufFull=true; //when set true, smExecute will do nothing but clear transmit buffer. so this prevents any of overflowed commands getting thru
         return recordStatus(handle,SM_ERR_LENGTH); //overflow, too many commands in buffer
     }
 
@@ -606,9 +606,9 @@ SM_STATUS smTransmitReceiveCommandQueue( const smbus bushandle, const smaddr tar
     SM_STATUS stat;
 
     //check if bus handle is valid & opened
-    if(smIsHandleOpen(bushandle)==smfalse) return recordStatus(bushandle,SM_ERR_NODEVICE);
+    if(smIsHandleOpen(bushandle)==false) return recordStatus(bushandle,SM_ERR_NODEVICE);
 
-    if(smBus[bushandle].transmitBufFull!=smtrue) //dont send/receive commands if queue was overflowed by user error
+    if(smBus[bushandle].transmitBufFull!=true) //dont send/receive commands if queue was overflowed by user error
     {
         stat=smSendSMCMD(bushandle,cmdid,targetaddress, smBus[bushandle].cmd_send_queue_bytes, smBus[bushandle].recv_rsbuf ); //send commands to bus
         if(stat!=SM_OK) return recordStatus(bushandle,stat);
@@ -617,7 +617,7 @@ SM_STATUS smTransmitReceiveCommandQueue( const smbus bushandle, const smaddr tar
     smBus[bushandle].cmd_send_queue_bytes=0;
     smBus[bushandle].cmd_recv_queue_bytes=0;//counted upwards at every smGetQueued.. and compared to payload size
 
-    if(smBus[bushandle].transmitBufFull!=smtrue && targetaddress!=0)//dont send/receive commands if queue was overflowed by user error, or if target is broadcast address (0) where no slave will respond and it's ok
+    if(smBus[bushandle].transmitBufFull!=true && targetaddress!=0)//dont send/receive commands if queue was overflowed by user error, or if target is broadcast address (0) where no slave will respond and it's ok
     {
         stat=smReceiveReturnPacket(bushandle);//blocking wait & receive return values from bus
         if(stat!=SM_OK) return recordStatus(bushandle,stat); //maybe timeouted
@@ -625,11 +625,11 @@ SM_STATUS smTransmitReceiveCommandQueue( const smbus bushandle, const smaddr tar
     if(targetaddress==0)
     {
         //make sure we don't return function before all data is really sent as we're not waiting for RX data
-        //note: we're note checking return value of it as some driver's dont support this atm and will return smfalse. TODO fix this & drivers.
+        //note: we're note checking return value of it as some driver's dont support this atm and will return false. TODO fix this & drivers.
         smFlushTX(bushandle);
     }
 
-    smBus[bushandle].transmitBufFull=smfalse;//reset overflow status
+    smBus[bushandle].transmitBufFull=false;//reset overflow status
     return recordStatus(bushandle,SM_OK);
 }
 
@@ -637,7 +637,7 @@ SM_STATUS smTransmitReceiveCommandQueue( const smbus bushandle, const smaddr tar
 SM_STATUS smExecuteCommandQueue( const smbus bushandle, const smaddr targetaddress )
 {
     //check if bus handle is valid & opened
-    if(smIsHandleOpen(bushandle)==smfalse) return SM_ERR_NODEVICE;
+    if(smIsHandleOpen(bushandle)==false) return SM_ERR_NODEVICE;
 
     return recordStatus(bushandle,smTransmitReceiveCommandQueue(bushandle,targetaddress,SMCMD_INSTANT_CMD));
 }
@@ -650,7 +650,7 @@ SM_STATUS smUploadCommandQueueToDeviceBuffer( const smbus bushandle, const smadd
 //return number of how many bytes waiting to be read with smGetQueuedSMCommandReturnValue
 SM_STATUS smBytesReceived( const smbus bushandle, smint32 *bytesinbuffer )
 {
-    if(smIsHandleOpen(bushandle)==smfalse) return recordStatus(bushandle,SM_ERR_NODEVICE);
+    if(smIsHandleOpen(bushandle)==false) return recordStatus(bushandle,SM_ERR_NODEVICE);
 
     smint32 bytes=smBus[bushandle].recv_payloadsize - smBus[bushandle].cmd_recv_queue_bytes;//how many bytes waiting to be read with smGetQueuedSMCommandReturnValue
     *bytesinbuffer=bytes;
@@ -663,7 +663,7 @@ SM_STATUS smGetQueuedSMCommandReturnValue(  const smbus bushandle, smint32 *retV
     smuint8 rxbyte, rettype;
 
     //check if bus handle is valid & opened
-    if(smIsHandleOpen(bushandle)==smfalse) return SM_ERR_NODEVICE;
+    if(smIsHandleOpen(bushandle)==false) return SM_ERR_NODEVICE;
 
 
     //if get called so many times that receive queue buffer is already empty, return error
@@ -742,7 +742,7 @@ SM_STATUS smGetQueuedSMCommandReturnValue(  const smbus bushandle, smint32 *retV
 SM_STATUS smReceiveReturnPacket( smbus bushandle )
 {
     //check if bus handle is valid & opened
-    if(smIsHandleOpen(bushandle)==smfalse) return SM_ERR_NODEVICE;
+    if(smIsHandleOpen(bushandle)==false) return SM_ERR_NODEVICE;
 
     smDebug(bushandle, SMDebugHigh, "  Reading reply packet\n");
     do
@@ -750,17 +750,17 @@ SM_STATUS smReceiveReturnPacket( smbus bushandle )
         smuint8 ret;
         SM_STATUS stat;
 
-        smbool succ=smBDRead(smBus[bushandle].bdHandle,&ret);
+        bool succ=smBDRead(smBus[bushandle].bdHandle,&ret);
 
-        if(succ==smfalse)
+        if(succ==false)
         {
-            smReceiveErrorHandler(bushandle,smfalse);
+            smReceiveErrorHandler(bushandle,false);
             return recordStatus(bushandle,SM_ERR_COMMUNICATION);
         }
 
         stat=smParseReturnData( bushandle, ret );
         if(stat!=SM_OK) return recordStatus(bushandle,stat);
-    } while(smBus[bushandle].receiveComplete==smfalse); //loop until complete packaget has been read
+    } while(smBus[bushandle].receiveComplete==false); //loop until complete packaget has been read
 
     //return data read complete
     smDebug(bushandle,SMDebugHigh, "< %s (id=%d, addr=%d, payload=%d)\n",
@@ -786,11 +786,11 @@ LIB void smSetDebugOutput( smVerbosityLevel level, FILE *stream )
 SM_STATUS smParseReturnData( smbus handle, smuint8 data )
 {
     //check if bus handle is valid & opened
-    if(smIsHandleOpen(handle)==smfalse) return SM_ERR_NODEVICE;
+    if(smIsHandleOpen(handle)==false) return SM_ERR_NODEVICE;
 
     //buffered variable allows placing if's in any order (because recv_state may changes in this function)
     smBus[handle].recv_state=smBus[handle].recv_state_next;
-    smBus[handle].receiveComplete=smfalse;//overwritten to true later if complete
+    smBus[handle].receiveComplete=false;//overwritten to true later if complete
 
     if(smBus[handle].recv_state==WaitPayload)
     {
@@ -801,7 +801,7 @@ SM_STATUS smParseReturnData( smbus handle, smuint8 data )
             smBus[handle].recv_rsbuf[smBus[handle].recv_storepos++]=data;
         else//rx payload buffer overflow
         {
-            return recordStatus(handle,(smReceiveErrorHandler(handle,smtrue)));
+            return recordStatus(handle,(smReceiveErrorHandler(handle,true)));
         }
 
         //all received
@@ -822,7 +822,7 @@ SM_STATUS smParseReturnData( smbus handle, smuint8 data )
         case SMCMD_MASK_0_PARAMS: smBus[handle].recv_payloadsize=0; smBus[handle].recv_state_next=WaitAddr; break;
         case SMCMD_MASK_N_PARAMS: smBus[handle].recv_payloadsize=-1; smBus[handle].recv_state_next=WaitPayloadSize;break;//-1 = N databytes
         default:
-            return recordStatus(handle,(smReceiveErrorHandler(handle, smtrue)));
+            return recordStatus(handle,(smReceiveErrorHandler(handle, true)));
             break; //error, unsupported command id
         }
 
@@ -862,13 +862,13 @@ SM_STATUS smParseReturnData( smbus handle, smuint8 data )
         if(((smBus[handle].recv_read_crc_hi<<8)|data)!=smBus[handle].recv_crc)
         {
             //CRC error
-            return recordStatus(handle,(smReceiveErrorHandler(handle,smtrue)));
+            return recordStatus(handle,(smReceiveErrorHandler(handle,true)));
         }
         else
         {
             //CRC ok
             //if(smBus[handle].recv_addr==config.deviceAddress || smBus[handle].recv_cmdid==SMCMD_GET_CLOCK_RET || smBus[handle].recv_cmdid==SMCMD_PROCESS_IMAGE ) executeSMcmd();
-            smBus[handle].receiveComplete=smtrue;
+            smBus[handle].receiveComplete=true;
         }
 
         //smResetSM485variables(handle);
@@ -888,7 +888,7 @@ SM_STATUS smAppendGetParamCommandToQueue( smbus handle, smint16 paramAddress )
     SM_STATUS stat=SM_NONE;
 
     //check if bus handle is valid & opened
-    if(smIsHandleOpen(handle)==smfalse) return SM_ERR_NODEVICE;
+    if(smIsHandleOpen(handle)==false) return SM_ERR_NODEVICE;
 
     //possible errors will set bits to stat
     stat|=smAppendSMCommandToQueue( handle, SMPCMD_SETPARAMADDR, SMP_RETURN_PARAM_LEN ); //2b
@@ -906,7 +906,7 @@ SM_STATUS smGetQueuedGetParamReturnValue(  const smbus bushandle, smint32 *retVa
     SM_STATUS stat=SM_NONE;
 
     //check if bus handle is valid & opened
-    if(smIsHandleOpen(bushandle)==smfalse) return SM_ERR_NODEVICE;
+    if(smIsHandleOpen(bushandle)==false) return SM_ERR_NODEVICE;
 
     //must get all inserted commands from buffer
     stat|=smGetQueuedSMCommandReturnValue( bushandle, &retVal );//4x4b
@@ -923,7 +923,7 @@ SM_STATUS smAppendSetParamCommandToQueue( smbus handle, smint16 paramAddress, sm
     SM_STATUS stat=SM_NONE;
 
     //check if bus handle is valid & opened
-    if(smIsHandleOpen(handle)==smfalse) return SM_ERR_NODEVICE;
+    if(smIsHandleOpen(handle)==false) return SM_ERR_NODEVICE;
 
     stat|=smAppendSMCommandToQueue( handle, SMPCMD_SETPARAMADDR, paramAddress );//2b
     stat|=smAppendSMCommandToQueue( handle, SMPCMD_32B, paramValue );//4b
@@ -937,7 +937,7 @@ SM_STATUS smGetQueuedSetParamReturnValue(  const smbus bushandle, smint32 *retVa
     SM_STATUS stat=SM_NONE;
 
     //check if bus handle is valid & opened
-    if(smIsHandleOpen(bushandle)==smfalse) return SM_ERR_NODEVICE;
+    if(smIsHandleOpen(bushandle)==false) return SM_ERR_NODEVICE;
 
     //must get all inserted commands from buffer
     stat|=smGetQueuedSMCommandReturnValue( bushandle, &retVal );
@@ -955,7 +955,7 @@ SM_STATUS smGetBufferClock( const smbus handle, const smaddr targetaddr, smuint1
     smDebug(handle,SMDebugMid,"smGetBufferClock: target SM address %d.\n",(int)targetaddr);
 
     //check if bus handle is valid & opened
-    if(smIsHandleOpen(handle)==smfalse) return recordStatus(handle,SM_ERR_NODEVICE);
+    if(smIsHandleOpen(handle)==false) return recordStatus(handle,SM_ERR_NODEVICE);
 
     stat=smSendSMCMD(handle, SMCMD_GET_CLOCK ,targetaddr, 0, NULL ); //send get clock commands to bus
     if(stat!=SM_OK) return recordStatus(handle,stat);
@@ -1056,7 +1056,7 @@ SM_STATUS smSetParameter( const smbus handle, const smaddr nodeAddress, const sm
 SM_STATUS recordStatus( const smbus handle, const SM_STATUS stat )
 {
     //check if bus handle is valid & opened
-    if(smIsHandleOpen(handle)==smfalse) return SM_ERR_NODEVICE;
+    if(smIsHandleOpen(handle)==false) return SM_ERR_NODEVICE;
 
     if(smBus[handle].cumulativeSmStatus!=stat && stat!=SM_OK)//if status changed and new status is not SM_OK
         smDebug(handle,SMDebugLow,"Previous SM call failed and changed the SM_STATUS value obtainable with getCumulativeStatus(). Status before failure was %d, and new error flag valued %d has been now set.\n",(int)smBus[handle].cumulativeSmStatus,(int)stat);
@@ -1070,7 +1070,7 @@ SM_STATUS recordStatus( const smbus handle, const SM_STATUS stat )
 /** This function returns all occurred SM_STATUS bits after smOpenBus or resetCumulativeStatus call*/
 SM_STATUS getCumulativeStatus( const smbus handle )
 {
-    if(smIsHandleOpen(handle)==smfalse) return SM_ERR_NODEVICE;
+    if(smIsHandleOpen(handle)==false) return SM_ERR_NODEVICE;
 
     return smBus[handle].cumulativeSmStatus;
 }
@@ -1078,7 +1078,7 @@ SM_STATUS getCumulativeStatus( const smbus handle )
 /** Reset cululative status so getCumultiveStatus returns 0 after calling this until one of the other functions are called*/
 SM_STATUS resetCumulativeStatus( const smbus handle )
 {
-    if(smIsHandleOpen(handle)==smfalse) return SM_ERR_NODEVICE;
+    if(smIsHandleOpen(handle)==false) return SM_ERR_NODEVICE;
 
     smDebug(handle,SMDebugMid,"resetCumulativeStatus called.\n");
 
@@ -1113,9 +1113,9 @@ smint smGetNumberOfDetectedBuses()
 */
 LIB SM_STATUS smGetBusDeviceDetails( smint index, SM_BUS_DEVICE_INFO *info )
 {
-    smbool ok=smBDGetBusDeviceDetails(index,info);
+    bool ok=smBDGetBusDeviceDetails(index,info);
 
-    if(ok==smtrue)
+    if(ok==true)
         return SM_OK;
     else
         return SM_ERR_NODEVICE;
@@ -1282,11 +1282,11 @@ LIB int smDescribeStatus(char* str, const size_t size, int32_t status)
 LIB SM_STATUS smCheckDeviceCapabilities(const smbus handle, const int nodeAddress,
                                          const smint32 capabilitiesParameterNr,
                                          const smint32 requiredCapabilityFlags,
-                                         smbool *resultHasAllCapabilities )
+                                         bool *resultHasAllCapabilities )
 {
     SM_STATUS smStat=0;
     smint32 SMProtocolVersion;
-    *resultHasAllCapabilities=smfalse;//set true later
+    *resultHasAllCapabilities=false;//set true later
 
     smStat|=smRead1Parameter(handle,nodeAddress,SMP_SM_VERSION,&SMProtocolVersion);
     if(smStat!=SM_OK) return smStat; //error in above call
@@ -1301,7 +1301,7 @@ LIB SM_STATUS smCheckDeviceCapabilities(const smbus handle, const int nodeAddres
             if(smStat!=SM_OK) return smStat; //error in above call
 
             if( (capabilities&requiredCapabilityFlags)==requiredCapabilityFlags )//if all required capabilities are supported
-                *resultHasAllCapabilities=smtrue;//set result
+                *resultHasAllCapabilities=true;//set result
 
             return SM_OK;
         }
@@ -1326,7 +1326,7 @@ LIB SM_STATUS smCheckDeviceCapabilities(const smbus handle, const int nodeAddres
                     if(smStat!=SM_OK) return smStat; //error in above call
 
                     if( (capabilities&requiredCapabilityFlags)==requiredCapabilityFlags )//if all required capabilities are supported
-                        *resultHasAllCapabilities=smtrue;//set result
+                        *resultHasAllCapabilities=true;//set result
 
                     return SM_OK;
                 }
