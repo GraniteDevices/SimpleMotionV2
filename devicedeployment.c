@@ -596,7 +596,7 @@ bool smGetDeviceFirmwareUniqueID( smbus smhandle, int deviceaddress, uint32_t *U
 uint8_t bufferGet8( uint8_t **buf )
 {
     uint8_t ret=(*buf)[0];
-    *buf++;
+    buf++;
     return ret;
 }
 
