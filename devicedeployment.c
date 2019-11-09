@@ -241,9 +241,6 @@ bool parseDRCIntKey( const uint8_t *drcData, const int drcDataLen, const char *k
 //read DRC file version nr and nubmer of params it contains. if succes, returns true. if invalid file, return false
 bool parseDRCInfo( const uint8_t *drcData, const int drcDataLen, int *DRCVersion, int *numParams, int *DRCFileFeatureBits, int *DRCEssentialFileFeatureBits )
 {
-    const char *DRCFileFeatureBitsKey="FileFeatureBits=";
-    const char *DRCEssentialFileFeatureBitsKey="FileFeatureBitsEssential=";
-
     if(!parseDRCIntKey(drcData,drcDataLen,"DRCVersion=",DRCVersion)) return false; //parse failed
     if(!parseDRCIntKey(drcData,drcDataLen,"size=",numParams)) return false; //parse failed
 
