@@ -16,8 +16,7 @@
 #define SM_ERR_PARAMETER 16
 #define SM_ERR_LENGTH 32
 
-//declare SM lib integer types
-typedef long smbus;
+// These are kept only for legacy compatibility and will eventually be removed. Use <stdint.h> for real versions.
 typedef uint32_t smuint32;
 typedef uint16_t smuint16;
 typedef uint8_t smuint8;
@@ -27,9 +26,11 @@ typedef int8_t smint8;
 typedef int32_t smint;
 typedef bool smbool;
 
-// These are kept only for legacy compatibility; use <stdbool.h> for better versions
+// These are kept only for legacy compatibility and will eventually be removed. Use <stdbool.h> for better versions.
 #define smtrue 1
 #define smfalse 0
+
+typedef long smbus;
 typedef int SM_STATUS;
 typedef uint8_t smaddr;
 
