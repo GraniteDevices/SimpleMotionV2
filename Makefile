@@ -1,9 +1,12 @@
 BUILD_DIR := build
+PREFIX ?= /usr/local
 
 SOURCES = $(wildcard *.c) \
 	drivers/serial/pcserialport.c \
 	drivers/tcpip/tcpclient.c \
 	utils/crc.c
+
+HEADERS = $(wildcard *.h)
 
 # Set library type to static or dynamic, used to
 # set build directory etc.
@@ -33,7 +36,9 @@ LDLIBS := -lm
 # Linker flags
 LDFLAGS :=
 
-all: libsimplemotionv2.a
+all:
+	$(MAKE) libsimplemotionv2.a
+	$(MAKE) libsimplemotionv2.so
 
 libsimplemotionv2.a: $(BUILD_DIR)/libsimplemotionv2.a
 
@@ -64,3 +69,21 @@ test:
 clean:
 	$(RM) -r $(BUILD_DIR)
 	make -C tests clean
+
+# Install library. To override desti
+.PHONY: install
+install:
+	@mkdir -p $(DESTDIR)$(PREFIX)/lib
+	@mkdir -p $(DESTDIR)$(PREFIX)/include
+	cp $(BUILD_DIR)/libsimplemotionv2.so $(DESTDIR)$(PREFIX)/lib/libsimplemotionv2.so
+	cp $(BUILD_DIR)/libsimplemotionv2.a $(DESTDIR)$(PREFIX)/lib/libsimplemotionv2.a
+	cp *.h $(DESTDIR)$(PREFIX)/include/
+	@echo "\nHeader files installed to $(PREFIX)/include"
+	@echo "Library installed to $(PREFIX)/lib"
+	@echo "You may need to run ldconfig"
+
+.PHONY: uninstall
+uninstall:
+	cd $(DESTDIR)$(PREFIX)/include && rm -f $(HEADERS) && cd -
+	rm -f $(DESTDIR)$(PREFIX)/lib/libsimplemotionv2.so
+	rm -f $(DESTDIR)$(PREFIX)/lib/libsimplemotionv2.a

@@ -51,10 +51,23 @@ To include SM library in Qt project, simply place the library files under projec
     include(SimpleMotionV2/SimpleMotionV2.pri)
 
 ## Creating shared / dynamic library
-It is possible to compile shared and dynamic libraries (i.e. .dll or .a file) from the SM library source package. One of the easiest ways of compiling library is to use Qt Creator, where a ready-to-compile project file is provided. Just open SimpleMotionV2lib.pro in Qt Creator and compile it with the compiler of your choice. The resulting library files may be used in other applications.
+It is possible to compile shared and dynamic libraries (i.e. .dll or .a file) from the SM library source package.
 
-Alternatively create a new library project in your favorite programming tool and compile the provided source codes into a libraray. You might need to study workings of the .pri file to succeed.
+### QT Creator
+One of the easiest cross-platform ways of compiling library is to use Qt Creator, where a ready-to-compile project file is provided. Just open SimpleMotionV2lib.pro in Qt Creator and compile it with the compiler of your choice. The resulting library files may be used in other applications.
 
+### Linux makefile
+Linux users can build both static and dynamic libraries using `make libsimplemotionv2.a` and `make libsimplemotionv2.so`. To install library to computer run:
+
+``` shell
+make
+sudo make install
+```
+This will install library (both static and dynamic) to `/usr/local` unless variables `DESTDIR` and `PREFIX` are defined. I.e. library can be installed to custom directory running `make DESTDIR=/tmp/simplemotionv2 PREFIX= install`.
+
+Uninstall library by running `make uninstall`.
+
+### Windows note
 Windows users notice that a .dll library compiled with MinGW might not be compatible with MSVC. So if you're developing with MSVC, it's best to complile the dll using MSVC compiler. Qt Creator allows using Visual Studio's MSVC as compiler when configured properly.
 
 ## In Python, C# & others
