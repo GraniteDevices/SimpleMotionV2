@@ -28,8 +28,8 @@ HEADERS += $$PWD/simplemotion_private.h\
 
 
 greaterThan(INCLUDE_BUILT_IN_DRIVERS, 0+)  {
-    SOURCES += $$PWD/drivers/serial/pcserialport.c $$PWD/drivers/tcpip/tcpclient.c
-    HEADERS += $$PWD/drivers/serial/pcserialport.h $$PWD/drivers/tcpip/tcpclient.h
+    SOURCES += $$PWD/drivers/serial/pcserialport.c $$PWD/drivers/tcpip/tcpclient.c $$PWD/drivers/tcpip_ethsm/tcp_ethsm_client.c
+    HEADERS += $$PWD/drivers/serial/pcserialport.h $$PWD/drivers/tcpip/tcpclient.h $$PWD/drivers/tcpip_ethsm/tcp_ethsm_client.h
     DEFINES += ENABLE_BUILT_IN_DRIVERS
     win32 {
         LIBS+=-lws2_32 #needed for tcp ip API

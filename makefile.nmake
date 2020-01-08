@@ -8,6 +8,7 @@ OBJS = \
     devicedeployment.obj \
     pcserialport.obj \
     tcpclient.obj \
+    tcp_ethsm_client.obj \
     simplemotion.obj \
     sm_consts.obj
 
@@ -16,7 +17,10 @@ simplemotionv2.lib: $(OBJS)
     lib /out:simplemotionv2.lib $(OBJS)
 
 tcpclient.obj: drivers/tcpip/tcpclient.c
-	cl $(CFLAGS) -c drivers/tcpip/tcpclient.c
+    cl $(CFLAGS) -c drivers/tcpip/tcpclient.c
+
+tcp_ethsm_client.obj: drivers/tcpip_ethsm/tcp_ethsm_client.c
+    cl $(CFLAGS) -c drivers/tcpip_ethsm/tcp_ethsm_client.c
 
 pcserialport.obj: drivers/serial/pcserialport.c
 	cl $(CFLAGS) -c drivers/serial/pcserialport.c

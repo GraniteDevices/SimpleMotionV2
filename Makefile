@@ -3,6 +3,7 @@
 SOURCES = $(wildcard *.c) \
 	drivers/serial/pcserialport.c \
 	drivers/tcpip/tcpclient.c
+	drivers/tcpip_ethsm/tcp_ethsm_client.c
 
 OBJECTS = $(SOURCES:%.c=%.o)
 
