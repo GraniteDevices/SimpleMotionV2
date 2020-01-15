@@ -428,8 +428,8 @@ static int tcpipReadBytes(smBusdevicePointer busdevicePointer, char* buf, unsign
     FD_ZERO(&input);
     FD_SET((unsigned int)sockfd, &input);
     struct timeval timeout;
-    timeout.tv_sec = 0;
-    timeout.tv_usec = 100000; // TODO, where to get this?
+    timeout.tv_sec = 2;
+    timeout.tv_usec = 0; // TODO, where to get this?
 
     int n = select((int)sockfd + 1, &input, NULL, NULL, &timeout);//n=-1, select failed. 0=no data within timeout ready, >0 data available. Note: sockfd+1 is correct usage.
 
@@ -460,7 +460,7 @@ static int tcpipReadBytesFromAdapter(smBusdevicePointer busdevicePointer, unsign
         char requestBuffer[3] = { 0 };
         addTCPRequestHeaders(requestBuffer, SM_PACKET_TYPE_READ, amountOfBytes, 2/*TAIKALUKU*/);
         response = tcpipPortWriteBytes(busdevicePointer, requestBuffer, 3);
-        printf(" W:%d ", response);
+        printf(" RW:%d ", response);
         if (response == SOCKET_ERROR)
         {
             printf("TCPIPREADBYTESFROMADAPTER ERROR 0 \r\n");
@@ -474,7 +474,8 @@ static int tcpipReadBytesFromAdapter(smBusdevicePointer busdevicePointer, unsign
     {
         char responseHeaderBuffer[3] = { 0 };
         int response = tcpipReadBytes(busdevicePointer, responseHeaderBuffer, 3);
-        printf(" R:%d ", response);
+        printf(" RR:%d ", response);
+
         if (response == SOCKET_ERROR)
         {
             printf(" TCPIPREADBYTESFROMADAPTER ERROR 1 \r\n \r\n");
@@ -582,7 +583,7 @@ int tcpipEthSMPortWrite(smBusdevicePointer busdevicePointer, unsigned char * buf
         // Lähetetään data
         response = tcpipPortWriteBytes(busdevicePointer, requestBuffer, requestBufferSize);
 
-        printf(" W:%d ", response);
+        printf(" WW:%d ", response);
 
         // Jos virhe, palautetaan virhe // TODO: Suljetaan yhteys?
         if (response == SOCKET_ERROR)
@@ -602,7 +603,7 @@ int tcpipEthSMPortWrite(smBusdevicePointer busdevicePointer, unsigned char * buf
         // Odotetaan vastaus pyyntöön
         response = tcpipReadBytes(busdevicePointer, responseBuffer, TCP_WRITE_RESPONSE_HEADER_LENGTH);
 
-        printf(" R:%d ", response);
+        printf(" WR:%d ", response);
 
         // Jos virhe, palautetaan virhe // TODO: Suljetaan yhteys?
         if (response == SOCKET_ERROR)
