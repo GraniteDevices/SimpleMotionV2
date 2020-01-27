@@ -80,6 +80,8 @@ static char* createNewBufferWithLeadingFreeSpace(unsigned char* buf, unsigned in
 smBusdevicePointer tcpipEthSMPortOpen(const char * devicename, smint32 baudrate_bps, smbool *success);
 static int getETHSMAdapterFeatures(smBusdevicePointer busdevicePointer);
 static int getETHSMAdapterVersionNumbers(smBusdevicePointer busdevicePointer, char* buf);
+static int tcpipFlush(smBusdevicePointer busdevicePointer);
+static void tcpipPurge(smBusdevicePointer busdevicePointer);
 
 
 /**********************************************/
@@ -397,8 +399,12 @@ smBusdevicePointer tcpipEthSMPortOpen(const char * devicename, smint32 baudrate_
     getETHSMAdapterVersionNumbers((smBusdevicePointer)sockfd, version);
     printf("ETHSM version: %s \r\n", version);
 
+    unsigned int flush = tcpipFlush((smBusdevicePointer)sockfd);
+    printf("Flush successful: %d \r\n", flush);
 
-    printf("Return %d \r\n", sockfd);
+    tcpipPurge((smBusdevicePointer)sockfd);
+
+    printf("Return bus device pointer: %d \r\n", sockfd);
 
     return (smBusdevicePointer)sockfd;//compiler warning expected here on 64 bit compilation but it's ok
 }
@@ -712,12 +718,72 @@ static int getETHSMAdapterFeatures(smBusdevicePointer busdevicePointer) {
 
 }
 
-static void tcpipPurge()
+static void tcpipPurge(smBusdevicePointer busdevicePointer)
 {
+    printf("tcpipPurge\r\n");
+    unsigned char buffer[100];
+    unsigned int bufferSize = sizeof(buffer)/sizeof(buffer[0]);
+    int receivedData = bufferSize;
+
+    while (receivedData == bufferSize) {
+        printf("Purge %d \r\n", receivedData);
+        receivedData = tcpipEthSMPortRead(busdevicePointer, buffer, bufferSize);
+    }
+
+    printf("tcpipPurge DONE\r\n");
 }
 
-static void tcpipFlush()
-{
+static int tcpipFlush(smBusdevicePointer busdevicePointer) {
+    printf("tcpipFlush \r\n");
+
+    unsigned int featureFlags = 0;
+
+    /* SEND WRITE REQUEST */
+
+    {
+        int response = 0;
+
+        char request = SM_PACKET_TYPE_FLUSH;
+
+        response = tcpipPortWriteBytes(busdevicePointer, &request, 1);
+
+        printf(" WW:%d ", response);
+
+        // Jos virhe, palautetaan virhe // TODO: Suljetaan yhteys?
+        if (response == SOCKET_ERROR)
+        {
+            printf(" TCPIPPORTWRITE ERROR 1 \r\n");
+            return SOCKET_ERROR;
+        }
+
+    }
+
+    /* READ RESPONSE */
+
+    {
+        int response = 0;
+
+        char responseByte = 0;
+
+        // Odotetaan vastaus pyyntöön
+        response = tcpipReadBytes(busdevicePointer, &responseByte, 1);
+
+        printf(" WR:%d\r\n ", response);
+
+        if (response == 1 && responseByte == 3) {
+            return 1;
+        }
+
+        // Jos virhe, palautetaan virhe // TODO: Suljetaan yhteys?
+        if (response == SOCKET_ERROR)
+        {
+            printf(" TCPIPPORTWRITE ERROR 2 \r\n");
+            return SOCKET_ERROR;
+        }
+
+        printf(" TCPIPPORTWRITE ERROR 3 \r\n");
+        return SOCKET_ERROR;
+    }
 
 }
 
