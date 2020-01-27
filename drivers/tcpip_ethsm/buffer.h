@@ -5,18 +5,21 @@
 #define TCP_BUFFER_SIZE 102410
 #define TCP_BUFFER_TYPE char
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 int findBufferIndexByIdentifier(unsigned int bufferIdentifier);
-
 int createRingBuffer(unsigned int bufferIdentifier);
-
 int removeRingBuffer(unsigned int bufferIdentifier);
-
 void bufferAddByte(unsigned int bufferIdentifier, TCP_BUFFER_TYPE byte);
-
 TCP_BUFFER_TYPE bufferGetByte(unsigned int bufferIdentifier);
-
 void bufferClear(unsigned int bufferIdentifier);
-
 int bufferAmountOfBytes(unsigned int bufferIdentifier);
+
+#ifdef __cplusplus
+} /* extern "C" */
+#endif
 
 #endif

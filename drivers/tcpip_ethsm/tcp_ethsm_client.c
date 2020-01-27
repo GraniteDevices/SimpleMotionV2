@@ -55,11 +55,9 @@ static int initwsa()
 }
 #endif
 
-
 /**********************************************/
 /*   GLOBALS & CONSTANTS                      */
 /**********************************************/
-
 
 #define TCP_WRITE_REQUEST_HEADER_LENGTH 3
 #define TCP_WRITE_RESPONSE_HEADER_LENGTH 2
@@ -72,23 +70,22 @@ static char tempBuffer[GLOBAL_BUFFER_SIZE];
 /**********************************************/
 
 static smbool tcpipSetBaudrate(smBusdevicePointer busdevicePointer, smuint32 baudrate);
-static void printBuffer(char* buf, unsigned int len);
-static void multipleBytesToValue(char* buf, unsigned int len, unsigned int* value);
-static void valueToMultipleBytes(char* buf, unsigned int len, unsigned int value);
-static void addTCPRequestHeaders(char* buf, char packetType, unsigned int value, unsigned int len);
-static char* createNewBufferWithLeadingFreeSpace(unsigned char* buf, unsigned int currentSize, unsigned int sizeToAdd);
-smBusdevicePointer tcpipEthSMPortOpen(const char * devicename, smint32 baudrate_bps, smbool *success);
+static void printBuffer(char *buf, unsigned int len);
+static void multipleBytesToValue(char *buf, unsigned int len, unsigned int *value);
+static void valueToMultipleBytes(char *buf, unsigned int len, unsigned int value);
+static void addTCPRequestHeaders(char *buf, char packetType, unsigned int value, unsigned int len);
+static char *createNewBufferWithLeadingFreeSpace(unsigned char *buf, unsigned int currentSize, unsigned int sizeToAdd);
+smBusdevicePointer tcpipEthSMPortOpen(const char *devicename, smint32 baudrate_bps, smbool *success);
 static int getETHSMAdapterFeatures(smBusdevicePointer busdevicePointer);
-static int getETHSMAdapterVersionNumbers(smBusdevicePointer busdevicePointer, char* buf);
+static int getETHSMAdapterVersionNumbers(smBusdevicePointer busdevicePointer, char *buf);
 static int tcpipFlush(smBusdevicePointer busdevicePointer);
 static void tcpipPurge(smBusdevicePointer busdevicePointer);
-
 
 /**********************************************/
 /*   MISCELLANEOUS                            */
 /**********************************************/
 
-static void printBuffer(char* buf, unsigned int len)
+static void printBuffer(char *buf, unsigned int len)
 {
     printf("buffer(");
     for (unsigned int i = 0; i < len; ++i)
@@ -98,37 +95,37 @@ static void printBuffer(char* buf, unsigned int len)
     printf(") ");
 }
 
-static void multipleBytesToValue(char* buf, unsigned int len, unsigned int* value)
+static void multipleBytesToValue(char *buf, unsigned int len, unsigned int *value)
 {
     *value = 0;
     for (unsigned int i = 0; i < len; ++i)
     {
-        *value += (unsigned int) (buf[i] << (8*i));
+        *value += (unsigned int)(buf[i] << (8 * i));
     }
 }
 
-static void valueToMultipleBytes(char* buf, unsigned int len, unsigned int value)
+static void valueToMultipleBytes(char *buf, unsigned int len, unsigned int value)
 {
     //printf("valueToMultipleBytes %d %d -> ", len, value);
     for (unsigned int i = 0; i < len; ++i)
     {
-        buf[i] =  ((char) (value >> (8 * i))) & (char) 0xFF;
+        buf[i] = ((char)(value >> (8 * i))) & (char)0xFF;
         //printf("%u ", buf[i]);
     }
     //printf("\r\n");
 }
 
-static void addTCPRequestHeaders(char* buf, char packetType, unsigned int value, unsigned int len)
+static void addTCPRequestHeaders(char *buf, char packetType, unsigned int value, unsigned int len)
 {
     buf[0] = packetType;
     valueToMultipleBytes(&buf[1], len, value);
 }
 
-static char* createNewBufferWithLeadingFreeSpace(unsigned char* buf, unsigned int currentSize, unsigned int sizeToAdd)
+static char *createNewBufferWithLeadingFreeSpace(unsigned char *buf, unsigned int currentSize, unsigned int sizeToAdd)
 {
     unsigned int newBufferSize = currentSize + sizeToAdd;
 
-    char *buffer = (char*) malloc(newBufferSize);
+    char *buffer = (char *)malloc(newBufferSize);
 
     if (!buffer)
     {
@@ -136,15 +133,14 @@ static char* createNewBufferWithLeadingFreeSpace(unsigned char* buf, unsigned in
         return NULL;
     }
 
-    memcpy(buffer+sizeToAdd, buf, (unsigned int) currentSize);
+    memcpy(buffer + sizeToAdd, buf, (unsigned int)currentSize);
     return buffer;
 }
-
 
 //accepted TCP/IP address format is ETHSM:nnn.nnn.nnn.nnn:pppp where n is IP address numbers and p is port number
 //params: s=whole ip address with port number with from user, pip_end=output pointer pointint to end of ip address part of s, pport_stasrt pointing to start of port number in s
 static int validateEthSMIpAddress(const char *s, const char **pip_end,
-                             const char **pport_start)
+                                  const char **pport_start)
 {
     int octets = 0;
     int ch = 0, prev = 0;
@@ -152,9 +148,10 @@ static int validateEthSMIpAddress(const char *s, const char **pip_end,
     const char *ip_end = NULL;
     const char *port_start = NULL;
 
-    const char* start = "ETHSM:";
+    const char *start = "ETHSM:";
 
-    if (strncmp(s, start, strlen(start)) != 0) {
+    if (strncmp(s, start, strlen(start)) != 0)
+    {
         return -1;
     }
 
@@ -240,15 +237,15 @@ static int parseEthSMIpAddress(const char *s, char *ip, unsigned short *port)
     if (validateEthSMIpAddress(s, &ip_end, &port_start) == -1)
         return -1;
 
-    int IPAddrLen=ip_end - s;
+    int IPAddrLen = ip_end - s;
 
     printf("ip len: %d \r\n", IPAddrLen);
 
-    const char* start = "ETHSM:";
+    const char *start = "ETHSM:";
     IPAddrLen -= strlen(start);
     s += strlen(start);
 
-    if(IPAddrLen<7 || IPAddrLen>15 )//check length before writing to *ip
+    if (IPAddrLen < 7 || IPAddrLen > 15) //check length before writing to *ip
         return -1;
 
     memcpy(ip, s, IPAddrLen);
@@ -271,7 +268,7 @@ static int parseEthSMIpAddress(const char *s, char *ip, unsigned short *port)
 /*   TCP BUS HANDLING FUNCTIONS               */
 /**********************************************/
 
-smBusdevicePointer tcpipEthSMPortOpen(const char * devicename, smint32 baudrate_bps, smbool *success)
+smBusdevicePointer tcpipEthSMPortOpen(const char *devicename, smint32 baudrate_bps, smbool *success)
 {
     printf("tcpipEthSMPortOpen %s \r\n", devicename);
 
@@ -283,12 +280,12 @@ smBusdevicePointer tcpipEthSMPortOpen(const char * devicename, smint32 baudrate_
     socklen_t lon;
     unsigned long arg;
 
-    *success=smfalse;
+    *success = smfalse;
 
     printf("Validate IP address: \r\n");
     if (validateEthSMIpAddress(devicename, NULL, NULL) != 0)
     {
-        smDebug(-1,SMDebugLow,"TCP/IP: device name '%s' does not appear to be IP address, skipping TCP/IP open attempt (note: this is normal if opening a non-TCP/IP port)\n",devicename);
+        smDebug(-1, SMDebugLow, "TCP/IP: device name '%s' does not appear to be IP address, skipping TCP/IP open attempt (note: this is normal if opening a non-TCP/IP port)\n", devicename);
         printf("Not valid IP \r\n");
         return SMBUSDEVICE_RETURN_ON_OPEN_FAIL;
     }
@@ -300,14 +297,14 @@ smBusdevicePointer tcpipEthSMPortOpen(const char * devicename, smint32 baudrate_
     printf("Parse IP address: \r\n");
     if (parseEthSMIpAddress(devicename, ip_addr, &port) < 0)
     {
-        smDebug(-1,SMDebugLow,"TCP/IP: IP address parse failed\n");
+        smDebug(-1, SMDebugLow, "TCP/IP: IP address parse failed\n");
         printf("Failed! \r\n");
         return SMBUSDEVICE_RETURN_ON_OPEN_FAIL;
     }
 
     printf("Success! Connect to IP %s, port %d \r\n", ip_addr, port);
 
-    smDebug(-1,SMDebugLow,"TCP/IP: Attempting to connect to %s:%d\n",ip_addr,port);
+    smDebug(-1, SMDebugLow, "TCP/IP: Attempting to connect to %s:%d\n", ip_addr, port);
 
 #if defined(_WIN32)
     initwsa();
@@ -318,7 +315,7 @@ smBusdevicePointer tcpipEthSMPortOpen(const char * devicename, smint32 baudrate_
     if (sockfd == -1)
     {
         printf("Failed to create socket\r\n");
-        smDebug(-1,SMDebugLow,"TCP/IP: Socket open failed (sys error: %s)\n",strerror(errno));
+        smDebug(-1, SMDebugLow, "TCP/IP: Socket open failed (sys error: %s)\n", strerror(errno));
         return SMBUSDEVICE_RETURN_ON_OPEN_FAIL;
     }
 
@@ -346,32 +343,32 @@ smBusdevicePointer tcpipEthSMPortOpen(const char * devicename, smint32 baudrate_
     {
         if (errno == EINPROGRESS) //check if it may be due to non-blocking mode (delayed connect)
         {
-            tv.tv_sec = 1;//max wait time // TODO, magic number
+            tv.tv_sec = 1; //max wait time // TODO, magic number
             tv.tv_usec = 0;
             FD_ZERO(&myset);
             FD_SET((unsigned int)sockfd, &myset);
-            if (select(sockfd+1, NULL, &myset, NULL, &tv) > 0)
+            if (select(sockfd + 1, NULL, &myset, NULL, &tv) > 0)
             {
                 lon = sizeof(int);
-                getsockopt((SOCKET)sockfd, SOL_SOCKET, SO_ERROR, (void*)(&valopt), &lon);
+                getsockopt((SOCKET)sockfd, SOL_SOCKET, SO_ERROR, (void *)(&valopt), &lon);
                 if (valopt) //if valopt!=0, then there was an error. if it's 0, then connection established successfully (will return here from smtrue eventually)
                 {
                     printf("Err1\r\n");
-                    smDebug(-1,SMDebugLow,"TCP/IP: Setting socket properties failed (sys error: %s)\n",strerror(errno));
+                    smDebug(-1, SMDebugLow, "TCP/IP: Setting socket properties failed (sys error: %s)\n", strerror(errno));
                     return SMBUSDEVICE_RETURN_ON_OPEN_FAIL;
                 }
             }
             else
             {
                 printf("Err2 %s\r\n", strerror(errno));
-                smDebug(-1,SMDebugLow,"TCP/IP: Setting socket properties failed (sys error: %s)\n",strerror(errno));
+                smDebug(-1, SMDebugLow, "TCP/IP: Setting socket properties failed (sys error: %s)\n", strerror(errno));
                 return SMBUSDEVICE_RETURN_ON_OPEN_FAIL;
             }
         }
         else
         {
             printf("Err3\r\n");
-            smDebug(-1,SMDebugLow,"TCP/IP: Connecting socket failed (sys error: %s)\n",strerror(errno));
+            smDebug(-1, SMDebugLow, "TCP/IP: Connecting socket failed (sys error: %s)\n", strerror(errno));
             return SMBUSDEVICE_RETURN_ON_OPEN_FAIL;
         }
     }
@@ -386,7 +383,7 @@ smBusdevicePointer tcpipEthSMPortOpen(const char * devicename, smint32 baudrate_
     ioctlsocket((SOCKET)sockfd, (long)FIONBIO, &arg);
 #endif
 
-    *success=smtrue;
+    *success = smtrue;
 
     createRingBuffer((unsigned int)sockfd); // TODO: Virheenkäsittely
 
@@ -406,19 +403,18 @@ smBusdevicePointer tcpipEthSMPortOpen(const char * devicename, smint32 baudrate_
 
     printf("Return bus device pointer: %d \r\n", sockfd);
 
-    return (smBusdevicePointer)sockfd;//compiler warning expected here on 64 bit compilation but it's ok
+    return (smBusdevicePointer)sockfd; //compiler warning expected here on 64 bit compilation but it's ok
 }
 
 void tcpipEthSMPortClose(smBusdevicePointer busdevicePointer)
 {
-    int sockfd=(int)busdevicePointer;//compiler warning expected here on 64 bit compilation but it's ok
+    int sockfd = (int)busdevicePointer; //compiler warning expected here on 64 bit compilation but it's ok
     close((SOCKET)sockfd);
 #if defined(_WIN32)
     WSACleanup();
 #endif
     removeRingBuffer((unsigned int)sockfd);
 }
-
 
 /**********************************************/
 /*   TCP TASKS                                */
@@ -427,15 +423,15 @@ void tcpipEthSMPortClose(smBusdevicePointer busdevicePointer)
 static int tcpipPortWriteBytes(smBusdevicePointer busdevicePointer, char *buf, unsigned int size)
 {
     printBuffer(buf, size);
-    int sent = write((SOCKET) busdevicePointer, buf, (int)size);
+    int sent = write((SOCKET)busdevicePointer, buf, (int)size);
     return sent;
 }
 
 // Try to read given amount of bytes from TCP
-static int tcpipReadBytes(smBusdevicePointer busdevicePointer, char* buf, unsigned int dataMaxLength)
+static int tcpipReadBytes(smBusdevicePointer busdevicePointer, char *buf, unsigned int dataMaxLength)
 {
 
-    SOCKET sockfd=(SOCKET)busdevicePointer;
+    SOCKET sockfd = (SOCKET)busdevicePointer;
     fd_set input;
     FD_ZERO(&input);
     FD_SET((unsigned int)sockfd, &input);
@@ -443,16 +439,16 @@ static int tcpipReadBytes(smBusdevicePointer busdevicePointer, char* buf, unsign
     timeout.tv_sec = 2;
     timeout.tv_usec = 0; // TODO, where to get this?
 
-    int n = select((int)sockfd + 1, &input, NULL, NULL, &timeout);//n=-1, select failed. 0=no data within timeout ready, >0 data available. Note: sockfd+1 is correct usage.
+    int n = select((int)sockfd + 1, &input, NULL, NULL, &timeout); //n=-1, select failed. 0=no data within timeout ready, >0 data available. Note: sockfd+1 is correct usage.
 
     if (n < 1) //n=-1 error, n=0 timeout occurred
     {
-        return(n);
+        return (n);
     }
 
-    if(!FD_ISSET(sockfd, &input))
+    if (!FD_ISSET(sockfd, &input))
     {
-        return(n);//no data available
+        return (n); //no data available
     }
 
     n = read(sockfd, buf, (int)dataMaxLength);
@@ -469,8 +465,8 @@ static int tcpipReadBytesFromAdapter(smBusdevicePointer busdevicePointer, unsign
 
     {
         int response = 0;
-        char requestBuffer[3] = { 0 };
-        addTCPRequestHeaders(requestBuffer, SM_PACKET_TYPE_READ, amountOfBytes, 2/*TAIKALUKU*/);
+        char requestBuffer[3] = {0};
+        addTCPRequestHeaders(requestBuffer, SM_PACKET_TYPE_READ, amountOfBytes, 2 /*TAIKALUKU*/);
         response = tcpipPortWriteBytes(busdevicePointer, requestBuffer, 3);
         printf(" RW:%d ", response);
         if (response == SOCKET_ERROR)
@@ -480,11 +476,10 @@ static int tcpipReadBytesFromAdapter(smBusdevicePointer busdevicePointer, unsign
         }
     }
 
-
     /* READ RESPONSE HEADER */
 
     {
-        char responseHeaderBuffer[3] = { 0 };
+        char responseHeaderBuffer[3] = {0};
         int response = tcpipReadBytes(busdevicePointer, responseHeaderBuffer, 3);
         printf(" RR:%d ", response);
 
@@ -511,12 +506,11 @@ static int tcpipReadBytesFromAdapter(smBusdevicePointer busdevicePointer, unsign
         multipleBytesToValue(&responseHeaderBuffer[1], 2, &supposedPacketLength);
     }
 
-
     /* READ RESPONSE BYTES */
 
     {
         int response = tcpipReadBytes(busdevicePointer, tempBuffer, supposedPacketLength);
-        unsigned int dataLength = (unsigned int) response;
+        unsigned int dataLength = (unsigned int)response;
 
         printf(" B:%d ", response);
 
@@ -526,7 +520,7 @@ static int tcpipReadBytesFromAdapter(smBusdevicePointer busdevicePointer, unsign
             return SOCKET_ERROR;
         }
 
-        if (response != (int) supposedPacketLength)
+        if (response != (int)supposedPacketLength)
         {
             printf(" TCPIPREADBYTESFROMADAPTER ERROR 5 \r\n");
             return 0;
@@ -545,7 +539,8 @@ static int tcpipReadBytesFromAdapter(smBusdevicePointer busdevicePointer, unsign
     return 0;
 }
 
-static smbool tcpipSetBaudrate(smBusdevicePointer busdevicePointer, smuint32 baudrate) {
+static smbool tcpipSetBaudrate(smBusdevicePointer busdevicePointer, smuint32 baudrate)
+{
     printf("tcpipSetbaudrate %d \r\n", baudrate);
 
     /* SEND WRITE REQUEST */
@@ -570,7 +565,6 @@ static smbool tcpipSetBaudrate(smBusdevicePointer busdevicePointer, smuint32 bau
             printf(" TCPIPPORTWRITE ERROR 1 \r\n");
             return SOCKET_ERROR;
         }
-
     }
 
     /* READ RESPONSE */
@@ -584,7 +578,8 @@ static smbool tcpipSetBaudrate(smBusdevicePointer busdevicePointer, smuint32 bau
 
         printf(" WR:%d ", response);
 
-        if (response == 1 && responseByte == 1) {
+        if (response == 1 && responseByte == 1)
+        {
             return 1;
         }
 
@@ -605,10 +600,10 @@ static smbool tcpipSetBaudrate(smBusdevicePointer busdevicePointer, smuint32 bau
     printf("\r\n");
 
     return 1;
-
 }
 
-static int getETHSMAdapterVersionNumbers(smBusdevicePointer busdevicePointer, char* buf){
+static int getETHSMAdapterVersionNumbers(smBusdevicePointer busdevicePointer, char *buf)
+{
     printf("getETHSMAdapterFeatures \r\n");
 
     unsigned int featureFlags = 0;
@@ -630,7 +625,6 @@ static int getETHSMAdapterVersionNumbers(smBusdevicePointer busdevicePointer, ch
             printf(" TCPIPPORTWRITE ERROR 1 \r\n");
             return SOCKET_ERROR;
         }
-
     }
 
     /* READ RESPONSE */
@@ -645,7 +639,8 @@ static int getETHSMAdapterVersionNumbers(smBusdevicePointer busdevicePointer, ch
 
         printf(" WR:%d\r\n ", response);
 
-        if (response == responseLength) {
+        if (response == responseLength)
+        {
             return (int)1;
         }
 
@@ -662,7 +657,8 @@ static int getETHSMAdapterVersionNumbers(smBusdevicePointer busdevicePointer, ch
 }
 
 // Returns -1 or feature flags
-static int getETHSMAdapterFeatures(smBusdevicePointer busdevicePointer) {
+static int getETHSMAdapterFeatures(smBusdevicePointer busdevicePointer)
+{
     printf("getETHSMAdapterFeatures \r\n");
 
     unsigned int featureFlags = 0;
@@ -684,7 +680,6 @@ static int getETHSMAdapterFeatures(smBusdevicePointer busdevicePointer) {
             printf(" TCPIPPORTWRITE ERROR 1 \r\n");
             return SOCKET_ERROR;
         }
-
     }
 
     /* READ RESPONSE */
@@ -700,7 +695,8 @@ static int getETHSMAdapterFeatures(smBusdevicePointer busdevicePointer) {
 
         printf(" WR:%d\r\n ", response);
 
-        if (response == responseLength) {
+        if (response == responseLength)
+        {
             multipleBytesToValue(responseData, responseLength, &featureFlags);
             return (int)featureFlags;
         }
@@ -715,17 +711,17 @@ static int getETHSMAdapterFeatures(smBusdevicePointer busdevicePointer) {
         printf(" TCPIPPORTWRITE ERROR 3 \r\n");
         return SOCKET_ERROR;
     }
-
 }
 
 static void tcpipPurge(smBusdevicePointer busdevicePointer)
 {
     printf("tcpipPurge\r\n");
     unsigned char buffer[100];
-    unsigned int bufferSize = sizeof(buffer)/sizeof(buffer[0]);
+    unsigned int bufferSize = sizeof(buffer) / sizeof(buffer[0]);
     int receivedData = bufferSize;
 
-    while (receivedData == bufferSize) {
+    while (receivedData == bufferSize)
+    {
         printf("Purge %d \r\n", receivedData);
         receivedData = tcpipEthSMPortRead(busdevicePointer, buffer, bufferSize);
     }
@@ -733,7 +729,8 @@ static void tcpipPurge(smBusdevicePointer busdevicePointer)
     printf("tcpipPurge DONE\r\n");
 }
 
-static int tcpipFlush(smBusdevicePointer busdevicePointer) {
+static int tcpipFlush(smBusdevicePointer busdevicePointer)
+{
     printf("tcpipFlush \r\n");
 
     unsigned int featureFlags = 0;
@@ -755,7 +752,6 @@ static int tcpipFlush(smBusdevicePointer busdevicePointer) {
             printf(" TCPIPPORTWRITE ERROR 1 \r\n");
             return SOCKET_ERROR;
         }
-
     }
 
     /* READ RESPONSE */
@@ -770,7 +766,8 @@ static int tcpipFlush(smBusdevicePointer busdevicePointer) {
 
         printf(" WR:%d\r\n ", response);
 
-        if (response == 1 && responseByte == 3) {
+        if (response == 1 && responseByte == 3)
+        {
             return 1;
         }
 
@@ -784,7 +781,6 @@ static int tcpipFlush(smBusdevicePointer busdevicePointer) {
         printf(" TCPIPPORTWRITE ERROR 3 \r\n");
         return SOCKET_ERROR;
     }
-
 }
 
 /**********************************************/
@@ -798,7 +794,7 @@ static int tcpipFlush(smBusdevicePointer busdevicePointer) {
  * @param size
  * @return amount of bytes written or SOCKET_ERROR if there was one
  */
-int tcpipEthSMPortWrite(smBusdevicePointer busdevicePointer, unsigned char * buf, int size)
+int tcpipEthSMPortWrite(smBusdevicePointer busdevicePointer, unsigned char *buf, int size)
 {
 
     printf("tcpipPortWrite %d ", size);
@@ -814,8 +810,8 @@ int tcpipEthSMPortWrite(smBusdevicePointer busdevicePointer, unsigned char * buf
         int response = 0;
 
         // Tehdään isompi puskuri headereita varten
-        char* requestBuffer = createNewBufferWithLeadingFreeSpace(buf, (unsigned int)size, TCP_WRITE_REQUEST_HEADER_LENGTH); // TODO, VAPAUTA TÄMÄ
-        unsigned int requestBufferSize = (unsigned int) size + TCP_WRITE_REQUEST_HEADER_LENGTH;
+        char *requestBuffer = createNewBufferWithLeadingFreeSpace(buf, (unsigned int)size, TCP_WRITE_REQUEST_HEADER_LENGTH); // TODO, VAPAUTA TÄMÄ
+        unsigned int requestBufferSize = (unsigned int)size + TCP_WRITE_REQUEST_HEADER_LENGTH;
 
         if (!requestBuffer)
         {
@@ -823,7 +819,7 @@ int tcpipEthSMPortWrite(smBusdevicePointer busdevicePointer, unsigned char * buf
         }
 
         // Lisätään headerit
-        addTCPRequestHeaders(requestBuffer, SM_PACKET_TYPE_WRITE, (unsigned int)size, 2/*TAIKALUKU*/);
+        addTCPRequestHeaders(requestBuffer, SM_PACKET_TYPE_WRITE, (unsigned int)size, 2 /*TAIKALUKU*/);
 
         // Lähetetään data
         response = tcpipPortWriteBytes(busdevicePointer, requestBuffer, requestBufferSize);
@@ -836,14 +832,13 @@ int tcpipEthSMPortWrite(smBusdevicePointer busdevicePointer, unsigned char * buf
             printf(" TCPIPPORTWRITE ERROR 1 \r\n");
             return SOCKET_ERROR;
         }
-
     }
 
     /* READ RESPONSE */
 
     {
         int response = 0;
-        char responseBuffer[TCP_WRITE_RESPONSE_HEADER_LENGTH] = { 0 };
+        char responseBuffer[TCP_WRITE_RESPONSE_HEADER_LENGTH] = {0};
 
         // Odotetaan vastaus pyyntöön
         response = tcpipReadBytes(busdevicePointer, responseBuffer, TCP_WRITE_RESPONSE_HEADER_LENGTH);
@@ -881,7 +876,7 @@ int tcpipEthSMPortWrite(smBusdevicePointer busdevicePointer, unsigned char * buf
     return 0;
 }
 
-int tcpipEthSMPortRead(smBusdevicePointer busdevicePointer, unsigned char* buf, int size)
+int tcpipEthSMPortRead(smBusdevicePointer busdevicePointer, unsigned char *buf, int size)
 {
     int missingBytes = size - bufferAmountOfBytes((unsigned int)busdevicePointer);
 
@@ -897,7 +892,9 @@ int tcpipEthSMPortRead(smBusdevicePointer busdevicePointer, unsigned char* buf, 
         if (bufferAmountOfBytes((unsigned int)busdevicePointer))
         {
             buf[cnt] = (unsigned char)bufferGetByte((unsigned int)busdevicePointer);
-        } else {
+        }
+        else
+        {
             break;
         }
     }
@@ -905,10 +902,9 @@ int tcpipEthSMPortRead(smBusdevicePointer busdevicePointer, unsigned char* buf, 
     return cnt;
 }
 
-
 smbool tcpipEthSMMiscOperation(smBusdevicePointer busdevicePointer, BusDeviceMiscOperationType operation, smint32 value)
 {
-    switch(operation)
+    switch (operation)
     {
 
     case MiscOperationCheckIfBaudrateIsOK:
@@ -918,7 +914,7 @@ smbool tcpipEthSMMiscOperation(smBusdevicePointer busdevicePointer, BusDeviceMis
         // IONI_baudrates[] = {9.00000   4.50000   3.00000   2.25000   1.80000   1.50000   1.28571   1.12500   1.00000   0.90000   0.81818   0.75000   0.69231   0.64286   0.60000   0.56250};
         return smtrue;
 
-/*
+        /*
 
 STM32F207 Fractional baudrate generator can generate following baudrates with 8-bit oversampling:
 60 MHz / (8 * USARTDIV),
@@ -929,13 +925,14 @@ where USARTDIV can be anything between 1 and 4096 with 0.125 steps
         static const smuint32 ETHSM_BAUDRATES[3] = {
             9600,
             115200,
-            460800
-        };
+            460800};
 
         unsigned int baudrates = sizeof(ETHSM_BAUDRATES) / sizeof(ETHSM_BAUDRATES[0]);
-        for (unsigned int i = 0; i < baudrates; ++i) {
+        for (unsigned int i = 0; i < baudrates; ++i)
+        {
             printf("Check BR %d \r\n", ETHSM_BAUDRATES[i]);
-            if ((smuint32)value == ETHSM_BAUDRATES[i]) {
+            if ((smuint32)value == ETHSM_BAUDRATES[i])
+            {
                 printf("Baudrate found!\r\n");
                 return 1;
             }
@@ -950,7 +947,7 @@ where USARTDIV can be anything between 1 and 4096 with 0.125 steps
         do //loop read as long as there is data coming in
         {
             char discardbuf[256];
-            int sockfd=(int)busdevicePointer;//compiler warning expected here on 64 bit compilation but it's ok
+            int sockfd = (int)busdevicePointer; //compiler warning expected here on 64 bit compilation but it's ok
             fd_set input;
             FD_ZERO(&input);
             FD_SET((unsigned int)sockfd, &input);
@@ -958,32 +955,32 @@ where USARTDIV can be anything between 1 and 4096 with 0.125 steps
             timeout.tv_sec = 0;
             timeout.tv_usec = 0;
 
-            n = select(sockfd + 1, &input, NULL, NULL, &timeout);//Check whether socket is readable. Note: sockfd+1 is correct usage.
+            n = select(sockfd + 1, &input, NULL, NULL, &timeout); //Check whether socket is readable. Note: sockfd+1 is correct usage.
 
-            if (n < 0)//  n=-1 select error
+            if (n < 0) //  n=-1 select error
             {
-                return smfalse;//select failed
+                return smfalse; //select failed
             }
-            if (n == 0)//  n=0 no data within timeout
+            if (n == 0) //  n=0 no data within timeout
             {
                 return smtrue;
             }
-            if(!FD_ISSET(sockfd, &input))
+            if (!FD_ISSET(sockfd, &input))
             {
                 return smtrue; //no data available, redundant check (see above)?
             }
             //data is available, read it
-            n = read((SOCKET)sockfd, (char*)discardbuf, 256);//TODO: should we read 1 byte at a time to avoid blocking here?
-        } while( n>0 );
+            n = read((SOCKET)sockfd, (char *)discardbuf, 256); //TODO: should we read 1 byte at a time to avoid blocking here?
+        } while (n > 0);
         return smtrue;
     }
-        break;
+    break;
     case MiscOperationFlushTX:
         //FlushTX should be taken care with disabled Nagle algoritmh
         return smtrue;
         break;
     default:
-        smDebug( -1, SMDebugLow, "TCP/IP: given MiscOperataion not implemented\n");
+        smDebug(-1, SMDebugLow, "TCP/IP: given MiscOperataion not implemented\n");
         return smfalse;
         break;
     }

@@ -4,10 +4,6 @@
 #include "simplemotion_private.h"
 #include "buffer.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #define SM_PACKET_TYPE_PING 0x00
 #define SM_PACKET_TYPE_WRITE 0x01
 #define SM_PACKET_TYPE_READ 0x02
@@ -21,8 +17,13 @@ extern "C" {
 #define SM_PACKET_TYPE_GET_DEVICE_FEATURES 0x09
 #define SM_PACKET_TYPE_GET_DEVICE_VERSION_NUMBERS 0x0a
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 //return port handle. sets success=smtrue if ok
-smBusdevicePointer tcpipEthSMPortOpen(const char * devicename, smint32 baudrate_bps, smbool *success);
+smBusdevicePointer tcpipEthSMPortOpen(const char *devicename, smint32 baudrate_bps, smbool *success);
 int tcpipEthSMPortRead(smBusdevicePointer busdevicePointer, unsigned char *, int);
 int tcpipEthSMPortWrite(smBusdevicePointer busdevicePointer, unsigned char *, int);
 smbool tcpipEthSMMiscOperation(smBusdevicePointer busdevicePointer, BusDeviceMiscOperationType operation, smint32 value);

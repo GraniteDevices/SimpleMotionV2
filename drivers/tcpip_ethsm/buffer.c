@@ -7,14 +7,15 @@
 /*   RING BUFFER                              */
 /**********************************************/
 
-typedef struct RingBuffer {
+typedef struct RingBuffer
+{
     unsigned int bufferIdentifier;
     unsigned int writePointer;
     unsigned int readPointer;
     TCP_BUFFER_TYPE data[TCP_BUFFER_SIZE];
 } RingBuffer;
 
-static RingBuffer* ringBuffers[AMOUNT_OF_TCP_BUFFERS];
+static RingBuffer *ringBuffers[AMOUNT_OF_TCP_BUFFERS];
 
 int findBufferIndexByIdentifier(unsigned int bufferIdentifier)
 {
@@ -48,7 +49,7 @@ int createRingBuffer(unsigned int bufferIdentifier)
         return -1;
     }
 
-    RingBuffer *buffer = (RingBuffer*) malloc(sizeof(RingBuffer));
+    RingBuffer *buffer = (RingBuffer *)malloc(sizeof(RingBuffer));
 
     if (!buffer)
     {
@@ -56,7 +57,7 @@ int createRingBuffer(unsigned int bufferIdentifier)
         return -1;
     }
 
-    memset(buffer,0,sizeof(RingBuffer));
+    memset(buffer, 0, sizeof(RingBuffer));
     ringBuffers[index] = buffer;
     buffer->bufferIdentifier = bufferIdentifier;
     return index;
@@ -81,7 +82,7 @@ void bufferAddByte(unsigned int bufferIdentifier, TCP_BUFFER_TYPE byte)
 
     if (index >= 0)
     {
-        RingBuffer* buf = ringBuffers[index];
+        RingBuffer *buf = ringBuffers[index];
         buf->data[buf->writePointer++] = byte;
         buf->writePointer %= TCP_BUFFER_SIZE;
     }
@@ -95,7 +96,7 @@ TCP_BUFFER_TYPE bufferGetByte(unsigned int bufferIdentifier)
 
     if (index >= 0)
     {
-        RingBuffer* buf = ringBuffers[index];
+        RingBuffer *buf = ringBuffers[index];
         r = buf->data[buf->readPointer];
         buf->data[buf->readPointer++] = 0;
         buf->readPointer %= TCP_BUFFER_SIZE;
@@ -106,12 +107,12 @@ TCP_BUFFER_TYPE bufferGetByte(unsigned int bufferIdentifier)
 
 void bufferClear(unsigned int bufferIdentifier)
 {
-    printf ("FUNCTION %s \r\n", __PRETTY_FUNCTION__);
+    printf("FUNCTION %s \r\n", __PRETTY_FUNCTION__);
     int index = findBufferIndexByIdentifier(bufferIdentifier);
 
     if (index >= 0)
     {
-        RingBuffer* buf = ringBuffers[index];
+        RingBuffer *buf = ringBuffers[index];
         buf->readPointer = 0;
         buf->writePointer = 0;
         memset(buf->data, 0, TCP_BUFFER_SIZE * sizeof(TCP_BUFFER_TYPE));
@@ -124,7 +125,7 @@ int bufferAmountOfBytes(unsigned int bufferIdentifier)
 
     if (index >= 0)
     {
-        RingBuffer* buf = ringBuffers[index];
+        RingBuffer *buf = ringBuffers[index];
 
         int r = (int)buf->writePointer - (int)buf->readPointer;
         if (r < 0)
@@ -132,7 +133,9 @@ int bufferAmountOfBytes(unsigned int bufferIdentifier)
             r += TCP_BUFFER_SIZE;
         }
         return r;
-    } else {
+    }
+    else
+    {
         return -1;
     }
 }
