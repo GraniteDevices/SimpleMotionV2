@@ -383,9 +383,11 @@ smBusdevicePointer tcpipEthSMPortOpen(const char *devicename, smint32 baudrate_b
     ioctlsocket((SOCKET)sockfd, (long)FIONBIO, &arg);
 #endif
 
-    *success = smtrue;
-
-    createRingBuffer((unsigned int)sockfd); // TODO: Virheenkäsittely
+    if (!createRingBuffer((unsigned int)sockfd)) {
+        tcpipEthSMPortClose((smBusdevicePointer)sockfd);
+        printf("ERROR! Could not create ring buffer\r\n");
+        return 0;
+    }
 
     tcpipSetBaudrate((smBusdevicePointer)sockfd, (smuint32)baudrate_bps);
 
@@ -402,6 +404,8 @@ smBusdevicePointer tcpipEthSMPortOpen(const char *devicename, smint32 baudrate_b
     tcpipPurge((smBusdevicePointer)sockfd);
 
     printf("Return bus device pointer: %d \r\n", sockfd);
+
+    *success = smtrue;
 
     return (smBusdevicePointer)sockfd; //compiler warning expected here on 64 bit compilation but it's ok
 }
@@ -530,7 +534,7 @@ static int tcpipReadBytesFromAdapter(smBusdevicePointer busdevicePointer, unsign
 
         for (unsigned int i = 0; i < dataLength; ++i)
         {
-            bufferAddByte((unsigned int)busdevicePointer, tempBuffer[i]); // TODO: buffer full?
+            bufferAddItem((unsigned int)busdevicePointer, tempBuffer[i]);
         }
     }
 
@@ -891,7 +895,7 @@ int tcpipEthSMPortRead(smBusdevicePointer busdevicePointer, unsigned char *buf, 
     {
         if (bufferAmountOfBytes((unsigned int)busdevicePointer))
         {
-            buf[cnt] = (unsigned char)bufferGetByte((unsigned int)busdevicePointer);
+            bufferGetItem((unsigned int)busdevicePointer, (char*)&buf[cnt]);
         }
         else
         {
