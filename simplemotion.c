@@ -324,7 +324,7 @@ LIB SM_STATUS smPurge( const smbus bushandle )
     //check if bus handle is valid & opened
     if(smIsHandleOpen(bushandle)==smfalse) return recordStatus(bushandle,SM_ERR_NODEVICE);
 
-    if(smBDMiscOperation( bushandle, MiscOperationPurgeRX )==smtrue)
+    if(smBDMiscOperation( bushandle, MiscOperationPurgeRX,0)==smtrue)
         return recordStatus(bushandle,SM_OK);
     else
         return recordStatus(bushandle,SM_ERR_BUS);
@@ -338,12 +338,51 @@ LIB SM_STATUS smFlushTX( const smbus bushandle )
     //check if bus handle is valid & opened
     if(smIsHandleOpen(bushandle)==smfalse) return recordStatus(bushandle,SM_ERR_NODEVICE);
 
-    if(smBDMiscOperation( bushandle, MiscOperationFlushTX )==smtrue)
+    if(smBDMiscOperation( bushandle, MiscOperationFlushTX,0)==smtrue)
         return recordStatus(bushandle,SM_OK);
     else
         return recordStatus(bushandle,SM_ERR_BUS);
 }
 
+LIB smbool smCheckIfBaudrateIsOK(smuint32 baudrate) {
+    return smBDMiscOperation( 0, MiscOperationCheckIfBaudrateIsOK,(smint32)baudrate);
+}
+
+
+LIB smbus smSetBaudrateAndReconnect( const smbus busHandle, smuint32 baudrate) {
+
+    printf("smSetBaudrateAndReconnect %d\r\n", baudrate);
+
+    //check if bus handle is valid & opened
+    if(smIsHandleOpen(busHandle)==smfalse) return recordStatus(busHandle,SM_ERR_NODEVICE);
+
+    // Copy device name for later usage
+    char currentDeviceName[SM_BUSDEVICENAME_LEN] = { 0 };
+    strncpy(currentDeviceName,  smBus[busHandle].busDeviceName, SM_BUSDEVICENAME_LEN );
+
+    // Set new baudrate to devices connected to the bus
+    SM_STATUS status = smSetParameter( busHandle, 0, SMP_BUS_SPEED, (smint32) baudrate );
+
+    if (status != SM_OK) {
+        printf("Could not set baud rate devices, status: %d \r\n", status);
+        smCloseBus(busHandle);
+        return -1;
+    }
+
+    // Set local baudrate
+    smSetBaudrate(baudrate);
+
+    // Close bus
+    smCloseBus(busHandle);
+    if (status != SM_OK) {
+        return status;
+    }
+
+    // Open bus again with new baudrate
+    smbus newBusHandle = smOpenBus(currentDeviceName);
+
+    return newBusHandle;
+}
 
 char *cmdidToStr(smuint8 cmdid )
 {

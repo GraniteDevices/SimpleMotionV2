@@ -57,14 +57,14 @@ typedef enum _smVerbosityLevel {SMDebugOff,SMDebugLow,SMDebugMid,SMDebugHigh,SMD
  *
  * If operation is unsupported by the callback, return smfalse.
  */
-typedef enum _BusDeviceMiscOperationType {MiscOperationFlushTX,MiscOperationPurgeRX} BusDeviceMiscOperationType;
+typedef enum _BusDeviceMiscOperationType {MiscOperationFlushTX,MiscOperationPurgeRX, MiscOperationCheckIfBaudrateIsOK} BusDeviceMiscOperationType;
 
 //define communication interface device driver callback types
 typedef void* smBusdevicePointer;
 typedef smBusdevicePointer (*BusdeviceOpen)(const char *port_device_name, smint32 baudrate_bps, smbool *success);
 typedef smint32 (*BusdeviceReadBuffer)(smBusdevicePointer busdevicePointer, unsigned char *buf, smint32 size);
 typedef smint32 (*BusdeviceWriteBuffer)(smBusdevicePointer busdevicePointer, unsigned char *buf, smint32 size);
-typedef smbool (*BusdeviceMiscOperation)(smBusdevicePointer busdevicePointer, BusDeviceMiscOperationType operation );
+typedef smbool (*BusdeviceMiscOperation)(smBusdevicePointer busdevicePointer, BusDeviceMiscOperationType operation, smint32 value);
 typedef void (*BusdeviceClose)(smBusdevicePointer busdevicePointer);
 
 //must use packed mode for bitfields in structs for smFastUpdateCycleWithStructs

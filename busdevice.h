@@ -33,7 +33,7 @@ smbool smBDRead( const smbusdevicehandle handle , smuint8 *byte );
 
 //see info at definition of BusDeviceMiscOperationType
 //returns true if sucessfully
-smbool smBDMiscOperation( const smbusdevicehandle handle, BusDeviceMiscOperationType operation );
+smbool smBDMiscOperation( const smbusdevicehandle handle, BusDeviceMiscOperationType operation, smint32 value);
 
 //BUS DEVICE INFO FETCH FUNCTIONS:
 
@@ -42,6 +42,7 @@ smint smBDGetNumberOfDetectedBuses();
 
 //return smtrue if success
 smbool smBDGetBusDeviceDetails( smint index, SM_BUS_DEVICE_INFO *info );
+
 
 
 #endif

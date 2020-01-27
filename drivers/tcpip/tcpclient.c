@@ -201,7 +201,7 @@ int tcpipPortWrite(smBusdevicePointer busdevicePointer, unsigned char *buf, int 
     return sent;
 }
 
-smbool tcpipMiscOperation(smBusdevicePointer busdevicePointer, BusDeviceMiscOperationType operation)
+smbool tcpipMiscOperation(smBusdevicePointer busdevicePointer, BusDeviceMiscOperationType operation, smint32 value)
 {
     switch(operation)
     {

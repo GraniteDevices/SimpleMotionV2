@@ -17,11 +17,13 @@ DEFINES += SIMPLEMOTIONV2_LIBRARY
 #DEFINES += ENABLE_DEBUG_PRINTS
 
 SOURCES += $$PWD/sm_consts.c $$PWD/simplemotion.c $$PWD/busdevice.c \
-    $$PWD/bufferedmotion.c $$PWD/devicedeployment.c $$PWD/utils/crc.c
+    $$PWD/bufferedmotion.c $$PWD/devicedeployment.c $$PWD/utils/crc.c \
+    $$PWD/drivers/tcpip_ethsm/buffer.c
 
 HEADERS += $$PWD/simplemotion_private.h\
     $$PWD/busdevice.h  $$PWD/simplemotion.h $$PWD/sm485.h $$PWD/simplemotion_defs.h \
     $$PWD/bufferedmotion.h $$PWD/devicedeployment.h \
+    $$PWD/drivers/tcpip_ethsm/buffer.h \
     $$PWD/user_options.h \
     $$PWD/simplemotion_types.h \
     $$PWD/user_options.h $$PWD/utils/crc.h

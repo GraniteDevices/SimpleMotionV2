@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <ctype.h>
 #include <string.h>
+#include "buffer.h"
 
 #if defined(_WIN32)
 #if defined(CM_NONE)
@@ -66,144 +67,19 @@ static int initwsa()
 
 static char tempBuffer[GLOBAL_BUFFER_SIZE];
 
-
 /**********************************************/
-/*   RING BUFFER                              */
+/*   STATIC FUNCTION PROTOTYPES               */
 /**********************************************/
 
-#define AMOUNT_OF_BUFFERS 8
-#define BUFFER_SIZE 512
-#define BUFFER_TYPE char
-
-typedef struct RingBuffer {
-    unsigned int bufferIdentifier;
-    unsigned int writePointer;
-    unsigned int readPointer;
-    BUFFER_TYPE data[BUFFER_SIZE];
-} RingBuffer;
-
-static RingBuffer* ringBuffers[AMOUNT_OF_BUFFERS];
-
-static int findBufferIndexByIdentifier(unsigned int bufferIdentifier)
-{
-    int index = -1;
-    for (int i = 0; i < AMOUNT_OF_BUFFERS; ++i)
-    {
-        if (ringBuffers[i] != NULL && ringBuffers[i]->bufferIdentifier == bufferIdentifier)
-        {
-            index = i;
-            break;
-        }
-    }
-    return index;
-}
-
-static int createRingBuffer(unsigned int bufferIdentifier)
-{
-    int index = -1;
-
-    for (int i = 0; i < AMOUNT_OF_BUFFERS; ++i)
-    {
-        if (ringBuffers[i] == NULL)
-        {
-            index = i;
-            break;
-        }
-    }
-
-    if (index == -1)
-    {
-        return -1;
-    }
-
-    RingBuffer *buffer = (RingBuffer*) malloc(sizeof(RingBuffer));
-
-    if (!buffer)
-    {
-        printf("ALLOCATE ERROR\r\n");
-        return -1;
-    }
-
-    memset(buffer,0,sizeof(RingBuffer));
-    ringBuffers[index] = buffer;
-    buffer->bufferIdentifier = bufferIdentifier;
-    return index;
-}
-
-static int removeRingBuffer(unsigned int bufferIdentifier)
-{
-    int index = findBufferIndexByIdentifier(bufferIdentifier);
-
-    if (index >= 0)
-    {
-        free(ringBuffers[index]);
-        ringBuffers[index] = NULL;
-    }
-
-    return index;
-}
-
-static void bufferAddByte(unsigned int bufferIdentifier, BUFFER_TYPE byte)
-{ // TODO: virheen palautus
-    int index = findBufferIndexByIdentifier(bufferIdentifier);
-
-    if (index >= 0)
-    {
-        RingBuffer* buf = ringBuffers[index];
-        buf->data[buf->writePointer++] = byte;
-        buf->writePointer %= BUFFER_SIZE;
-    }
-}
-
-static BUFFER_TYPE bufferGetByte(unsigned int bufferIdentifier)
-{ // TODO: virheen palautus
-
-    BUFFER_TYPE r = 0;
-    int index = findBufferIndexByIdentifier(bufferIdentifier);
-
-    if (index >= 0)
-    {
-        RingBuffer* buf = ringBuffers[index];
-        r = buf->data[buf->readPointer];
-        buf->data[buf->readPointer++] = 0;
-        buf->readPointer %= BUFFER_SIZE;
-    }
-
-    return r;
-}
-
-static void bufferClear(unsigned int bufferIdentifier)
-{
-    printf ("FUNCTION %s \r\n", __PRETTY_FUNCTION__);
-    int index = findBufferIndexByIdentifier(bufferIdentifier);
-
-    if (index >= 0)
-    {
-        RingBuffer* buf = ringBuffers[index];
-        buf->readPointer = 0;
-        buf->writePointer = 0;
-        memset(buf->data, 0, BUFFER_SIZE * sizeof(BUFFER_TYPE));
-    }
-}
-
-static int bufferAmountOfBytes(unsigned int bufferIdentifier)
-{
-    int index = findBufferIndexByIdentifier(bufferIdentifier);
-
-    if (index >= 0)
-    {
-        RingBuffer* buf = ringBuffers[index];
-
-        int r = (int)buf->writePointer - (int)buf->readPointer;
-        if (r < 0)
-        {
-            r += BUFFER_SIZE;
-        }
-        return r;
-    } else {
-        return -1;
-    }
-}
+static smbool tcpipSetBaudrate(smBusdevicePointer busdevicePointer, smuint32 baudrate);
+static void printBuffer(char* buf, unsigned int len);
+static void multipleBytesToValue(char* buf, unsigned int len, unsigned int* value);
+static void valueToMultipleBytes(char* buf, unsigned int len, unsigned int value);
+static void addTCPRequestHeaders(char* buf, char packetType, unsigned int value, unsigned int len);
+static char* createNewBufferWithLeadingFreeSpace(unsigned char* buf, unsigned int currentSize, unsigned int sizeToAdd);
+smBusdevicePointer tcpipEthSMPortOpen(const char * devicename, smint32 baudrate_bps, smbool *success);
+static int getETHSMAdapterFeatures(smBusdevicePointer busdevicePointer);
+static int getETHSMAdapterVersionNumbers(smBusdevicePointer busdevicePointer, char* buf);
 
 
 /**********************************************/
@@ -212,7 +88,7 @@ static int bufferAmountOfBytes(unsigned int bufferIdentifier)
 
 static void printBuffer(char* buf, unsigned int len)
 {
-    printf("PB(");
+    printf("buffer(");
     for (unsigned int i = 0; i < len; ++i)
     {
         printf("%d ", buf[i]);
@@ -229,18 +105,21 @@ static void multipleBytesToValue(char* buf, unsigned int len, unsigned int* valu
     }
 }
 
-static void valueToMultipleBytes(char* buf, unsigned int len, unsigned int* value)
+static void valueToMultipleBytes(char* buf, unsigned int len, unsigned int value)
 {
+    //printf("valueToMultipleBytes %d %d -> ", len, value);
     for (unsigned int i = 0; i < len; ++i)
     {
-        buf[i] = ( (char) *value >> (8 * i) ) & (char) 0xFF;
+        buf[i] =  ((char) (value >> (8 * i))) & (char) 0xFF;
+        //printf("%u ", buf[i]);
     }
+    //printf("\r\n");
 }
 
 static void addTCPRequestHeaders(char* buf, char packetType, unsigned int value, unsigned int len)
 {
     buf[0] = packetType;
-    valueToMultipleBytes(&buf[1], len, &value);
+    valueToMultipleBytes(&buf[1], len, value);
 }
 
 static char* createNewBufferWithLeadingFreeSpace(unsigned char* buf, unsigned int currentSize, unsigned int sizeToAdd)
@@ -259,6 +138,132 @@ static char* createNewBufferWithLeadingFreeSpace(unsigned char* buf, unsigned in
     return buffer;
 }
 
+
+//accepted TCP/IP address format is ETHSM:nnn.nnn.nnn.nnn:pppp where n is IP address numbers and p is port number
+//params: s=whole ip address with port number with from user, pip_end=output pointer pointint to end of ip address part of s, pport_stasrt pointing to start of port number in s
+static int validateEthSMIpAddress(const char *s, const char **pip_end,
+                             const char **pport_start)
+{
+    int octets = 0;
+    int ch = 0, prev = 0;
+    int len = 0;
+    const char *ip_end = NULL;
+    const char *port_start = NULL;
+
+    const char* start = "ETHSM:";
+
+    if (strncmp(s, start, strlen(start)) != 0) {
+        return -1;
+    }
+
+    s += strlen(start);
+
+    while (*s)
+    {
+        ch = *s;
+
+        if (isdigit(ch))
+        {
+            ++len;
+            // Octet len must be 1-3 digits
+            if (len > 3)
+            {
+                return -1;
+            }
+        }
+        else if (ch == '.' && isdigit(prev))
+        {
+            ++octets;
+            len = 0;
+            // No more than 4 octets please
+            if (octets > 4)
+            {
+                return -1;
+            }
+        }
+        else if (ch == ':' && isdigit(prev))
+        {
+            ++octets;
+            // We want exactly 4 octets at this point
+            if (octets != 4)
+            {
+                return -1;
+            }
+            ip_end = s;
+            ++s;
+            port_start = s;
+            while (isdigit((ch = *s)))
+                ++s;
+            // After port we want the end of the string
+            if (ch != '\0')
+                return -1;
+            // This will skip over the ++s below
+            continue;
+        }
+        else
+        {
+            return -1;
+        }
+
+        prev = ch;
+        ++s;
+    }
+
+    // We reached the end of the string and did not encounter the port
+    if (*s == '\0' && ip_end == NULL)
+    {
+        ++octets;
+        ip_end = s;
+    }
+
+    // Check that there are exactly 4 octets
+    if (octets != 4)
+        return -1;
+
+    if (pip_end)
+        *pip_end = ip_end;
+
+    if (pport_start)
+        *pport_start = port_start;
+
+    return 0;
+}
+
+//params: s=whole ip:port string, ip=output for ip number only, port=output for port number integer
+static int parseEthSMIpAddress(const char *s, char *ip, unsigned short *port)
+{
+    const char *ip_end, *port_start;
+
+    //ip_end and port_start are pointers to memory area of s, not offsets or indexes to s
+    if (validateEthSMIpAddress(s, &ip_end, &port_start) == -1)
+        return -1;
+
+    int IPAddrLen=ip_end - s;
+
+    printf("ip len: %d \r\n", IPAddrLen);
+
+    const char* start = "ETHSM:";
+    IPAddrLen -= strlen(start);
+    s += strlen(start);
+
+    if(IPAddrLen<7 || IPAddrLen>15 )//check length before writing to *ip
+        return -1;
+
+    memcpy(ip, s, IPAddrLen);
+    ip[IPAddrLen] = '\0';
+
+    if (port_start)
+    {
+        *port = 0;
+        while (*port_start)
+        {
+            *port = *port * 10 + (*port_start - '0');
+            ++port_start;
+        }
+    }
+
+    return 0;
+}
 
 /**********************************************/
 /*   TCP BUS HANDLING FUNCTIONS               */
@@ -298,13 +303,7 @@ smBusdevicePointer tcpipEthSMPortOpen(const char * devicename, smint32 baudrate_
         return SMBUSDEVICE_RETURN_ON_OPEN_FAIL;
     }
 
-    printf("Success!\r\n");
-
-    if(baudrate_bps!=SM_BAUDRATE)
-    {
-        smDebug(-1,SMDebugLow,"TCP/IP: Non-default baudrate not supported by TCP/IP protocol\n"); // TODO
-        return SMBUSDEVICE_RETURN_ON_OPEN_FAIL;
-    }
+    printf("Success! Connect to IP %s, port %d \r\n", ip_addr, port);
 
     smDebug(-1,SMDebugLow,"TCP/IP: Attempting to connect to %s:%d\n",ip_addr,port);
 
@@ -316,6 +315,7 @@ smBusdevicePointer tcpipEthSMPortOpen(const char * devicename, smint32 baudrate_
     sockfd = (int)socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     if (sockfd == -1)
     {
+        printf("Failed to create socket\r\n");
         smDebug(-1,SMDebugLow,"TCP/IP: Socket open failed (sys error: %s)\n",strerror(errno));
         return SMBUSDEVICE_RETURN_ON_OPEN_FAIL;
     }
@@ -354,18 +354,21 @@ smBusdevicePointer tcpipEthSMPortOpen(const char * devicename, smint32 baudrate_
                 getsockopt((SOCKET)sockfd, SOL_SOCKET, SO_ERROR, (void*)(&valopt), &lon);
                 if (valopt) //if valopt!=0, then there was an error. if it's 0, then connection established successfully (will return here from smtrue eventually)
                 {
+                    printf("Err1\r\n");
                     smDebug(-1,SMDebugLow,"TCP/IP: Setting socket properties failed (sys error: %s)\n",strerror(errno));
                     return SMBUSDEVICE_RETURN_ON_OPEN_FAIL;
                 }
             }
             else
             {
+                printf("Err2 %s\r\n", strerror(errno));
                 smDebug(-1,SMDebugLow,"TCP/IP: Setting socket properties failed (sys error: %s)\n",strerror(errno));
                 return SMBUSDEVICE_RETURN_ON_OPEN_FAIL;
             }
         }
         else
         {
+            printf("Err3\r\n");
             smDebug(-1,SMDebugLow,"TCP/IP: Connecting socket failed (sys error: %s)\n",strerror(errno));
             return SMBUSDEVICE_RETURN_ON_OPEN_FAIL;
         }
@@ -385,6 +388,18 @@ smBusdevicePointer tcpipEthSMPortOpen(const char * devicename, smint32 baudrate_
 
     createRingBuffer((unsigned int)sockfd); // TODO: Virheenkäsittely
 
+    tcpipSetBaudrate((smBusdevicePointer)sockfd, (smuint32)baudrate_bps);
+
+    int features = getETHSMAdapterFeatures((smBusdevicePointer)sockfd);
+    printf("ETHSM Features: %d \r\n", features);
+
+    char version[10] = {0};
+    getETHSMAdapterVersionNumbers((smBusdevicePointer)sockfd, version);
+    printf("ETHSM version: %s \r\n", version);
+
+
+    printf("Return %d \r\n", sockfd);
+
     return (smBusdevicePointer)sockfd;//compiler warning expected here on 64 bit compilation but it's ok
 }
 
@@ -397,15 +412,6 @@ void tcpipEthSMPortClose(smBusdevicePointer busdevicePointer)
 #endif
     removeRingBuffer((unsigned int)sockfd);
 }
-
-int tcpipConnectionStatus(smBusdevicePointer busdevicePointer)
-{
-    (void) busdevicePointer;
-    // TODO, What if connection is closed by other device?
-    return 1;
-}
-
-
 
 
 /**********************************************/
@@ -531,6 +537,179 @@ static int tcpipReadBytesFromAdapter(smBusdevicePointer busdevicePointer, unsign
     printf("\r\n");
 
     return 0;
+}
+
+static smbool tcpipSetBaudrate(smBusdevicePointer busdevicePointer, smuint32 baudrate) {
+    printf("tcpipSetbaudrate %d \r\n", baudrate);
+
+    /* SEND WRITE REQUEST */
+
+    {
+        int response = 0;
+
+        const unsigned int requestLength = 4;
+
+        char requestBuffer[4] = {0};
+        requestBuffer[0] = SM_PACKET_TYPE_SET_BAUDRATE;
+
+        valueToMultipleBytes(&requestBuffer[1], 3, baudrate);
+
+        response = tcpipPortWriteBytes(busdevicePointer, requestBuffer, requestLength);
+
+        printf(" WW:%d ", response);
+
+        // Jos virhe, palautetaan virhe // TODO: Suljetaan yhteys?
+        if (response == SOCKET_ERROR)
+        {
+            printf(" TCPIPPORTWRITE ERROR 1 \r\n");
+            return SOCKET_ERROR;
+        }
+
+    }
+
+    /* READ RESPONSE */
+
+    {
+        int response = 0;
+        char responseByte = 0;
+
+        // Odotetaan vastaus pyyntöön
+        response = tcpipReadBytes(busdevicePointer, &responseByte, TCP_WRITE_RESPONSE_HEADER_LENGTH);
+
+        printf(" WR:%d ", response);
+
+        if (response == 1 && responseByte == 1) {
+            return 1;
+        }
+
+        // Jos virhe, palautetaan virhe // TODO: Suljetaan yhteys?
+        if (response == SOCKET_ERROR)
+        {
+            printf(" TCPIPPORTWRITE ERROR 2 \r\n");
+            return SOCKET_ERROR;
+        }
+
+        if (response != 1)
+        {
+            printf(" TCPIPPORTWRITE ERROR 3 \r\n");
+            return 0;
+        }
+    }
+
+    printf("\r\n");
+
+    return 1;
+
+}
+
+static int getETHSMAdapterVersionNumbers(smBusdevicePointer busdevicePointer, char* buf){
+    printf("getETHSMAdapterFeatures \r\n");
+
+    unsigned int featureFlags = 0;
+
+    /* SEND WRITE REQUEST */
+
+    {
+        int response = 0;
+
+        char request = SM_PACKET_TYPE_GET_DEVICE_VERSION_NUMBERS;
+
+        response = tcpipPortWriteBytes(busdevicePointer, &request, 1);
+
+        printf(" WW:%d ", response);
+
+        // Jos virhe, palautetaan virhe // TODO: Suljetaan yhteys?
+        if (response == SOCKET_ERROR)
+        {
+            printf(" TCPIPPORTWRITE ERROR 1 \r\n");
+            return SOCKET_ERROR;
+        }
+
+    }
+
+    /* READ RESPONSE */
+
+    {
+        int response = 0;
+
+        const unsigned int responseLength = 10;
+
+        // Odotetaan vastaus pyyntöön
+        response = tcpipReadBytes(busdevicePointer, buf, responseLength);
+
+        printf(" WR:%d\r\n ", response);
+
+        if (response == responseLength) {
+            return (int)1;
+        }
+
+        // Jos virhe, palautetaan virhe // TODO: Suljetaan yhteys?
+        if (response == SOCKET_ERROR)
+        {
+            printf(" TCPIPPORTWRITE ERROR 2 \r\n");
+            return SOCKET_ERROR;
+        }
+
+        printf(" TCPIPPORTWRITE ERROR 3 \r\n");
+        return SOCKET_ERROR;
+    }
+}
+
+// Returns -1 or feature flags
+static int getETHSMAdapterFeatures(smBusdevicePointer busdevicePointer) {
+    printf("getETHSMAdapterFeatures \r\n");
+
+    unsigned int featureFlags = 0;
+
+    /* SEND WRITE REQUEST */
+
+    {
+        int response = 0;
+
+        char request = SM_PACKET_TYPE_GET_DEVICE_FEATURES;
+
+        response = tcpipPortWriteBytes(busdevicePointer, &request, 1);
+
+        printf(" WW:%d ", response);
+
+        // Jos virhe, palautetaan virhe // TODO: Suljetaan yhteys?
+        if (response == SOCKET_ERROR)
+        {
+            printf(" TCPIPPORTWRITE ERROR 1 \r\n");
+            return SOCKET_ERROR;
+        }
+
+    }
+
+    /* READ RESPONSE */
+
+    {
+        int response = 0;
+
+        const unsigned int responseLength = 4;
+        char responseData[4] = {0};
+
+        // Odotetaan vastaus pyyntöön
+        response = tcpipReadBytes(busdevicePointer, responseData, responseLength);
+
+        printf(" WR:%d\r\n ", response);
+
+        if (response == responseLength) {
+            multipleBytesToValue(responseData, responseLength, &featureFlags);
+            return (int)featureFlags;
+        }
+
+        // Jos virhe, palautetaan virhe // TODO: Suljetaan yhteys?
+        if (response == SOCKET_ERROR)
+        {
+            printf(" TCPIPPORTWRITE ERROR 2 \r\n");
+            return SOCKET_ERROR;
+        }
+
+        printf(" TCPIPPORTWRITE ERROR 3 \r\n");
+        return SOCKET_ERROR;
+    }
+
 }
 
 static void tcpipPurge()
@@ -661,10 +840,44 @@ int tcpipEthSMPortRead(smBusdevicePointer busdevicePointer, unsigned char* buf, 
 }
 
 
-smbool tcpipEthSMMiscOperation(smBusdevicePointer busdevicePointer, BusDeviceMiscOperationType operation)
+smbool tcpipEthSMMiscOperation(smBusdevicePointer busdevicePointer, BusDeviceMiscOperationType operation, smint32 value)
 {
     switch(operation)
     {
+
+    case MiscOperationCheckIfBaudrateIsOK:
+    {
+
+        static smuint32 ETHSM_baudrates[] = {7500000, 6000000, 5000000, 4000000, 3750000, 3000000, 2500000, 2400000, 2000000, 1875000, 1500000, 1250000, 1200000, 1000000, 937500, 800000, 750000, 625000, 600000, 500000, 480000, 468750, 400000, 375000, 312500, 300000, 250000, 240000, 234375, 200000, 187500, 160000, 156250, 150000, 125000, 120000, 100000, 96000, 93750, 80000, 78125, 75000, 62500, 60000, 50000, 48000, 46875, 40000, 37500, 32000, 31250, 30000, 25000, 24000, 20000, 19200, 18750, 16000, 15625, 15000, 12500, 12000, 10000, 9600};
+        // IONI_baudrates[] = {9.00000   4.50000   3.00000   2.25000   1.80000   1.50000   1.28571   1.12500   1.00000   0.90000   0.81818   0.75000   0.69231   0.64286   0.60000   0.56250};
+        return smtrue;
+
+/*
+
+STM32F207 Fractional baudrate generator can generate following baudrates with 8-bit oversampling:
+60 MHz / (8 * USARTDIV),
+where USARTDIV can be anything between 1 and 4096 with 0.125 steps
+
+*/
+
+        static const smuint32 ETHSM_BAUDRATES[3] = {
+            9600,
+            115200,
+            460800
+        };
+
+        unsigned int baudrates = sizeof(ETHSM_BAUDRATES) / sizeof(ETHSM_BAUDRATES[0]);
+        for (unsigned int i = 0; i < baudrates; ++i) {
+            printf("Check BR %d \r\n", ETHSM_BAUDRATES[i]);
+            if ((smuint32)value == ETHSM_BAUDRATES[i]) {
+                printf("Baudrate found!\r\n");
+                return 1;
+            }
+        }
+
+        return 0;
+    }
+
     case MiscOperationPurgeRX:
     {
         int n;
@@ -708,131 +921,4 @@ smbool tcpipEthSMMiscOperation(smBusdevicePointer busdevicePointer, BusDeviceMis
         return smfalse;
         break;
     }
-}
-
-
-//accepted TCP/IP address format is ETHSM:nnn.nnn.nnn.nnn:pppp where n is IP address numbers and p is port number
-//params: s=whole ip address with port number with from user, pip_end=output pointer pointint to end of ip address part of s, pport_stasrt pointing to start of port number in s
-int validateEthSMIpAddress(const char *s, const char **pip_end,
-                             const char **pport_start)
-{
-    int octets = 0;
-    int ch = 0, prev = 0;
-    int len = 0;
-    const char *ip_end = NULL;
-    const char *port_start = NULL;
-
-    const char* start = "ETHSM:";
-
-    if (strncmp(s, start, strlen(start)) != 0) {
-        return -1;
-    }
-
-    s += strlen(start);
-
-    while (*s)
-    {
-        ch = *s;
-
-        if (isdigit(ch))
-        {
-            ++len;
-            // Octet len must be 1-3 digits
-            if (len > 3)
-            {
-                return -1;
-            }
-        }
-        else if (ch == '.' && isdigit(prev))
-        {
-            ++octets;
-            len = 0;
-            // No more than 4 octets please
-            if (octets > 4)
-            {
-                return -1;
-            }
-        }
-        else if (ch == ':' && isdigit(prev))
-        {
-            ++octets;
-            // We want exactly 4 octets at this point
-            if (octets != 4)
-            {
-                return -1;
-            }
-            ip_end = s;
-            ++s;
-            port_start = s;
-            while (isdigit((ch = *s)))
-                ++s;
-            // After port we want the end of the string
-            if (ch != '\0')
-                return -1;
-            // This will skip over the ++s below
-            continue;
-        }
-        else
-        {
-            return -1;
-        }
-
-        prev = ch;
-        ++s;
-    }
-
-    // We reached the end of the string and did not encounter the port
-    if (*s == '\0' && ip_end == NULL)
-    {
-        ++octets;
-        ip_end = s;
-    }
-
-    // Check that there are exactly 4 octets
-    if (octets != 4)
-        return -1;
-
-    if (pip_end)
-        *pip_end = ip_end;
-
-    if (pport_start)
-        *pport_start = port_start;
-
-    return 0;
-}
-
-//params: s=whole ip:port string, ip=output for ip number only, port=output for port number integer
-int parseEthSMIpAddress(const char *s, char *ip, unsigned short *port)
-{
-    const char *ip_end, *port_start;
-
-    //ip_end and port_start are pointers to memory area of s, not offsets or indexes to s
-    if (validateEthSMIpAddress(s, &ip_end, &port_start) == -1)
-        return -1;
-
-    int IPAddrLen=ip_end - s;
-
-    printf("ip len: %d \r\n", IPAddrLen);
-
-    const char* start = "ETHSM:";
-    IPAddrLen -= strlen(start);
-    s += strlen(start);
-
-    if(IPAddrLen<7 || IPAddrLen>15 )//check length before writing to *ip
-        return -1;
-
-    memcpy(ip, s, IPAddrLen);
-    ip[IPAddrLen] = '\0';
-
-    if (port_start)
-    {
-        *port = 0;
-        while (*port_start)
-        {
-            *port = *port * 10 + (*port_start - '0');
-            ++port_start;
-        }
-    }
-
-    return 0;
 }

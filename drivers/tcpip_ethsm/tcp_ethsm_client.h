@@ -2,6 +2,7 @@
 #define tcp_ethsm_client_INCLUDED
 
 #include "simplemotion_private.h"
+#include "buffer.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -24,7 +25,7 @@ extern "C" {
 smBusdevicePointer tcpipEthSMPortOpen(const char * devicename, smint32 baudrate_bps, smbool *success);
 int tcpipEthSMPortRead(smBusdevicePointer busdevicePointer, unsigned char *, int);
 int tcpipEthSMPortWrite(smBusdevicePointer busdevicePointer, unsigned char *, int);
-smbool tcpipEthSMMiscOperation(smBusdevicePointer busdevicePointer, BusDeviceMiscOperationType operation);
+smbool tcpipEthSMMiscOperation(smBusdevicePointer busdevicePointer, BusDeviceMiscOperationType operation, smint32 value);
 void tcpipEthSMPortClose(smBusdevicePointer busdevicePointer);
 
 #ifdef __cplusplus

@@ -187,7 +187,7 @@ smint32 d2xxPortWrite(smBusdevicePointer busdevicepointer, unsigned char *buf, s
     return BytesWritten;
 }
 
-smbool d2xxPortMiscOperation(smBusdevicePointer busdevicePointer, BusDeviceMiscOperationType operation)
+smbool d2xxPortMiscOperation(smBusdevicePointer busdevicePointer, BusDeviceMiscOperationType operation, smint32 value)
 {
     FT_HANDLE handle=(FT_HANDLE)busdevicePointer;
 

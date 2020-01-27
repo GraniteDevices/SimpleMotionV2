@@ -357,7 +357,7 @@ void serialPortClose(smBusdevicePointer busdevicePointer)
     CloseHandle((HANDLE)serialport_handle);
 }
 
-smbool serialPortMiscOperation(smBusdevicePointer busdevicePointer, BusDeviceMiscOperationType operation)
+smbool serialPortMiscOperation(smBusdevicePointer busdevicePointer, BusDeviceMiscOperationType operation, smint32 value)
 {
     HANDLE serialport_handle=(HANDLE)busdevicePointer;
 

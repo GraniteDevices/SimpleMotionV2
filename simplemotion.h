@@ -276,6 +276,13 @@ LIB SM_STATUS smCheckDeviceCapabilities( const smbus handle, const int nodeAddre
                                          const smint32 requiredCapabilityFlags,
                                          smbool *resultHasAllCapabilities );
 
+
+
+LIB smbool smCheckIfBaudrateIsOK(smuint32 baudrate);
+
+LIB smbus smSetBaudrateAndReconnect( const smbus bushandle, smuint32 baudrate);
+
+
 #ifdef __cplusplus
 }
 #endif
