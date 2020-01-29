@@ -59,24 +59,27 @@ static int initwsa()
 /*   STATIC FUNCTION PROTOTYPES               */
 /**********************************************/
 
-static smbool tcpipSetBaudrate(smBusdevicePointer busdevicePointer, smuint32 baudrate);
 static void printBuffer(char *buf, unsigned int len);
 static void multipleBytesToValue(char *buf, unsigned int len, unsigned int *value);
 static void valueToMultipleBytes(char *buf, unsigned int len, unsigned int value);
 static void addTCPRequestHeaders(char *buf, char packetType, unsigned int value, unsigned int len);
 static char *createNewBufferWithLeadingFreeSpace(unsigned char *buf, unsigned int currentSize, unsigned int sizeToAdd);
-static int getETHSMAdapterFeatures(smBusdevicePointer busdevicePointer, unsigned int *features);
-static int getETHSMAdapterVersionNumbers(smBusdevicePointer busdevicePointer, char *buf);
-static int tcpipFlush(smBusdevicePointer busdevicePointer);
-static int tcpipPurge(smBusdevicePointer busdevicePointer);
-static smbool tcpipSetETHSMReadTimeout(smBusdevicePointer busdevicePointer, smuint32 timeoutMs);
-static void closeTCPConnection(smBusdevicePointer busdevicePointer);
-static int openTCPConnection(const char *IP, unsigned short port, smbool *success);
-static void closeTCPConnection(smBusdevicePointer busdevicePointer);
-static int tcpipReadBytes(smBusdevicePointer busdevicePointer, char *buf, unsigned int dataMaxLength);
-static int tcpipPortWriteBytes(smBusdevicePointer busdevicePointer, char *buf, unsigned int size);
-static int tcpipReadBytesFromAdapter(smBusdevicePointer busdevicePointer, unsigned int amountOfBytes);
-static int validateAndParseETHSMIPAddress(const char *str, char *IP, unsigned short *port);
+
+static int ETHSMGetAdapterFeatures(smBusdevicePointer busdevicePointer, unsigned int *features);
+static int ETHSMGetAdapterVersionNumbers(smBusdevicePointer busdevicePointer, char *buf);
+static int ETHSMFlush(smBusdevicePointer busdevicePointer);
+static smbool ETHSMSetBaudrate(smBusdevicePointer busdevicePointer, smuint32 baudrate);
+static smbool ETHSMSetReadTimeout(smBusdevicePointer busdevicePointer, smuint32 timeoutMs);
+static int ETHSMPurge(smBusdevicePointer busdevicePointer);
+static int ETHSMParseAndValidateIPAddress(const char *str, char *IP, unsigned short *port);
+
+
+static void TCPConnectionClose(smBusdevicePointer busdevicePointer);
+static int TCPConnectionOpen(const char *IP, unsigned short port, smbool *success);
+static int TCPReadBytes(smBusdevicePointer busdevicePointer, char *buf, unsigned int dataMaxLength);
+static int TCPWriteBytes(smBusdevicePointer busdevicePointer, char *buf, unsigned int size);
+static int ETHSMReadBytes(smBusdevicePointer busdevicePointer, unsigned int amountOfBytes);
+static int TCPWaitKnownResponse(smBusdevicePointer busdevicePointer, const char *bytes, unsigned int length);
 
 /**********************************************/
 /*   GLOBALS & CONSTANTS                      */
@@ -93,13 +96,13 @@ static char tempBuffer[GLOBAL_BUFFER_SIZE];
 /*   SM API FUNCTIONS                         */
 /**********************************************/
 
-smBusdevicePointer tcpipEthSMPortOpen(const char *devicename, smint32 baudrate_bps, smbool *success)
+smBusdevicePointer ETHSMPortOpen(const char *devicename, smint32 baudrate_bps, smbool *success)
 {
     // Parse and check IP address and port
     char IP[16] = {0};
     unsigned short port = 80;
     {
-        if (!validateAndParseETHSMIPAddress(devicename, IP, &port))
+        if (!ETHSMParseAndValidateIPAddress(devicename, IP, &port))
         {
             smDebug(-1, SMDebugLow, "TCP/IP: device name '%s' does not appear to be IP address, skipping TCP/IP open attempt (note: this is normal if opening a non-TCP/IP port)\n", devicename);
             return SMBUSDEVICE_RETURN_ON_OPEN_FAIL;
@@ -107,7 +110,7 @@ smBusdevicePointer tcpipEthSMPortOpen(const char *devicename, smint32 baudrate_b
     }
 
     // Open TCP connection
-    int sockfd = openTCPConnection(IP, port, success);
+    int sockfd = TCPConnectionOpen(IP, port, success);
 
     if (!success)
     {
@@ -117,45 +120,45 @@ smBusdevicePointer tcpipEthSMPortOpen(const char *devicename, smint32 baudrate_b
     // Create ring buffer for the connection
     if (!createRingBuffer((unsigned int)sockfd))
     {
-        tcpipEthSMPortClose((smBusdevicePointer)sockfd);
+        ETHSMPortClose((smBusdevicePointer)sockfd);
         printf("ERROR! Could not create ring buffer\r\n");
         return SMBUSDEVICE_RETURN_ON_OPEN_FAIL;
     }
 
     // Set ETHSM baudrate
-    if (!tcpipSetBaudrate((smBusdevicePointer)sockfd, (smuint32)baudrate_bps))
+    if (!ETHSMSetBaudrate((smBusdevicePointer)sockfd, (smuint32)baudrate_bps))
     {
-        tcpipEthSMPortClose((smBusdevicePointer)sockfd);
+        ETHSMPortClose((smBusdevicePointer)sockfd);
         return SMBUSDEVICE_RETURN_ON_OPEN_FAIL;
     }
 
     // Read ETHSM feature flags
     unsigned int features = 0;
-    if (!getETHSMAdapterFeatures((smBusdevicePointer)sockfd, &features))
+    if (!ETHSMGetAdapterFeatures((smBusdevicePointer)sockfd, &features))
     {
-        tcpipEthSMPortClose((smBusdevicePointer)sockfd);
+        ETHSMPortClose((smBusdevicePointer)sockfd);
         return SMBUSDEVICE_RETURN_ON_OPEN_FAIL;
     }
 
     // Read ETHSM software version number
     char version[10] = {0};
-    if (!getETHSMAdapterVersionNumbers((smBusdevicePointer)sockfd, version))
+    if (!ETHSMGetAdapterVersionNumbers((smBusdevicePointer)sockfd, version))
     {
-        tcpipEthSMPortClose((smBusdevicePointer)sockfd);
+        ETHSMPortClose((smBusdevicePointer)sockfd);
         return SMBUSDEVICE_RETURN_ON_OPEN_FAIL;
     }
 
     // Flush
-    if (!tcpipFlush((smBusdevicePointer)sockfd))
+    if (!ETHSMFlush((smBusdevicePointer)sockfd))
     {
-        tcpipEthSMPortClose((smBusdevicePointer)sockfd);
+        ETHSMPortClose((smBusdevicePointer)sockfd);
         return SMBUSDEVICE_RETURN_ON_OPEN_FAIL;
     }
 
     // Purge
-    if (!tcpipPurge((smBusdevicePointer)sockfd))
+    if (!ETHSMPurge((smBusdevicePointer)sockfd))
     {
-        tcpipEthSMPortClose((smBusdevicePointer)sockfd);
+        ETHSMPortClose((smBusdevicePointer)sockfd);
         return SMBUSDEVICE_RETURN_ON_OPEN_FAIL;
     }
 
@@ -164,13 +167,13 @@ smBusdevicePointer tcpipEthSMPortOpen(const char *devicename, smint32 baudrate_b
     return (smBusdevicePointer)sockfd;
 }
 
-void tcpipEthSMPortClose(smBusdevicePointer busdevicePointer)
+void ETHSMPortClose(smBusdevicePointer busdevicePointer)
 {
-    closeTCPConnection(busdevicePointer);
+    TCPConnectionClose(busdevicePointer);
     removeRingBuffer((unsigned int)busdevicePointer);
 }
 
-int tcpipEthSMPortWrite(smBusdevicePointer busdevicePointer, unsigned char *buf, int size)
+int ETHSMPortWrite(smBusdevicePointer busdevicePointer, unsigned char *buf, int size)
 {
 
     printf("tcpipPortWrite %d ", size);
@@ -198,7 +201,7 @@ int tcpipEthSMPortWrite(smBusdevicePointer busdevicePointer, unsigned char *buf,
         addTCPRequestHeaders(requestBuffer, SM_PACKET_TYPE_WRITE, (unsigned int)size, 2 /*TAIKALUKU*/);
 
         // Lähetetään data
-        response = tcpipPortWriteBytes(busdevicePointer, requestBuffer, requestBufferSize);
+        response = TCPWriteBytes(busdevicePointer, requestBuffer, requestBufferSize);
 
         printf(" WW:%d ", response);
 
@@ -217,7 +220,7 @@ int tcpipEthSMPortWrite(smBusdevicePointer busdevicePointer, unsigned char *buf,
         char responseBuffer[TCP_WRITE_RESPONSE_HEADER_LENGTH] = {0};
 
         // Odotetaan vastaus pyyntöön
-        response = tcpipReadBytes(busdevicePointer, responseBuffer, TCP_WRITE_RESPONSE_HEADER_LENGTH);
+        response = TCPReadBytes(busdevicePointer, responseBuffer, TCP_WRITE_RESPONSE_HEADER_LENGTH);
 
         printf(" WR:%d ", response);
 
@@ -252,13 +255,13 @@ int tcpipEthSMPortWrite(smBusdevicePointer busdevicePointer, unsigned char *buf,
     return 0;
 }
 
-int tcpipEthSMPortRead(smBusdevicePointer busdevicePointer, unsigned char *buf, int size)
+int ETHSMPortRead(smBusdevicePointer busdevicePointer, unsigned char *buf, int size)
 {
     int missingBytes = size - bufferAmountOfBytes((unsigned int)busdevicePointer);
 
     if (missingBytes > 0)
     {
-        tcpipReadBytesFromAdapter(busdevicePointer, (unsigned int)missingBytes);
+        ETHSMReadBytes(busdevicePointer, (unsigned int)missingBytes);
     }
 
     unsigned int cnt = 0;
@@ -278,7 +281,7 @@ int tcpipEthSMPortRead(smBusdevicePointer busdevicePointer, unsigned char *buf, 
     return (int)cnt;
 }
 
-smbool tcpipEthSMMiscOperation(smBusdevicePointer busdevicePointer, BusDeviceMiscOperationType operation, smint32 value)
+smbool ETHSMMiscOperation(smBusdevicePointer busdevicePointer, BusDeviceMiscOperationType operation, smint32 value)
 {
     switch (operation)
     {
@@ -293,9 +296,9 @@ smbool tcpipEthSMMiscOperation(smBusdevicePointer busdevicePointer, BusDeviceMis
 
         /*
 
-STM32F207 Fractional baudrate generator can generate following baudrates with 8-bit oversampling:
-60 MHz / (8 * USARTDIV),
-where USARTDIV can be anything between 1 and 4096 with 0.125 steps
+        STM32F207 Fractional baudrate generator can generate following baudrates with 8-bit oversampling:
+        60 MHz / (8 * USARTDIV),
+        where USARTDIV can be anything between 1 and 4096 with 0.125 steps
 
 
         static const smuint32 ETHSM_BAUDRATES[3] = {
@@ -320,35 +323,7 @@ where USARTDIV can be anything between 1 and 4096 with 0.125 steps
 
     case MiscOperationPurgeRX:
     {
-        int n;
-        do //loop read as long as there is data coming in
-        {
-            char discardbuf[256];
-            int sockfd = (int)busdevicePointer; //compiler warning expected here on 64 bit compilation but it's ok
-            fd_set input;
-            FD_ZERO(&input);
-            FD_SET((unsigned int)sockfd, &input);
-            struct timeval timeout;
-            timeout.tv_sec = 0;
-            timeout.tv_usec = 0;
-
-            n = select(sockfd + 1, &input, NULL, NULL, &timeout); //Check whether socket is readable. Note: sockfd+1 is correct usage.
-
-            if (n < 0) //  n=-1 select error
-            {
-                return smfalse; //select failed
-            }
-            if (n == 0) //  n=0 no data within timeout
-            {
-                return smtrue;
-            }
-            if (!FD_ISSET(sockfd, &input))
-            {
-                return smtrue; //no data available, redundant check (see above)?
-            }
-            //data is available, read it
-            n = read((SOCKET)sockfd, (char *)discardbuf, 256); //TODO: should we read 1 byte at a time to avoid blocking here?
-        } while (n > 0);
+        ETHSMPurge(busdevicePointer);
         return smtrue;
     }
     case MiscOperationFlushTX:
@@ -385,13 +360,10 @@ static void multipleBytesToValue(char *buf, unsigned int len, unsigned int *valu
 
 static void valueToMultipleBytes(char *buf, unsigned int len, unsigned int value)
 {
-    //printf("valueToMultipleBytes %d %d -> ", len, value);
     for (unsigned int i = 0; i < len; ++i)
     {
         buf[i] = ((char)(value >> (8 * i))) & (char)0xFF;
-        //printf("%u ", buf[i]);
     }
-    //printf("\r\n");
 }
 
 static void addTCPRequestHeaders(char *buf, char packetType, unsigned int value, unsigned int len)
@@ -420,10 +392,10 @@ static char *createNewBufferWithLeadingFreeSpace(unsigned char *buf, unsigned in
 // The shortest possible address: ETHSM:1.1.1.1:1 (15 characters)
 // The longest possible address: ETHSM:255.255.255.255:65535 (27 characters)
 // Returns 1 if a suitable address and port have been found. Otherwise returns 0.
-static int validateAndParseETHSMIPAddress(const char *str, char *IP, unsigned short *port)
+static int ETHSMParseAndValidateIPAddress(const char *str, char *IP, unsigned short *port)
 {
 
-    printf("validateAndParseETHSMIPAddress %s \r\n", str);
+    printf("ETHSMParseAndValidateIPAddress %s \r\n", str);
 
     const char *ADDR_START = "ETHSM:";
     const unsigned int ADDR_START_LEN = strlen(ADDR_START);
@@ -512,7 +484,7 @@ static int validateAndParseETHSMIPAddress(const char *str, char *IP, unsigned sh
 /*   FUNCTIONS DIRECTLY HANDLING TCP BUS      */
 /**********************************************/
 
-static int openTCPConnection(const char *IP, unsigned short port, smbool *success)
+static int TCPConnectionOpen(const char *IP, unsigned short port, smbool *success)
 {
 
 #if defined(_WIN32)
@@ -616,7 +588,7 @@ static int openTCPConnection(const char *IP, unsigned short port, smbool *succes
     return sockfd; //compiler warning expected here on 64 bit compilation but it's ok
 }
 
-static void closeTCPConnection(smBusdevicePointer busdevicePointer)
+static void TCPConnectionClose(smBusdevicePointer busdevicePointer)
 {
     int sockfd = (int)busdevicePointer; //compiler warning expected here on 64 bit compilation but it's ok
     close((SOCKET)sockfd);
@@ -625,7 +597,7 @@ static void closeTCPConnection(smBusdevicePointer busdevicePointer)
 #endif
 }
 
-static int tcpipPortWriteBytes(smBusdevicePointer busdevicePointer, char *buf, unsigned int size)
+static int TCPWriteBytes(smBusdevicePointer busdevicePointer, char *buf, unsigned int size)
 {
     printBuffer(buf, size);
     int sent = write((SOCKET)busdevicePointer, buf, (int)size);
@@ -633,7 +605,7 @@ static int tcpipPortWriteBytes(smBusdevicePointer busdevicePointer, char *buf, u
 }
 
 // Try to read given amount of bytes from TCP
-static int tcpipReadBytes(smBusdevicePointer busdevicePointer, char *buf, unsigned int dataMaxLength)
+static int TCPReadBytes(smBusdevicePointer busdevicePointer, char *buf, unsigned int dataMaxLength)
 {
 
     SOCKET sockfd = (SOCKET)busdevicePointer;
@@ -664,9 +636,29 @@ static int tcpipReadBytes(smBusdevicePointer busdevicePointer, char *buf, unsign
 /*   TCP TASKS                                */
 /**********************************************/
 
-static int tcpipReadBytesFromAdapter(smBusdevicePointer busdevicePointer, unsigned int amountOfBytes)
+// Wait a known TCP response. Returns 1 if supposed response was received. 0 if not.
+static int TCPWaitKnownResponse(smBusdevicePointer busdevicePointer, const char *bytes, unsigned int length) {
+
+    char *receivedBytes = (char*)calloc(length, sizeof(bytes[0]));
+
+    int response = TCPReadBytes(busdevicePointer, receivedBytes, length);
+
+    if (response != (int)length) {
+        return 0;
+    }
+
+    if (memcmp(bytes, receivedBytes, length) != 0) {
+        return 0;
+    }
+
+    free(receivedBytes);
+
+    return 1;
+}
+
+static int ETHSMReadBytes(smBusdevicePointer busdevicePointer, unsigned int amountOfBytes)
 {
-    printf("tcpipReadBytesFromAdapter %d ", amountOfBytes);
+    printf("ETHSMReadBytes %d ", amountOfBytes);
 
     unsigned int supposedPacketLength = 0;
 
@@ -676,11 +668,11 @@ static int tcpipReadBytesFromAdapter(smBusdevicePointer busdevicePointer, unsign
         int response = 0;
         char requestBuffer[3] = {0};
         addTCPRequestHeaders(requestBuffer, SM_PACKET_TYPE_READ, amountOfBytes, 2 /*TAIKALUKU*/);
-        response = tcpipPortWriteBytes(busdevicePointer, requestBuffer, 3);
+        response = TCPWriteBytes(busdevicePointer, requestBuffer, 3);
         printf(" RW:%d ", response);
         if (response == SOCKET_ERROR)
         {
-            printf("TCPIPREADBYTESFROMADAPTER ERROR 0 \r\n");
+            printf("ETHSMReadBytes ERROR 0 \r\n");
             return SOCKET_ERROR;
         }
     }
@@ -689,18 +681,18 @@ static int tcpipReadBytesFromAdapter(smBusdevicePointer busdevicePointer, unsign
 
     {
         char responseHeaderBuffer[3] = {0};
-        int response = tcpipReadBytes(busdevicePointer, responseHeaderBuffer, 3);
+        int response = TCPReadBytes(busdevicePointer, responseHeaderBuffer, 3);
         printf(" RR:%d ", response);
 
         if (response == SOCKET_ERROR)
         {
-            printf(" TCPIPREADBYTESFROMADAPTER ERROR 1 \r\n \r\n");
+            printf(" ETHSMReadBytes ERROR 1 \r\n \r\n");
             return SOCKET_ERROR;
         }
 
         if (response != 3)
         {
-            printf(" TCPIPREADBYTESFROMADAPTER ERROR 2 \r\n");
+            printf(" ETHSMReadBytes ERROR 2 \r\n");
             return 0;
         }
 
@@ -708,7 +700,7 @@ static int tcpipReadBytesFromAdapter(smBusdevicePointer busdevicePointer, unsign
 
         if (packetType != SM_PACKET_TYPE_READ)
         {
-            printf(" TCPIPREADBYTESFROMADAPTER ERROR 3 \r\n");
+            printf(" ETHSMReadBytes ERROR 3 \r\n");
             return 0;
         }
 
@@ -718,20 +710,20 @@ static int tcpipReadBytesFromAdapter(smBusdevicePointer busdevicePointer, unsign
     /* READ RESPONSE BYTES */
 
     {
-        int response = tcpipReadBytes(busdevicePointer, tempBuffer, supposedPacketLength);
+        int response = TCPReadBytes(busdevicePointer, tempBuffer, supposedPacketLength);
         unsigned int dataLength = (unsigned int)response;
 
         printf(" B:%d ", response);
 
         if (response == SOCKET_ERROR)
         {
-            printf(" TCPIPREADBYTESFROMADAPTER ERROR 4 \r\n");
+            printf(" ETHSMReadBytes ERROR 4 \r\n");
             return SOCKET_ERROR;
         }
 
         if (response != (int)supposedPacketLength)
         {
-            printf(" TCPIPREADBYTESFROMADAPTER ERROR 5 \r\n");
+            printf(" ETHSMReadBytes ERROR 5 \r\n");
             return 0;
         }
 
@@ -748,12 +740,11 @@ static int tcpipReadBytesFromAdapter(smBusdevicePointer busdevicePointer, unsign
     return 0;
 }
 
-static smbool tcpipSetETHSMReadTimeout(smBusdevicePointer busdevicePointer, smuint32 timeoutMs)
+static smbool ETHSMSetReadTimeout(smBusdevicePointer busdevicePointer, smuint32 timeoutMs)
 {
-    printf("tcpipSetETHSMReadTimeout %d \r\n", timeoutMs);
+    printf("ETHSMSetReadTimeout %d \r\n", timeoutMs);
 
-    /* SEND WRITE REQUEST */
-
+    // Send request
     {
         int response = 0;
 
@@ -764,7 +755,7 @@ static smbool tcpipSetETHSMReadTimeout(smBusdevicePointer busdevicePointer, smui
 
         valueToMultipleBytes(&requestBuffer[1], 2, timeoutMs);
 
-        response = tcpipPortWriteBytes(busdevicePointer, requestBuffer, requestLength);
+        response = TCPWriteBytes(busdevicePointer, requestBuffer, requestLength);
 
         printf(" WW:%d ", response);
 
@@ -776,47 +767,24 @@ static smbool tcpipSetETHSMReadTimeout(smBusdevicePointer busdevicePointer, smui
         }
     }
 
-    /* READ RESPONSE */
-
+    // Read response
     {
-        int response = 0;
-        char responseByte = 0;
+        char expectedByte = SM_PACKET_TYPE_SET_TIMEOUT;
+        int response = TCPWaitKnownResponse(busdevicePointer, &expectedByte, 1);
 
-        // Odotetaan vastaus pyyntöön
-        response = tcpipReadBytes(busdevicePointer, &responseByte, TCP_WRITE_RESPONSE_HEADER_LENGTH);
-
-        printf(" WR:%d ", response);
-
-        if (response == SM_PACKET_TYPE_SET_TIMEOUT && responseByte == 1)
-        {
-            return 1;
-        }
-
-        // Jos virhe, palautetaan virhe // TODO: Suljetaan yhteys?
-        if (response == SOCKET_ERROR)
-        {
-            printf(" TCPIPPORTWRITE ERROR 2 \r\n");
-            return SOCKET_ERROR;
-        }
-
-        if (response != 1)
-        {
-            printf(" TCPIPPORTWRITE ERROR 3 \r\n");
-            return 0;
+        if (response) {
+            return smtrue;
+        } else {
+            return smfalse;
         }
     }
-
-    printf("\r\n");
-
-    return 1;
 }
 
-static smbool tcpipSetBaudrate(smBusdevicePointer busdevicePointer, smuint32 baudrate)
+static smbool ETHSMSetBaudrate(smBusdevicePointer busdevicePointer, smuint32 baudrate)
 {
-    printf("tcpipSetbaudrate %d \r\n", baudrate);
+    printf("ETHSMSetBaudrate %d \r\n", baudrate);
 
-    /* SEND WRITE REQUEST */
-
+    // Write command
     {
         int response = 0;
 
@@ -827,7 +795,7 @@ static smbool tcpipSetBaudrate(smBusdevicePointer busdevicePointer, smuint32 bau
 
         valueToMultipleBytes(&requestBuffer[1], 3, baudrate);
 
-        response = tcpipPortWriteBytes(busdevicePointer, requestBuffer, requestLength);
+        response = TCPWriteBytes(busdevicePointer, requestBuffer, requestLength);
 
         printf(" WW:%d ", response);
 
@@ -839,44 +807,22 @@ static smbool tcpipSetBaudrate(smBusdevicePointer busdevicePointer, smuint32 bau
         }
     }
 
-    /* READ RESPONSE */
-
+    // Read response
     {
-        int response = 0;
-        char responseByte = 0;
+        char expectedByte = SM_PACKET_TYPE_SET_BAUDRATE;
+        int response = TCPWaitKnownResponse(busdevicePointer, &expectedByte, 1);
 
-        // Odotetaan vastaus pyyntöön
-        response = tcpipReadBytes(busdevicePointer, &responseByte, TCP_WRITE_RESPONSE_HEADER_LENGTH);
-
-        printf(" WR:%d ", response);
-
-        if (response == 1 && responseByte == 1)
-        {
-            return 1;
-        }
-
-        // Jos virhe, palautetaan virhe // TODO: Suljetaan yhteys?
-        if (response == SOCKET_ERROR)
-        {
-            printf(" TCPIPPORTWRITE ERROR 2 \r\n");
-            return SOCKET_ERROR;
-        }
-
-        if (response != 1)
-        {
-            printf(" TCPIPPORTWRITE ERROR 3 \r\n");
-            return 0;
+        if (response) {
+            return smtrue;
+        } else {
+            return smfalse;
         }
     }
-
-    printf("\r\n");
-
-    return 1;
 }
 
-static int getETHSMAdapterVersionNumbers(smBusdevicePointer busdevicePointer, char *buf)
+static int ETHSMGetAdapterVersionNumbers(smBusdevicePointer busdevicePointer, char *buf)
 {
-    printf("getETHSMAdapterFeatures \r\n");
+    printf("ETHSMGetAdapterFeatures \r\n");
 
     /* SEND WRITE REQUEST */
 
@@ -885,7 +831,7 @@ static int getETHSMAdapterVersionNumbers(smBusdevicePointer busdevicePointer, ch
 
         char request = SM_PACKET_TYPE_GET_DEVICE_VERSION_NUMBERS;
 
-        response = tcpipPortWriteBytes(busdevicePointer, &request, 1);
+        response = TCPWriteBytes(busdevicePointer, &request, 1);
 
         printf(" WW:%d ", response);
 
@@ -905,7 +851,7 @@ static int getETHSMAdapterVersionNumbers(smBusdevicePointer busdevicePointer, ch
         const int responseLength = 10;
 
         // Odotetaan vastaus pyyntöön
-        response = tcpipReadBytes(busdevicePointer, buf, responseLength);
+        response = TCPReadBytes(busdevicePointer, buf, responseLength);
 
         printf(" WR:%d\r\n ", response);
 
@@ -927,9 +873,9 @@ static int getETHSMAdapterVersionNumbers(smBusdevicePointer busdevicePointer, ch
 }
 
 // Returns -1 or feature flags
-static int getETHSMAdapterFeatures(smBusdevicePointer busdevicePointer, unsigned int *features)
+static int ETHSMGetAdapterFeatures(smBusdevicePointer busdevicePointer, unsigned int *features)
 {
-    printf("getETHSMAdapterFeatures \r\n");
+    printf("ETHSMGetAdapterFeatures \r\n");
 
     /* SEND WRITE REQUEST */
 
@@ -938,7 +884,7 @@ static int getETHSMAdapterFeatures(smBusdevicePointer busdevicePointer, unsigned
 
         char request = SM_PACKET_TYPE_GET_DEVICE_FEATURES;
 
-        response = tcpipPortWriteBytes(busdevicePointer, &request, 1);
+        response = TCPWriteBytes(busdevicePointer, &request, 1);
 
         printf(" WW:%d ", response);
 
@@ -959,7 +905,7 @@ static int getETHSMAdapterFeatures(smBusdevicePointer busdevicePointer, unsigned
         char responseData[4] = {0};
 
         // Odotetaan vastaus pyyntöön
-        response = tcpipReadBytes(busdevicePointer, responseData, responseLength);
+        response = TCPReadBytes(busdevicePointer, responseData, responseLength);
 
         printf(" WR:%d\r\n ", response);
 
@@ -981,12 +927,12 @@ static int getETHSMAdapterFeatures(smBusdevicePointer busdevicePointer, unsigned
     }
 }
 
-static int tcpipPurge(smBusdevicePointer busdevicePointer)
+static int ETHSMPurge(smBusdevicePointer busdevicePointer)
 {
 
-    printf("tcpipPurge\r\n");
+    printf("ETHSMPurge\r\n");
 
-    tcpipSetETHSMReadTimeout(busdevicePointer, 0);
+    ETHSMSetReadTimeout(busdevicePointer, 0);
 
     unsigned char buffer[100];
     int bufferSize = sizeof(buffer) / sizeof(buffer[0]);
@@ -995,18 +941,18 @@ static int tcpipPurge(smBusdevicePointer busdevicePointer)
     while (receivedData == bufferSize)
     {
         printf("Purge %d \r\n", receivedData);
-        receivedData = tcpipEthSMPortRead(busdevicePointer, buffer, (int)bufferSize);
+        receivedData = ETHSMPortRead(busdevicePointer, buffer, (int)bufferSize);
     }
 
-    printf("tcpipPurge DONE\r\n");
+    printf("ETHSMPurge DONE\r\n");
 
-    tcpipSetETHSMReadTimeout(busdevicePointer, ETHSM_READ_TIMEOUT_MS);
+    ETHSMSetReadTimeout(busdevicePointer, ETHSM_READ_TIMEOUT_MS);
     return 1;
 }
 
-static int tcpipFlush(smBusdevicePointer busdevicePointer)
+static int ETHSMFlush(smBusdevicePointer busdevicePointer)
 {
-    printf("tcpipFlush \r\n");
+    printf("ETHSMFlush \r\n");
 
     /* SEND WRITE REQUEST */
 
@@ -1015,7 +961,7 @@ static int tcpipFlush(smBusdevicePointer busdevicePointer)
 
         char request = SM_PACKET_TYPE_FLUSH;
 
-        response = tcpipPortWriteBytes(busdevicePointer, &request, 1);
+        response = TCPWriteBytes(busdevicePointer, &request, 1);
 
         printf(" WW:%d ", response);
 
@@ -1027,31 +973,15 @@ static int tcpipFlush(smBusdevicePointer busdevicePointer)
         }
     }
 
-    /* READ RESPONSE */
-
+    // Read response
     {
-        int response = 0;
+        char expectedByte = SM_PACKET_TYPE_SET_TIMEOUT;
+        int response = TCPWaitKnownResponse(busdevicePointer, &expectedByte, 1);
 
-        char responseByte = 0;
-
-        // Odotetaan vastaus pyyntöön
-        response = tcpipReadBytes(busdevicePointer, &responseByte, 1);
-
-        printf(" WR:%d\r\n ", response);
-
-        if (response == 1 && responseByte == 3)
-        {
-            return 1;
+        if (response) {
+            return smtrue;
+        } else {
+            return smfalse;
         }
-
-        // Jos virhe, palautetaan virhe // TODO: Suljetaan yhteys?
-        if (response == SOCKET_ERROR)
-        {
-            printf(" TCPIPPORTWRITE ERROR 2 \r\n");
-            return SOCKET_ERROR;
-        }
-
-        printf(" TCPIPPORTWRITE ERROR 3 \r\n");
-        return SOCKET_ERROR;
     }
 }

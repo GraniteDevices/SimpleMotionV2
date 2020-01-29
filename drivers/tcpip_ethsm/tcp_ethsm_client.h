@@ -23,11 +23,11 @@ extern "C"
 #endif
 
 //return port handle. sets success=smtrue if ok
-smBusdevicePointer tcpipEthSMPortOpen(const char *devicename, smint32 baudrate_bps, smbool *success);
-int tcpipEthSMPortRead(smBusdevicePointer busdevicePointer, unsigned char *, int);
-int tcpipEthSMPortWrite(smBusdevicePointer busdevicePointer, unsigned char *, int);
-smbool tcpipEthSMMiscOperation(smBusdevicePointer busdevicePointer, BusDeviceMiscOperationType operation, smint32 value);
-void tcpipEthSMPortClose(smBusdevicePointer busdevicePointer);
+smBusdevicePointer ETHSMPortOpen(const char *devicename, smint32 baudrate_bps, smbool *success);
+int ETHSMPortRead(smBusdevicePointer busdevicePointer, unsigned char *, int);
+int ETHSMPortWrite(smBusdevicePointer busdevicePointer, unsigned char *, int);
+smbool ETHSMMiscOperation(smBusdevicePointer busdevicePointer, BusDeviceMiscOperationType operation, smint32 value);
+void ETHSMPortClose(smBusdevicePointer busdevicePointer);
 
 #ifdef __cplusplus
 } /* extern "C" */

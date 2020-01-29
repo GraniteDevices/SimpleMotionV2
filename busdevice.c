@@ -62,7 +62,7 @@ smbusdevicehandle smBDOpen( const char *devicename )
     //try opening with all drivers:
     h=smBDOpenWithCallbacks( devicename, serialPortOpen, serialPortClose, serialPortRead, serialPortWrite, serialPortMiscOperation );
     if(h>=0) return h;//was success
-    h=smBDOpenWithCallbacks( devicename, tcpipEthSMPortOpen, tcpipEthSMPortClose, tcpipEthSMPortRead, tcpipEthSMPortWrite, tcpipEthSMMiscOperation );
+    h=smBDOpenWithCallbacks( devicename, ETHSMPortOpen, ETHSMPortClose, ETHSMPortRead, ETHSMPortWrite, ETHSMMiscOperation );
     if(h>=0) return h;//was success
     h=smBDOpenWithCallbacks( devicename, tcpipPortOpen, tcpipPortClose, tcpipPortRead, tcpipPortWrite, tcpipMiscOperation );
     if(h>=0) return h;//was success
