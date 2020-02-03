@@ -584,12 +584,16 @@ static int TCPReadBytes(smBusdevicePointer busdevicePointer, char *buf, unsigned
 /*   TCP TASKS                                */
 /**********************************************/
 
-// Wait a known TCP response. Returns 1 if supposed response was received. 0 if not.
+// Wait a known TCP response. Returns 1 if supposed response was received. 0 if another response. SOCKET_ERROR if SOCKET_ERROR.
 static int TCPWaitKnownResponse(smBusdevicePointer busdevicePointer, const char *bytes, unsigned int length)
 {
     char *receivedBytes = (char*)calloc(length, sizeof(bytes[0]));
 
     int response = TCPReadBytes(busdevicePointer, receivedBytes, length);
+
+    if (response == SOCKET_ERROR) {
+        return SOCKET_ERROR;
+    }
 
     if (response != (int)length) {
         return 0;
