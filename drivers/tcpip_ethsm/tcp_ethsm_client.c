@@ -265,36 +265,11 @@ smbool ETHSMMiscOperation(smBusdevicePointer busdevicePointer, BusDeviceMiscOper
     case MiscOperationCheckIfBaudrateIsOK:
     {
 
-        // static smuint32 ETHSM_baudrates[] = {7500000, 6000000, 5000000, 4000000, 3750000, 3000000, 2500000, 2400000, 2000000, 1875000, 1500000, 1250000, 1200000, 1000000, 937500, 800000, 750000, 625000, 600000, 500000, 480000, 468750, 400000, 375000, 312500, 300000, 250000, 240000, 234375, 200000, 187500, 160000, 156250, 150000, 125000, 120000, 100000, 96000, 93750, 80000, 78125, 75000, 62500, 60000, 50000, 48000, 46875, 40000, 37500, 32000, 31250, 30000, 25000, 24000, 20000, 19200, 18750, 16000, 15625, 15000, 12500, 12000, 10000, 9600};
-        // IONI_baudrates[] = {9.00000   4.50000   3.00000   2.25000   1.80000   1.50000   1.28571   1.12500   1.00000   0.90000   0.81818   0.75000   0.69231   0.64286   0.60000   0.56250};
-        value++;
-        return smtrue;
-
-        /*
-
-        STM32F207 Fractional baudrate generator can generate following baudrates with 8-bit oversampling:
-        60 MHz / (8 * USARTDIV),
-        where USARTDIV can be anything between 1 and 4096 with 0.125 steps
-
-
-        static const smuint32 ETHSM_BAUDRATES[3] = {
-            9600,
-            115200,
-            460800};
-
-        unsigned int baudrates = sizeof(ETHSM_BAUDRATES) / sizeof(ETHSM_BAUDRATES[0]);
-        for (unsigned int i = 0; i < baudrates; ++i)
-        {
-            printf("Check BR %d \r\n", ETHSM_BAUDRATES[i]);
-            if ((smuint32)value == ETHSM_BAUDRATES[i])
-            {
-                printf("Baudrate found!\r\n");
-                return 1;
-            }
+        if (value <= 800000 && value >= 50000) {
+            return smtrue;
+        } else {
+            return smfalse;
         }
-
-        return 0;
-*/
     }
 
     case MiscOperationPurgeRX:
