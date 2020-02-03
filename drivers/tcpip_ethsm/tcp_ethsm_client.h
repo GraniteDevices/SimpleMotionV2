@@ -18,7 +18,7 @@
 #define SM_PACKET_TYPE_GET_DEVICE_VERSION_NUMBERS 0x0a
 
 // How many milliseconds the ETHSM adapter waits answers from SM bus
-#define ETHSM_READ_TIMEOUT_MS 5
+#define ETHSM_READ_TIMEOUT_MS 10
 
 // How many milliseconds this driver waits answers from the ETHSM adapter
 #define LOCAL_TCP_READ_TIMEOUT_MS 2000 // TODO
