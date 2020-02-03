@@ -87,7 +87,6 @@ static int TCPWaitKnownResponse(smBusdevicePointer busdevicePointer, const char 
 #define TCP_WRITE_REQUEST_HEADER_LENGTH 3
 #define TCP_WRITE_RESPONSE_HEADER_LENGTH 2
 #define GLOBAL_BUFFER_SIZE 512
-#define ETHSM_READ_TIMEOUT_MS 5
 
 static char tempBuffer[GLOBAL_BUFFER_SIZE];
 
