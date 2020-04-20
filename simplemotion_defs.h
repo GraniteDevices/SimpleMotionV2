@@ -1078,6 +1078,7 @@
 #define SMP_SCOPE_CHANNEL_VALUE 904
 #define SMP_SCOPE_CHANNEL_SELECT 905
 #define SMP_ACTUAL_POSITION_FB_NEVER_RESETTING 906 /*this is same than SMP_ACTUAL_POSITION_FB but does not reset to 0 on homing or init (it is always the original counter value at power-on)*/
+#define SMP_RAW_QUADRATURE_ENCODER_POSITION_FB 907 /*This is always readable main quadrature encoder counter value, this is updated in all [FBD] settings, even when [FBD]=None. Useful for open loop stepper monitoring. */
 
 #define SMP_MECH_BRAKE_RELEASE_DELAY 910
 #define SMP_MECH_BRAKE_ENGAGE_DELAY 911
