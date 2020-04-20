@@ -291,7 +291,8 @@ smbool ETHSMMiscOperation(smBusdevicePointer busdevicePointer, BusDeviceMiscOper
 static void printBuffer(char *buf, unsigned int len)
 {
     printf("printBuffer(%d bytes)(", len);
-    for (unsigned int i = 0; i < len; ++i)
+    unsigned int i = 0;
+    for (i = 0; i < len; ++i)
     {
         printf("%d ", buf[i]);
     }
@@ -301,7 +302,8 @@ static void printBuffer(char *buf, unsigned int len)
 static void multipleBytesToValue(char *buf, unsigned int len, unsigned int *value)
 {
     *value = 0;
-    for (unsigned int i = 0; i < len; ++i)
+    unsigned int i = 0;
+    for (i = 0; i < len; ++i)
     {
         *value += (unsigned int)(buf[i] << (8 * i));
     }
@@ -309,7 +311,8 @@ static void multipleBytesToValue(char *buf, unsigned int len, unsigned int *valu
 
 static void valueToMultipleBytes(char *buf, unsigned int len, unsigned int value)
 {
-    for (unsigned int i = 0; i < len; ++i)
+    unsigned int i = 0;
+    for (i = 0; i < len; ++i)
     {
         buf[i] = ((char)(value >> (8 * i))) & (char)0xFF;
     }
@@ -386,12 +389,14 @@ static int ETHSMParseAndValidateIPAddress(const char *str, char *IP, unsigned sh
         printf("Parse IP starting from %s \r\n", addrStart);
 
         // Go through four numeric parts
-        for (int k = 0; k < 4; ++k)
+        int k = 0;
+        for (k = 0; k < 4; ++k)
         {
             digits = 0;
 
             // Check that every numeric part contains 1-3 numbers
-            for (unsigned int i = 0; i < 4; ++i)
+            unsigned int i = 0;
+            for (i = 0; i < 4; ++i)
             {
                 if (!isdigit(*s))
                 {
@@ -671,7 +676,8 @@ static int ETHSMReadBytes(smBusdevicePointer busdevicePointer, unsigned int amou
             return 0;
         }
 
-        for (unsigned int i = 0; i < dataLength; ++i)
+        unsigned int i = 0;
+        for (i = 0; i < dataLength; ++i)
         {
             bufferAddItem((unsigned int)busdevicePointer, tempBuffer[i]);
         }

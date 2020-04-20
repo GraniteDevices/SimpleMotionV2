@@ -22,7 +22,8 @@ static RingBuffer ringBuffers[AMOUNT_OF_TCP_BUFFERS];
 static int findBufferIndexByIdentifier(unsigned int bufferIdentifier)
 {
     int index = -1;
-    for (int i = 0; i < AMOUNT_OF_TCP_BUFFERS; ++i)
+    int i = 0;
+    for (i = 0; i < AMOUNT_OF_TCP_BUFFERS; ++i)
     {
         if (ringBuffers[i].bufferIdentifier == bufferIdentifier)
         {
@@ -45,7 +46,8 @@ int createRingBuffer(unsigned int bufferIdentifier)
         return -1;
     }
 
-    for (int i = 0; i < AMOUNT_OF_TCP_BUFFERS; ++i)
+    int i = 0;
+    for (i = 0; i < AMOUNT_OF_TCP_BUFFERS; ++i)
     {
         if (ringBuffers[i].bufferIdentifier == 0)
         {
