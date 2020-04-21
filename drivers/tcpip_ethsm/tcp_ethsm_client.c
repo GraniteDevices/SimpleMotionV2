@@ -487,8 +487,8 @@ static int TCPConnectionOpen(const char *IP, unsigned short port, smbool *succes
             if (errno == EINPROGRESS) //check if it may be due to non-blocking mode (delayed connect)
             {
                 struct timeval tv;
-                tv.tv_sec = 5; //max wait time
-                tv.tv_usec = 0;
+                tv.tv_sec = readTimeoutMs/1000;
+                tv.tv_usec = (readTimeoutMs%1000) * 1000;
 
                 fd_set myset;
                 FD_ZERO(&myset);
@@ -565,8 +565,8 @@ static int TCPReadBytes(smBusdevicePointer busdevicePointer, char *buf, unsigned
     FD_ZERO(&input);
     FD_SET((unsigned int)sockfd, &input);
     struct timeval timeout;
-    timeout.tv_sec = 2;
-    timeout.tv_usec = 0;
+    timeout.tv_sec = readTimeoutMs/1000;
+    timeout.tv_usec = (readTimeoutMs%1000) * 1000;
 
     //n=-1, select failed. 0=no data within timeout ready, >0 data available. Note: sockfd+1 is correct usage.
     int n = select((int)sockfd + 1, &input, NULL, NULL, &timeout);
