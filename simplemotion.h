@@ -27,7 +27,7 @@ extern "C"{
 #endif
 
 
-//BusdeviceOpen callback should return this if port open fails (in addition to setting *success to smfalse):
+//BusdeviceOpen callback should return this if port open fails (in addition to setting *success to false):
 #define SMBUSDEVICE_RETURN_ON_OPEN_FAIL NULL
 
 
@@ -79,7 +79,7 @@ LIB void smSetBaudrate( unsigned long pbs );
  *
  *This is the only function that returns SM_STATUS which doesn't accumulate status bits to be read with getCumulativeStatus because it has no bus handle
  */
-LIB SM_STATUS smSetTimeout( smuint16 millsecs );
+LIB SM_STATUS smSetTimeout( uint16_t millsecs );
 
 /** Close connection to given bus handle number. This frees communication link therefore makes it available for other apps for opening.
   -return value: a SM_STATUS value, i.e. SM_OK if command succeed
@@ -88,7 +88,7 @@ LIB SM_STATUS smCloseBus( const smbus bushandle );
 
 /** Return SM lib version number in hexadecimal format.
 Ie V 2.5.1 would be 0x020501 and 1.2.33 0x010233 */
-LIB smuint32 smGetVersion();
+LIB uint32_t smGetVersion();
 
 
 /** Set stream where debug output is written. By default nothing is written.
@@ -112,30 +112,30 @@ LIB SM_STATUS resetCumulativeStatus( const smbus handle );
 
 
 /** SMV2 Device communication functionss */
-LIB SM_STATUS smAppendCommandToQueue( smbus handle, smuint8 cmdid, smuint16 param  );
+LIB SM_STATUS smAppendCommandToQueue( smbus handle, uint8_t cmdid, uint16_t param  );
 LIB SM_STATUS smExecuteCommandQueue( const smbus bushandle, const smaddr targetaddress );
-LIB smuint16  smGetQueuedCommandReturnValue(  const smbus bushandle, smuint16 cmdnumber );
+LIB uint16_t  smGetQueuedCommandReturnValue(  const smbus bushandle, uint16_t cmdnumber );
 
 LIB SM_STATUS smUploadCommandQueueToDeviceBuffer( const smbus bushandle, const smaddr targetaddress );
-LIB SM_STATUS smBytesReceived( const smbus bushandle, smint32 *bytesinbuffer );
+LIB SM_STATUS smBytesReceived( const smbus bushandle, int32_t *bytesinbuffer );
 
-LIB SM_STATUS smAppendSMCommandToQueue( smbus handle, int smpCmdType, smint32 paramvalue  );
-LIB SM_STATUS smGetQueuedSMCommandReturnValue(  const smbus bushandle, smint32 *retValue );
+LIB SM_STATUS smAppendSMCommandToQueue( smbus handle, int smpCmdType, int32_t paramvalue  );
+LIB SM_STATUS smGetQueuedSMCommandReturnValue(  const smbus bushandle, int32_t *retValue );
 
-LIB SM_STATUS smAppendGetParamCommandToQueue( smbus handle, smint16 paramAddress );
-LIB SM_STATUS smGetQueuedGetParamReturnValue(  const smbus bushandle, smint32 *retValue  );
-LIB SM_STATUS smAppendSetParamCommandToQueue( smbus handle, smint16 paramAddress, smint32 paramValue );
-LIB SM_STATUS smGetQueuedSetParamReturnValue(  const smbus bushandle, smint32 *retValue  );
+LIB SM_STATUS smAppendGetParamCommandToQueue( smbus handle, int16_t paramAddress );
+LIB SM_STATUS smGetQueuedGetParamReturnValue(  const smbus bushandle, int32_t *retValue  );
+LIB SM_STATUS smAppendSetParamCommandToQueue( smbus handle, int16_t paramAddress, int32_t paramValue );
+LIB SM_STATUS smGetQueuedSetParamReturnValue(  const smbus bushandle, int32_t *retValue  );
 
 /** Simple read & write of parameters with internal queueing, so only one call needed.
 Use these for non-time critical operations. */
-LIB SM_STATUS smRead1Parameter( const smbus handle, const smaddr nodeAddress, const smint16 paramId1, smint32 *paramVal1 );
-LIB SM_STATUS smRead2Parameters( const smbus handle, const smaddr nodeAddress, const smint16 paramId1, smint32 *paramVal1,const smint16 paramId2, smint32 *paramVal2 );
-LIB SM_STATUS smRead3Parameters( const smbus handle, const smaddr nodeAddress, const smint16 paramId1, smint32 *paramVal1,const smint16 paramId2, smint32 *paramVal2 ,const smint16 paramId3, smint32 *paramVal3 );
-LIB SM_STATUS smSetParameter( const smbus handle, const smaddr nodeAddress, const smint16 paramId, smint32 paramVal );
+LIB SM_STATUS smRead1Parameter( const smbus handle, const smaddr nodeAddress, const int16_t paramId1, int32_t *paramVal1 );
+LIB SM_STATUS smRead2Parameters( const smbus handle, const smaddr nodeAddress, const int16_t paramId1, int32_t *paramVal1,const int16_t paramId2, int32_t *paramVal2 );
+LIB SM_STATUS smRead3Parameters( const smbus handle, const smaddr nodeAddress, const int16_t paramId1, int32_t *paramVal1,const int16_t paramId2, int32_t *paramVal2 ,const int16_t paramId3, int32_t *paramVal3 );
+LIB SM_STATUS smSetParameter( const smbus handle, const smaddr nodeAddress, const int16_t paramId, int32_t paramVal );
 
 
-LIB SM_STATUS smGetBufferClock( const smbus handle, const smaddr targetaddr, smuint16 *clock );
+LIB SM_STATUS smGetBufferClock( const smbus handle, const smaddr targetaddr, uint16_t *clock );
 
 /** smFastUpdateCycleWithStructs uses special SimpleMotion command to perform fast turaround communication. May be used with cyclic real time control.
  * smFastUpdateCycleWithStructs has been desniged to have lowest possible response time.
@@ -145,20 +145,20 @@ LIB SM_STATUS smGetBufferClock( const smbus handle, const smaddr targetaddr, smu
  * Parameters write and read are unions and contain several bit field arrangements.
  * The format mode should be set by setting SMP_FAST_UPDATE_CYCLE_FORMAT value before calling this function.
 */
-LIB SM_STATUS smFastUpdateCycleWithStructs( smbus handle, smuint8 nodeAddress, FastUpdateCycleWriteData write, FastUpdateCycleReadData *read);
+LIB SM_STATUS smFastUpdateCycleWithStructs( smbus handle, uint8_t nodeAddress, FastUpdateCycleWriteData write, FastUpdateCycleReadData *read);
 
 
 /** smFastUpdateCycle is similar to smFastUpdateCycleWithStructs with raw integer inputs and outputs instead of structures.
  * This is deprecated, consider using smFastUpdateCycleWithStructs instead.
 */
-LIB SM_STATUS smFastUpdateCycle( smbus handle, smuint8 nodeAddress, smuint16 write1, smuint16 write2, smuint16 *read1, smuint16 *read2);
+LIB SM_STATUS smFastUpdateCycle( smbus handle, uint8_t nodeAddress, uint16_t write1, uint16_t write2, uint16_t *read1, uint16_t *read2);
 
 /** Return number of bus devices found. details of each device may be consequently fetched by smGetBusDeviceDetails() */
-LIB smint smGetNumberOfDetectedBuses();
+LIB int smGetNumberOfDetectedBuses();
 
 /** Fetch information of detected bus nodes at certain index. Example:
 
-    smint num=smGetNumberOfDetectedBuses();
+    int num=smGetNumberOfDetectedBuses();
     for(int i=0;i<num;i++)
     {
         SM_BUS_DEVICE_INFO info;
@@ -173,7 +173,7 @@ LIB smint smGetNumberOfDetectedBuses();
         }
     }
 */
-LIB SM_STATUS smGetBusDeviceDetails( smint index, SM_BUS_DEVICE_INFO *info );
+LIB SM_STATUS smGetBusDeviceDetails( int index, SM_BUS_DEVICE_INFO *info );
 
 /**
  * snprintf alike stringification function for SM_STATUS. Given non-null buffer will be filled to contain
@@ -256,14 +256,14 @@ LIB int smDescribeStatus(char* str, size_t size, int32_t status);
 /** smCheckDeviceCapabilities will check whether target device has all requested capabilities.
  *
  * I.e. code:
- *  smbool resultHasAllCapabilities;
+ *  bool resultHasAllCapabilities;
  *  smCheckDeviceCapabilities( handle, nodeAddress,
                                          SMP_DEVICE_CAPABILITIES1,
                                          DEVICE_CAPABILITY1_AUTOSETUP_COMMUTATION_SENSOR|DEVICE_CAPABILITY1_BUFFERED_MOTION_LINEAR_INTERPOLATION,
                                          &resultHasAllCapabilities );
 
   * Will check whether device supports DEVICE_CAPABILITY1_AUTOSETUP_COMMUTATION_SENSOR and DEVICE_CAPABILITY1_BUFFERED_MOTION_LINEAR_INTERPOLATION.
-  * If it supports both, resultHasAllCapabilities will be set smtrue, otherwise it will be set smfalse.
+  * If it supports both, resultHasAllCapabilities will be set true, otherwise it will be set false.
   *
   * Note: be careful to enter correct SMP_DEVICE_CAPABILITIESn parameter and correct DEVICE_CAPBILITYn flags as arguments as there is no checking for correctness.
   * I.e. passing argument SMP_DEVICE_CAPABILITIES1 and flags DEVICE_CAPABILITY1_AUTOSETUP_COMMUTATION_SENSOR|DEVICE_CAPABILITY2_LOW_LEVEL_GPIO will return
@@ -272,9 +272,9 @@ LIB int smDescribeStatus(char* str, size_t size, int32_t status);
   * Return value is SM_OK if no communication error occurred.
   */
 LIB SM_STATUS smCheckDeviceCapabilities( const smbus handle, const int nodeAddress,
-                                         const smint32 capabilitiesParameterNr,
-                                         const smint32 requiredCapabilityFlags,
-                                         smbool *resultHasAllCapabilities );
+                                         const int32_t capabilitiesParameterNr,
+                                         const int32_t requiredCapabilityFlags,
+                                         bool *resultHasAllCapabilities );
 
 #ifdef __cplusplus
 }

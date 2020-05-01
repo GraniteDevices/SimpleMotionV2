@@ -39,7 +39,7 @@
 
 int globalErrorDetailCode=0;
 
-smbool loadBinaryFile( const char *filename, smuint8 **data, int *numbytes, smbool addNullTermination );
+bool loadBinaryFile( const char *filename, uint8_t **data, int *numbytes, bool addNullTermination );
 
 int smGetDeploymentToolErrroDetail()
 {
@@ -48,7 +48,7 @@ int smGetDeploymentToolErrroDetail()
 
 //return -1 if EOF
 //readPosition should be initialized to 0 and not touched by caller after that. this func will increment it after each call.
-unsigned int readFileLine( const smuint8 *data, const int dataLen, int *readPosition, int charlimit, char *output, smbool *eof)
+unsigned int readFileLine( const uint8_t *data, const int dataLen, int *readPosition, int charlimit, char *output, bool *eof)
 {
     int len=0;
     char c;
@@ -56,18 +56,18 @@ unsigned int readFileLine( const smuint8 *data, const int dataLen, int *readPosi
     {
         if((*readPosition)>=dataLen)//end of data buffer
         {
-            *eof=smtrue;
+            *eof=true;
             c=0;
         }
         else
         {
-            *eof=smfalse;
+            *eof=false;
             c=data[(*readPosition)];
             (*readPosition)++;
         }
 
         //eol or eof
-        if( (*eof)==smtrue || c=='\n' || c=='\r' || len>=charlimit-1 )
+        if(*eof || c=='\n' || c=='\r' || len>=charlimit-1)
         {
             output[len]=0;//terminate str
             return len;
@@ -83,7 +83,7 @@ typedef struct
 {
     int address;
     double value;
-    smbool readOnly;
+    bool readOnly;
     double scale;
     double offset;
 } Parameter;
@@ -91,7 +91,7 @@ typedef struct
 #define maxLineLen 100
 
 //returns byte offset where str starts, or -1 if not found before data ends
-int findSubstring( const smuint8 *data, const int dataLen, const char *str )
+int findSubstring( const uint8_t *data, const int dataLen, const char *str )
 {
 	int strLen=strlen(str);
 	int i;
@@ -110,9 +110,9 @@ int decimalNumberToDouble( const char *str, double *output )
 {
     double out=0, decimalcoeff=1.0;
     int i=0;
-    smbool decimalPointFound=smfalse;
-    smbool done=smfalse;
-    while(done==smfalse)
+    bool decimalPointFound=false;
+    bool done=false;
+    while(!done)
     {
         char c=str[i];
         int number=c-'0';//char to value 0-9
@@ -127,16 +127,16 @@ int decimalNumberToDouble( const char *str, double *output )
         else if(number>=0 && number <=9) //is number
         {
             out=10.0*out+number;
-            if(decimalPointFound==smtrue)
+            if(decimalPointFound)
                 decimalcoeff*=0.1;
         }
         else if (c=='.')//is decimal point
         {
-            decimalPointFound=smtrue;
+            decimalPointFound=true;
         }
         else if(c=='\n' || c=='\r' || c==' ' || c==0 || c=='e' )//end of string
         {
-            done=smtrue;
+            done=true;
         }
         else//bad charachter
         {
@@ -196,8 +196,8 @@ int stringToInt( const char *str, int *output )
     int out=0;
     int i=0;
     int coeff=1;
-    smbool done=smfalse;
-    while(done==smfalse)
+    bool done=false;
+    while(!done)
     {
         char c=str[i];
         int number=c-'0';//char to value 0-9
@@ -212,7 +212,7 @@ int stringToInt( const char *str, int *output )
         }
         else if(c=='\n' || c=='\r' || c==' ' || c==0 )//end of string
         {
-            done=smtrue;
+            done=true;
         }
         else//bad charachter
         {
@@ -226,32 +226,29 @@ int stringToInt( const char *str, int *output )
     return 1;
 }
 
-smbool parseDRCIntKey( const smuint8 *drcData, const int drcDataLen, const char *key, int *outValue )
+bool parseDRCIntKey( const uint8_t *drcData, const int drcDataLen, const char *key, int *outValue )
 {
     int pos=findSubstring(drcData,drcDataLen,key);
     if(pos<0)
-        return smfalse; //key not found
+        return false; //key not found
 
     if( stringToInt((char*)(&drcData[pos]+strlen(key)),outValue) != 1)
-        return smfalse; //parse failed
+        return false; //parse failed
 
-    return smtrue;
+    return true;
 }
 
-//read DRC file version nr and nubmer of params it contains. if succes, returns smtrue. if invalid file, return smfalse
-smbool parseDRCInfo( const smuint8 *drcData, const int drcDataLen, int *DRCVersion, int *numParams, int *DRCFileFeatureBits, int *DRCEssentialFileFeatureBits )
+//read DRC file version nr and nubmer of params it contains. if succes, returns true. if invalid file, return false
+bool parseDRCInfo( const uint8_t *drcData, const int drcDataLen, int *DRCVersion, int *numParams, int *DRCFileFeatureBits, int *DRCEssentialFileFeatureBits )
 {
-    const char *DRCFileFeatureBitsKey="FileFeatureBits=";
-    const char *DRCEssentialFileFeatureBitsKey="FileFeatureBitsEssential=";
-
-    if( parseDRCIntKey(drcData,drcDataLen,"DRCVersion=",DRCVersion) == smfalse ) return smfalse; //parse failed
-    if( parseDRCIntKey(drcData,drcDataLen,"size=",numParams) == smfalse ) return smfalse; //parse failed
+    if(!parseDRCIntKey(drcData,drcDataLen,"DRCVersion=",DRCVersion)) return false; //parse failed
+    if(!parseDRCIntKey(drcData,drcDataLen,"size=",numParams)) return false; //parse failed
 
     //v 111 and beyond should have file feature bits defined
     if(*DRCVersion>=111)
     {
-        if( parseDRCIntKey(drcData,drcDataLen,"FileFeatureBits=",DRCFileFeatureBits) == smfalse ) return smfalse; //parse failed
-        if( parseDRCIntKey(drcData,drcDataLen,"FileFeatureBitsEssential=",DRCEssentialFileFeatureBits) == smfalse ) return smfalse; //parse failed
+        if(!parseDRCIntKey(drcData,drcDataLen,"FileFeatureBits=",DRCFileFeatureBits)) return false; //parse failed
+        if(!parseDRCIntKey(drcData,drcDataLen,"FileFeatureBitsEssential=",DRCEssentialFileFeatureBits)) return false; //parse failed
     }
     else//older format, set it based on knowledge:
     {
@@ -261,33 +258,33 @@ smbool parseDRCInfo( const smuint8 *drcData, const int drcDataLen, int *DRCVersi
 
     //extra sanity check
     if( *numParams<1 || *numParams>1000 )
-        return smfalse;
+        return false;
 
     //extra sanity check
     if( *DRCVersion<110 || *DRCVersion>10000 ) //110 is lowest released drc version
-        return smfalse;
+        return false;
 
-    return smtrue;
+    return true;
 }
 
-smbool parseParameter( const smuint8 *drcData, const int drcDataLen, int idx, Parameter *param )
+bool parseParameter( const uint8_t *drcData, const int drcDataLen, int idx, Parameter *param )
 {
     char line[maxLineLen];
     char scanline[maxLineLen];
-    smbool gotaddr=smfalse,gotvalue=smfalse, gotreadonly=smfalse, gotscale=smfalse,gotoffset=smfalse;
+    bool gotaddr=false,gotvalue=false, gotreadonly=false, gotscale=false,gotoffset=false;
     unsigned int readbytes;
     int readPosition=0;
-    smbool eof;
+    bool eof;
 
     //optimization below: finds starting offset where the wanted idx parameter will be available in drcData.
     //i.e. find start offset of line that starts with "50\" (for idx=50)
     if(idx>999)
-    	return smfalse;//parseParam supports only idx 1-999 because startingTag has fixed length
+    	return false;//parseParam supports only idx 1-999 because startingTag has fixed length
     char startingTag[6];
     sprintf(startingTag,"\n%d\\",idx);
     readPosition=findSubstring(drcData,drcDataLen,startingTag);
     if(readPosition<0)//such parameter not found in data
-    	return smfalse;
+    	return false;
 
     do//loop trhu all lines of file
     {
@@ -299,48 +296,48 @@ smbool parseParameter( const smuint8 *drcData, const int drcDataLen, int idx, Pa
         sprintf(scanline,"%d\\addr=",idx);
         if(!strncmp(line,scanline,strlen(scanline)) && readbytes > strlen(scanline))//string starts with correct line
             if(stringToInt(line+strlen(scanline),&param->address)==1)//parse number after the start of line
-                gotaddr=smtrue;//number parse success
+                gotaddr=true;//number parse success
 
         //try read value
         sprintf(scanline,"%d\\value=",idx);
         if(!strncmp(line,scanline,strlen(scanline)) && readbytes > strlen(scanline))//string starts with correct line
             if(stringToDouble(line+strlen(scanline),&param->value)==1)//parse number after the start of line
-                gotvalue=smtrue;//number parse success
+                gotvalue=true;//number parse success
 
         //try read offset
         sprintf(scanline,"%d\\offset=",idx);
         if(!strncmp(line,scanline,strlen(scanline)) && readbytes > strlen(scanline))//string starts with correct line
             if(stringToDouble(line+strlen(scanline),&param->offset)==1)//parse number after the start of line
-                gotoffset=smtrue;//number parse success
+                gotoffset=true;//number parse success
 
         //try read scale
         sprintf(scanline,"%d\\scaling=",idx);
         if(!strncmp(line,scanline,strlen(scanline)) && readbytes > strlen(scanline))//string starts with correct line
             if(stringToDouble(line+strlen(scanline),&param->scale)==1)//parse number after the start of line
-                gotscale=smtrue;//number parse success
+                gotscale=true;//number parse success
 
         //try read readonly status
         sprintf(scanline,"%d\\readonly=true",idx);//check if readonly=true
         if(!strncmp(line,scanline,strlen(scanline)) && readbytes >= strlen(scanline))//line match
         {
-            param->readOnly=smtrue;
-            gotreadonly=smtrue;
+            param->readOnly=true;
+            gotreadonly=true;
         }
         sprintf(scanline,"%d\\readonly=false",idx);//check if readonly=false
         if(!strncmp(line,scanline,strlen(scanline)) && readbytes >= strlen(scanline))//line match
         {
-            param->readOnly=smfalse;
-            gotreadonly=smtrue;
+            param->readOnly=false;
+            gotreadonly=true;
         }
     }
-    while( (gotvalue==smfalse || gotaddr==smfalse || gotreadonly==smfalse || gotscale==smfalse || gotoffset==smfalse) && eof==smfalse );
+    while ((!gotvalue || !gotaddr || !gotreadonly || !gotscale || !gotoffset) && !eof);
 
-    if(gotvalue==smtrue&&gotaddr==smtrue&&gotoffset==smtrue&&gotscale==smtrue&&gotreadonly==smtrue)
+    if(gotvalue&&gotaddr&&gotoffset&&gotscale&&gotreadonly)
     {
-        return smtrue;
+        return true;
     }
 
-    return smfalse;//not found
+    return false;//not found
 }
 
 /**
@@ -356,10 +353,10 @@ smbool parseParameter( const smuint8 *drcData, const int drcDataLen, int idx, Pa
 LoadConfigurationStatus smLoadConfiguration(const smbus smhandle, const int smaddress, const char *filename, unsigned int mode , int *skippedCount, int *errorCount)
 {
     LoadConfigurationStatus ret;
-    smuint8 *drcData=NULL;
+    uint8_t *drcData=NULL;
     int drcDataLength;
 
-    if(loadBinaryFile(filename,&drcData,&drcDataLength,smtrue)!=smtrue)
+    if(!loadBinaryFile(filename,&drcData,&drcDataLength,true))
         return CFGUnableToOpenFile;
 
     ret = smLoadConfigurationFromBuffer( smhandle, smaddress, drcData, drcDataLength, mode, skippedCount, errorCount );
@@ -379,25 +376,25 @@ LoadConfigurationStatus smLoadConfiguration(const smbus smhandle, const int smad
  *
  * Requires DRC file version 111 or later to use CONFIGMODE_REQUIRE_SAME_FW.
  */
-LIB LoadConfigurationStatus smLoadConfigurationFromBuffer( const smbus smhandle, const int smaddress, const smuint8 *drcData, const int drcDataLength, unsigned int mode, int *skippedCount, int *errorCount )
+LIB LoadConfigurationStatus smLoadConfigurationFromBuffer( const smbus smhandle, const int smaddress, const uint8_t *drcData, const int drcDataLength, unsigned int mode, int *skippedCount, int *errorCount )
 {
     smDebug(smhandle,SMDebugLow,"smLoadConfigurationFromBuffer for SM address %d called\n",smaddress);
 
     //test connection
-    smint32 devicetype;
+    int32_t devicetype;
     SM_STATUS stat;
     int ignoredCount=0;
     int setErrors=0;
-    smint32 CB1Value;
+    int32_t CB1Value;
     int changed=0;
     int numParams, DRCVersion;
     int DRCFileFeatureBits, DRCEssentialFileFeatureBits;
     *skippedCount=-1;
     *errorCount=-1;
-    smbool deviceDisabled=smfalse;
+    bool deviceDisabled=false;
 
     //parse DRC header
-    if(parseDRCInfo(drcData,drcDataLength,&DRCVersion,&numParams,&DRCFileFeatureBits,&DRCEssentialFileFeatureBits)!=smtrue)
+    if(!parseDRCInfo(drcData,drcDataLength,&DRCVersion,&numParams,&DRCFileFeatureBits,&DRCEssentialFileFeatureBits))
         return CFGInvalidFile;
 
     //check if essential bits have something that is not in feature bits (file sanity check error)
@@ -427,23 +424,23 @@ LIB LoadConfigurationStatus smLoadConfigurationFromBuffer( const smbus smhandle,
 
     smDebug(smhandle,SMDebugLow,"Setting parameters\n");
 
-    smbool readOk;
+    bool readOk;
     int i;
     for( i=1; i<numParams; i++ )
     {
         Parameter param;
         readOk=parseParameter(drcData,drcDataLength,i,&param);
 
-        if( readOk==smfalse ) //corrupted file
+        if(!readOk) //corrupted file
         {
             *skippedCount=ignoredCount;
             *errorCount=setErrors;
             return CFGInvalidFile;
         }
 
-        if(param.readOnly==smfalse)
+        if(!param.readOnly)
         {
-            smint32 currentValue;
+            int32_t currentValue;
 
             int configFileValue=round(param.value*param.scale-param.offset);
 
@@ -457,19 +454,19 @@ LIB LoadConfigurationStatus smLoadConfigurationFromBuffer( const smbus smhandle,
 
                     //disable device only only if at least one parameter has changed, and disalbe is configured by CONFIGMODE_DISABLE_DURING_CONFIG flag.
                     //deviceDisabled is compared so it gets disabled only at first parameter, not consequent ones
-                    if(mode&CONFIGMODE_DISABLE_DURING_CONFIG && deviceDisabled==smfalse)
+                    if(mode&CONFIGMODE_DISABLE_DURING_CONFIG && !deviceDisabled)
                     {
                     	smDebug(smhandle,SMDebugLow,"Drive will be disabled as requested because of parameter change\n");
 
                         smRead1Parameter( smhandle, smaddress, SMP_CONTROL_BITS1, &CB1Value );
                         smSetParameter( smhandle, smaddress, SMP_CONTROL_BITS1, 0);//disable drive
-                        deviceDisabled=smtrue;
+                        deviceDisabled=true;
                     }
 
                     resetCumulativeStatus( smhandle );
-                    smint32 dummy;
-                    smint32 cmdSetAddressStatus;
-                    smint32 cmdSetValueStatus;
+                    int32_t dummy;
+                    int32_t cmdSetAddressStatus;
+                    int32_t cmdSetValueStatus;
 
                     smDebug(smhandle,SMDebugMid,"Writing parameter addr %d value %d\n",param.address,configFileValue);
                     //use low level SM commands so we can get execution status of each subpacet:
@@ -507,9 +504,9 @@ LIB LoadConfigurationStatus smLoadConfigurationFromBuffer( const smbus smhandle,
 
     //if device supports SMP_SYSTEM_CONTROL_TRIGGER_PENDING_PARAMETER_ACTIVATION, call it to make sure that all parameters get effective without reboot
     {
-        smbool result;
+        bool result;
         smCheckDeviceCapabilities( smhandle, smaddress, SMP_DEVICE_CAPABILITIES2, DEVICE_CAPABILITY2_SUPPORT_TRIGGER_PENDING_PARAMETER_ACTIVATION, &result);
-        if(result==smtrue)
+        if(result)
             smSetParameter( smhandle, smaddress, SMP_SYSTEM_CONTROL, SMP_SYSTEM_CONTROL_TRIGGER_PENDING_PARAMETER_ACTIVATION );
     }
 
@@ -529,13 +526,13 @@ LIB LoadConfigurationStatus smLoadConfigurationFromBuffer( const smbus smhandle,
     }
 
     //re-enable drive
-    if(mode&CONFIGMODE_DISABLE_DURING_CONFIG && deviceDisabled==smtrue)
+    if(mode&CONFIGMODE_DISABLE_DURING_CONFIG && deviceDisabled)
     {
         smDebug(smhandle,SMDebugLow,"Restoring CONTROL_BITS1 to value 0x%x\n",CB1Value);
         smSetParameter( smhandle, smaddress, SMP_CONTROL_BITS1, CB1Value );//restore controbits1 (enable if it was enabled before)
     }
 
-    smint32 statusbits;
+    int32_t statusbits;
     smRead1Parameter( smhandle, smaddress, SMP_STATUS, &statusbits );
 
     //restart drive if necessary or if forced
@@ -565,24 +562,24 @@ LIB LoadConfigurationStatus smLoadConfigurationFromBuffer( const smbus smhandle,
  * @param smhandle SM bus handle, must be opened before call
  * @param smaddress Target SM device address. Can be device in DFU mode or main operating mode. For Argon, one device in a bus must be started into DFU mode by DIP switches and smaddress must be set to 255.
  * @param UID result will be written to this pointer
- * @return smtrue if success, smfalse if failed (if communication otherwise works, then probably UID feature not present in this firmware version). Note: some devices' DFU/bootloader mode don't support this command but main firmware do.
+ * @return true if success, false if failed (if communication otherwise works, then probably UID feature not present in this firmware version). Note: some devices' DFU/bootloader mode don't support this command but main firmware do.
  */
-smbool smGetDeviceFirmwareUniqueID( smbus smhandle, int deviceaddress, smuint32 *UID )
+bool smGetDeviceFirmwareUniqueID( smbus smhandle, int deviceaddress, uint32_t *UID )
 {
     smDebug(smhandle,SMDebugMid,"smGetDeviceFirmwareUniqueID called\n");
 
-    smint32 fwBinaryChecksum, commandStatus;
+    int32_t fwBinaryChecksum, commandStatus;
     resetCumulativeStatus(smhandle);
     smSetParameter( smhandle, deviceaddress, SMP_CUMULATIVE_STATUS, 0);//reset any SM access error that might SM target might have active so we can test whether following command succeeds
     smSetParameter( smhandle, deviceaddress, SMP_SYSTEM_CONTROL, SMP_SYSTEM_CONTROL_GET_SPECIAL_DATA);
     smRead2Parameters( smhandle, deviceaddress, SMP_DEBUGPARAM1, &fwBinaryChecksum, SMP_CUMULATIVE_STATUS, &commandStatus );
 
-    *UID=(smuint32) fwBinaryChecksum;
+    *UID=(uint32_t) fwBinaryChecksum;
 
     if(getCumulativeStatus(smhandle)==SM_OK && commandStatus==SMP_CMD_STATUS_ACK)//if commandStatus==SMP_CMD_STATUS_ACK fails, then FW or curren mode of device doesn't support reading this
-        return smtrue;
+        return true;
     else
-        return smfalse;
+        return false;
 }
 
 /* local helper functions to get 8, 16 or 32 bit value from data buffer.
@@ -593,26 +590,26 @@ smbool smGetDeviceFirmwareUniqueID( smbus smhandle, int deviceaddress, smuint32 
 */
 
 
-smuint8 bufferGet8( smuint8 **buf )
+uint8_t bufferGet8( uint8_t **buf )
 {
-    smuint8 ret=(*buf)[0];
-    *buf++;
+    uint8_t ret=(*buf)[0];
+    buf++;
     return ret;
 }
 
-smuint16 bufferGet16( smuint8 **buf )
+uint16_t bufferGet16( uint8_t **buf )
 {
     UnionOf4Bytes d;
     d.U8[0]=(*buf)[0];
     d.U8[1]=(*buf)[1];
 
-    smuint16 ret=d.U16[0];
+    uint16_t ret=d.U16[0];
 
     *buf+=2;
     return ret;
 }
 
-smuint32 bufferGet32( smuint8 **buf )
+uint32_t bufferGet32( uint8_t **buf )
 {
     UnionOf4Bytes d;
     d.U8[0]=(*buf)[0];
@@ -620,39 +617,39 @@ smuint32 bufferGet32( smuint8 **buf )
     d.U8[2]=(*buf)[2];
     d.U8[3]=(*buf)[3];
 
-    smuint32 ret=d.U32;
+    uint32_t ret=d.U32;
 
     *buf+=4;
     return ret;
 }
 
 
-FirmwareUploadStatus parseFirmwareFile(smuint8 *data, smuint32 numbytes, smuint32 connectedDeviceTypeId,
-                                        smuint32 *primaryMCUDataOffset, smuint32 *primaryMCUDataLenth,
-                                        smuint32 *secondaryMCUDataOffset,smuint32 *secondaryMCUDataLength,
-                                        smuint32 *FWUniqueID )
+FirmwareUploadStatus parseFirmwareFile(uint8_t *data, uint32_t numbytes, uint32_t connectedDeviceTypeId,
+                                        uint32_t *primaryMCUDataOffset, uint32_t *primaryMCUDataLenth,
+                                        uint32_t *secondaryMCUDataOffset,uint32_t *secondaryMCUDataLength,
+                                        uint32_t *FWUniqueID )
 {
     smDebug(-1,SMDebugMid,"parseFirmwareFile called\n");
 
     //see https://granitedevices.com/wiki/Firmware_file_format_(.gdf)
 
-    smuint32 filetype;
-    filetype=((smuint32*)data)[0];
+    uint32_t filetype;
+    filetype=((uint32_t*)data)[0];
     if(filetype!=0x57464447) //check header string "GDFW"
         return FWInvalidFile;
 
-    smuint32 filever, deviceid;
+    uint32_t filever, deviceid;
     *FWUniqueID=0;//updated later if available
 
-    filever=((smuint16*)data)[2];
+    filever=((uint16_t*)data)[2];
 
     if(filever==300)//handle GDF version 300 here
     {
-        smuint32 primaryMCUSize, secondaryMCUSize;
+        uint32_t primaryMCUSize, secondaryMCUSize;
 
-        deviceid=((smuint16*)data)[3];
-        primaryMCUSize=((smuint32*)data)[2];
-        secondaryMCUSize=((smuint32*)data)[3];
+        deviceid=((uint16_t*)data)[3];
+        primaryMCUSize=((uint32_t*)data)[2];
+        secondaryMCUSize=((uint32_t*)data)[3];
         if(secondaryMCUSize==0xffffffff)
             secondaryMCUSize=0;//it is not present
 
@@ -660,12 +657,12 @@ FirmwareUploadStatus parseFirmwareFile(smuint8 *data, smuint32 numbytes, smuint3
             return FWIncompatibleFW;
 
         //get checksum and check it
-        smuint32 cksum,cksumcalc=0;
-        smuint32 i;
-        smuint32 cksumOffset=4+2+2+4+4+primaryMCUSize+secondaryMCUSize;
+        uint32_t cksum,cksumcalc=0;
+        uint32_t i;
+        uint32_t cksumOffset=4+2+2+4+4+primaryMCUSize+secondaryMCUSize;
         if(cksumOffset>numbytes-4)
             return FWInvalidFile;
-        cksum=((smuint32*)(data+cksumOffset))[0];
+        cksum=((uint32_t*)(data+cksumOffset))[0];
 
         for(i=0;i< numbytes-4;i++)
         {
@@ -742,15 +739,15 @@ FirmwareUploadStatus parseFirmwareFile(smuint8 *data, smuint32 numbytes, smuint3
          * bits 1-31: reserved
          *
          */
-        smuint8 *dataPtr=&data[6];//start at byte 6 because first 6 bytes are already read
-        smuint8 *dataCRCPtr=&data[numbytes-4];
-        smuint32 numOfChunks;
-        smuint32 deviceid_max;
-        smuint32 chunkType;
-        smuint32 chunkTypeStringLen;
-        smuint32 chunkSize;
-        smuint16 chunkOptions;
-        smuint32 i;
+        uint8_t *dataPtr=&data[6];//start at byte 6 because first 6 bytes are already read
+        uint8_t *dataCRCPtr=&data[numbytes-4];
+        uint32_t numOfChunks;
+        uint32_t deviceid_max;
+        uint32_t chunkType;
+        uint32_t chunkTypeStringLen;
+        uint32_t chunkSize;
+        uint16_t chunkOptions;
+        uint32_t i;
 
         //check file compatibility
         if(bufferGet16(&dataPtr)!=400)
@@ -789,13 +786,13 @@ FirmwareUploadStatus parseFirmwareFile(smuint8 *data, smuint32 numbytes, smuint3
             }
             else if(chunkType==100)//main MCU FW
             {
-                *primaryMCUDataOffset=(smuint32)(dataPtr-data);
+                *primaryMCUDataOffset=(uint32_t)(dataPtr-data);
                 *primaryMCUDataLenth=chunkSize;
                 dataPtr+=chunkSize;//skip to next chunk
             }
             else if(chunkType==200)//secondary MCU FW
             {
-                *secondaryMCUDataOffset=(smuint32)(dataPtr-data);
+                *secondaryMCUDataOffset=(uint32_t)(dataPtr-data);
                 *secondaryMCUDataLength=chunkSize;
                 dataPtr+=chunkSize;//skip to next chunk
             }
@@ -813,7 +810,7 @@ FirmwareUploadStatus parseFirmwareFile(smuint8 *data, smuint32 numbytes, smuint3
             }
         }
 
-        if((smuint32)(dataPtr-data)!=numbytes-4)//check if chunks total size match file size
+        if((uint32_t)(dataPtr-data)!=numbytes-4)//check if chunks total size match file size
             return FWInvalidFile;
     }
     else
@@ -851,12 +848,12 @@ void smFirmwareUploadStatusToString(const FirmwareUploadStatus FWUploadStatus, c
 }
 
 
-smbool loadBinaryFile(const char *filename, smuint8 **data, int *numbytes , smbool addNullTermination)
+bool loadBinaryFile(const char *filename, uint8_t **data, int *numbytes , bool addNullTermination)
 {
     FILE *f;
     f=fopen(filename,"rb");
     if(f==NULL)
-        return smfalse;
+        return false;
 
     *numbytes=0;
 
@@ -866,7 +863,7 @@ smbool loadBinaryFile(const char *filename, smuint8 **data, int *numbytes , smbo
     fseek(f,0,SEEK_SET);
 
     //allocate buffer
-    if(addNullTermination==smtrue)
+    if(addNullTermination)
         *data=malloc(length+1);//+1 for 0 termination char
     else
         *data=malloc(length);
@@ -874,10 +871,10 @@ smbool loadBinaryFile(const char *filename, smuint8 **data, int *numbytes , smbo
     if(*data==NULL)
     {
         fclose(f);
-        return smfalse;
+        return false;
     }
 
-    if(addNullTermination==smtrue)
+    if(addNullTermination)
         (*data)[length]=0;//add 0 termination character at the end, this 0 prevents parse function doing buffer overflow if file is corrupt
 
     //read
@@ -887,20 +884,20 @@ smbool loadBinaryFile(const char *filename, smuint8 **data, int *numbytes , smbo
         free(*data);
         *numbytes=0;
         fclose(f);
-        return smfalse;
+        return false;
     }
 
     fclose(f);
-    return smtrue;//successl
+    return true;//successl
 }
 
 
 
 //flashing STM32 (host side mcu)
-smbool flashFirmwarePrimaryMCU( smbus smhandle, int deviceaddress, const smuint8 *data, smint32 size, int *progress )
+bool flashFirmwarePrimaryMCU( smbus smhandle, int deviceaddress, const uint8_t *data, int32_t size, int *progress )
 {
-    smint32 ret;
-    static smint32 deviceType, fwVersion;
+    int32_t ret;
+    static int32_t deviceType, fwVersion;
     static int uploadIndex;
     int c;
     const int BL_CHUNK_LEN=32;
@@ -916,7 +913,7 @@ smbool flashFirmwarePrimaryMCU( smbus smhandle, int deviceaddress, const smuint8
         if(getCumulativeStatus(smhandle)!=SM_OK)
         {
             state=Init;
-            return smfalse;
+            return false;
         }
 
 /*      kommentoitu pois koska ei haluta erasoida parskuja koska parametri SMO ei saisi nollautua mielellään
@@ -935,7 +932,7 @@ smbool flashFirmwarePrimaryMCU( smbus smhandle, int deviceaddress, const smuint8
         if(getCumulativeStatus(smhandle)!=SM_OK)
         {
             state=Init;
-            return smfalse;
+            return false;
         }
 
         state=Upload;
@@ -954,12 +951,12 @@ smbool flashFirmwarePrimaryMCU( smbus smhandle, int deviceaddress, const smuint8
             smAppendSMCommandToQueue( smhandle, SMPCMD_SETPARAMADDR, SMP_BOOTLOADER_UPLOAD );
             for(c=0;c<BL_CHUNK_LEN;c++)
             {
-                smuint16 upword;
+                uint16_t upword;
                 //pad end of file with constant to make full chunk
                 if(uploadIndex>=size)
                     upword=0xeeee;
                 else
-                    upword=((smuint16*)data)[uploadIndex];
+                    upword=((uint16_t*)data)[uploadIndex];
                 smAppendSMCommandToQueue( smhandle, SMPCMD_24B, upword );
                 uploadIndex++;
             }
@@ -976,7 +973,7 @@ smbool flashFirmwarePrimaryMCU( smbus smhandle, int deviceaddress, const smuint8
                 if(getCumulativeStatus(smhandle)!=SM_OK)
                 {
                     state=Init;
-                    return smfalse;
+                    return false;
                 }
             }
 
@@ -987,7 +984,7 @@ smbool flashFirmwarePrimaryMCU( smbus smhandle, int deviceaddress, const smuint8
             if(uploadIndex%256==0)
             {
                 //printf("upload %d\n",uploadIndex);
-                return smtrue;//in progress. return often to make upload non-blocking
+                return true;//in progress. return often to make upload non-blocking
             }
         }
         if(uploadIndex>=size)//finished
@@ -1003,16 +1000,16 @@ smbool flashFirmwarePrimaryMCU( smbus smhandle, int deviceaddress, const smuint8
         if(fwVersion>=1210)
         {
             smSetParameter(smhandle,deviceaddress,SMP_BOOTLOADER_FUNCTION,3);//BL func 3 = verify STM32 FW integrity
-            smint32 faults;
-            smint32 loc1;
-            smint32 loc2;
+            int32_t faults;
+            int32_t loc1;
+            int32_t loc2;
             smRead3Parameters(smhandle, deviceaddress, SMP_FAULTS, &faults, SMP_FAULT_LOCATION1, &loc1, SMP_FAULT_LOCATION2, &loc2);
 
             if(getCumulativeStatus(smhandle)!=SM_OK)
             {
                 state=Init;
                 *progress=0;
-                return smfalse;
+                return false;
             }
 
             if(faults&FLT_FLASHING_COMMSIDE_FAIL)
@@ -1023,7 +1020,7 @@ smbool flashFirmwarePrimaryMCU( smbus smhandle, int deviceaddress, const smuint8
 
                 *progress=0;
                 state=Init;
-                return smfalse;
+                return false;
             }
             else
             {
@@ -1035,7 +1032,7 @@ smbool flashFirmwarePrimaryMCU( smbus smhandle, int deviceaddress, const smuint8
         state=Init;
     }
 
-    return smtrue;
+    return true;
 }
 
 
@@ -1060,27 +1057,27 @@ FirmwareUploadStatus abortFWUpload( FirmwareUploadStatus stat, UploadState *stat
  */
 FirmwareUploadStatus smFirmwareUpload( const smbus smhandle, const int smaddress, const char *firmware_filename )
 {
-    static smuint8 *fwData=NULL;
+    static uint8_t *fwData=NULL;
     static int fwDataLength;
-    static smbool fileLoaded=smfalse;
+    static bool fileLoaded=false;
     FirmwareUploadStatus state;
 
     //load file to buffer if not loaded yet
-    if(fileLoaded==smfalse)
+    if(!fileLoaded)
     {
-        if(loadBinaryFile(firmware_filename,&fwData,&fwDataLength,smfalse)!=smtrue)
+        if(!loadBinaryFile(firmware_filename,&fwData,&fwDataLength,false))
             return FWFileNotReadable;
-        fileLoaded=smtrue;
+        fileLoaded=true;
     }
 
     //update FW, called multiple times per upgrade
     state=smFirmwareUploadFromBuffer( smhandle, smaddress, fwData, fwDataLength );
 
     //if process complete, due to finish or error -> unload file.
-    if(((int)state<0 || state==FWComplete) && fileLoaded==smtrue)
+    if(((int)state<0 || state==FWComplete) && fileLoaded)
     {
         free(fwData);
-        fileLoaded=smfalse;
+        fileLoaded=false;
     }
 
     return state;
@@ -1095,15 +1092,15 @@ FirmwareUploadStatus smFirmwareUpload( const smbus smhandle, const int smaddress
  * @param fwDataLenght number of bytes in fwData
  * @return Enum FirmwareUploadStatus that indicates errors or Complete status. Typecast to integer to get progress value 0-100.
  */
-FirmwareUploadStatus smFirmwareUploadFromBuffer( const smbus smhandle, const int smaddress, smuint8 *fwData, const int fwDataLength )
+FirmwareUploadStatus smFirmwareUploadFromBuffer( const smbus smhandle, const int smaddress, uint8_t *fwData, const int fwDataLength )
 {
-    static smuint32 primaryMCUDataOffset, primaryMCUDataLenth;
-    static smuint32 secondaryMCUDataOffset,secondaryMCUDataLength;
+    static uint32_t primaryMCUDataOffset, primaryMCUDataLenth;
+    static uint32_t secondaryMCUDataOffset,secondaryMCUDataLength;
     static UploadState state=StatIdle;//state machine status
-    static smint32 deviceType=0;
+    static int32_t deviceType=0;
     static int DFUAddress;
     static int progress=0;
-    static smbool FW_already_installed=smfalse;
+    static bool FW_already_installed=false;
 
     SM_STATUS stat;
 
@@ -1123,7 +1120,7 @@ FirmwareUploadStatus smFirmwareUploadFromBuffer( const smbus smhandle, const int
 
         smDebug(smhandle,SMDebugLow,"smFirmwareUploadFromBuffer: target device type of %d successfully read\n",deviceType);
 
-        smuint32 GDFFileUID;
+        uint32_t GDFFileUID;
         FirmwareUploadStatus stat=parseFirmwareFile(fwData, fwDataLength, deviceType,
                                   &primaryMCUDataOffset, &primaryMCUDataLenth,
                                   &secondaryMCUDataOffset, &secondaryMCUDataLength,
@@ -1137,13 +1134,13 @@ FirmwareUploadStatus smFirmwareUploadFromBuffer( const smbus smhandle, const int
 
         //all good, upload firmware, unless state is changed to StatLaunch later
         state=StatFirstConnectAttempt;
-        FW_already_installed=smfalse;
+        FW_already_installed=false;
 
         //check if that FW is already installed
         if(GDFFileUID!=0)//check only if GDF has provided this value
         {
-            smuint32 targetFWUID;
-            if(smGetDeviceFirmwareUniqueID( smhandle, smaddress, &targetFWUID )==smtrue)
+            uint32_t targetFWUID;
+            if(smGetDeviceFirmwareUniqueID( smhandle, smaddress, &targetFWUID ))
             {
                 //reset two upper bits because reading SMP will sign-extend them from 30 bits assuming so that we're reading signed 30 bit integer.
                 //but this is unsigned 30 bit so reset top 2 bits to cancel sign extension.
@@ -1155,7 +1152,7 @@ FirmwareUploadStatus smFirmwareUploadFromBuffer( const smbus smhandle, const int
                     smDebug(smhandle,SMDebugLow,"smFirmwareUploadFromBuffer: Same FW is already installed, skipping install\n");
 
                     //check if device is in NORMAL mode already
-                    smint32 busMode;
+                    int32_t busMode;
                     stat=smRead1Parameter(smhandle,smaddress,SMP_BUS_MODE,&busMode);
                     if(stat==SM_OK && busMode==SMP_BUS_MODE_NORMAL)
                     {
@@ -1169,7 +1166,7 @@ FirmwareUploadStatus smFirmwareUploadFromBuffer( const smbus smhandle, const int
                         state=StatLaunch;//launch app from DFU mode
                     }
 
-                    FW_already_installed=smtrue;
+                    FW_already_installed=true;
                 }
                 else
                     smDebug(smhandle,SMDebugLow,"smFirmwareUploadFromBuffer: firmware differs from the file (file UID %d, installed UID %d), uploading\n",GDFFileUID,targetFWUID);
@@ -1182,7 +1179,7 @@ FirmwareUploadStatus smFirmwareUploadFromBuffer( const smbus smhandle, const int
         smDebug(smhandle,SMDebugLow,"smFirmwareUploadFromBuffer: StatFirstConnectAttempt\n");
 
         //check if device is in DFU mode already
-        smint32 busMode;
+        int32_t busMode;
         stat=smRead2Parameters(smhandle,smaddress,SMP_BUS_MODE,&busMode, SMP_DEVICE_TYPE, &deviceType);
         if(stat==SM_OK && busMode==SMP_BUS_MODE_DFU)
         {
@@ -1219,7 +1216,7 @@ FirmwareUploadStatus smFirmwareUploadFromBuffer( const smbus smhandle, const int
         smPurge(smhandle);
 
         //check if device is in DFU mode already
-        smint32 busMode;
+        int32_t busMode;
         stat=smRead2Parameters(smhandle,smaddress, SMP_BUS_MODE,&busMode, SMP_DEVICE_TYPE, &deviceType);
         if(stat==SM_OK && busMode==SMP_BUS_MODE_DFU)//is DFU mode
         {
@@ -1245,7 +1242,7 @@ FirmwareUploadStatus smFirmwareUploadFromBuffer( const smbus smhandle, const int
         //scan thru addresses where SM device may appear in DFU mode if not appearing in it's original address
         for(i=245;i<=255;i++)
         {
-            smint32 busMode;
+            int32_t busMode;
             stat=smRead2Parameters(smhandle,i, SMP_BUS_MODE,&busMode, SMP_DEVICE_TYPE, &deviceType);
             if(stat==SM_OK && busMode==0)//busmode 0 is DFU mode
             {
@@ -1269,8 +1266,8 @@ FirmwareUploadStatus smFirmwareUploadFromBuffer( const smbus smhandle, const int
     {
         smDebug(smhandle,SMDebugMid,"smFirmwareUploadFromBuffer: StatUpload\n");
 
-        smbool ret=flashFirmwarePrimaryMCU(smhandle,DFUAddress,fwData+primaryMCUDataOffset,primaryMCUDataLenth,&progress);
-        if(ret==smfalse)//failed
+        bool ret=flashFirmwarePrimaryMCU(smhandle,DFUAddress,fwData+primaryMCUDataOffset,primaryMCUDataLenth,&progress);
+        if(!ret)//failed
         {
             smDebug(smhandle,SMDebugLow,"smFirmwareUploadFromBuffer: StatUpload failed\n");
             return abortFWUpload(FWConnectionError,&state,1000);

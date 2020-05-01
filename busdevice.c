@@ -18,15 +18,15 @@ unsigned long SMBusBaudrate=SM_BAUDRATE; //the next opened port (with smOpenBus)
 typedef struct _SMBusDevice
 {
 	//common
-    smbool opened;
+    bool opened;
 
     SM_STATUS cumulativeSmStatus;
 
     //pointer used by bus device drivers
     smBusdevicePointer busDevicePointer;
 
-    smuint8 txBuffer[TANSMIT_BUFFER_LENGTH];
-    smint32 txBufferUsed;//how many bytes in buffer currently
+    uint8_t txBuffer[TANSMIT_BUFFER_LENGTH];
+    int32_t txBufferUsed;//how many bytes in buffer currently
 
     BusdeviceOpen busOpenCallback;
     BusdeviceReadBuffer busReadCallback;
@@ -36,7 +36,7 @@ typedef struct _SMBusDevice
 } SMBusDevice;
 
 //init on first open
-smbool bdInitialized=smfalse;
+bool bdInitialized=false;
 SMBusDevice BusDevice[SM_MAX_BUSES];
 
 //init device struct table
@@ -45,10 +45,10 @@ void smBDinit()
 	int i;
 	for(i=0;i<SM_MAX_BUSES;i++)
 	{
-		BusDevice[i].opened=smfalse;
+		BusDevice[i].opened=false;
         BusDevice[i].txBufferUsed=0;
 	}
-	bdInitialized=smtrue;
+	bdInitialized=true;
 }
 
 
@@ -82,16 +82,16 @@ smbusdevicehandle smBDOpen( const char *devicename )
 smbusdevicehandle smBDOpenWithCallbacks(const char *devicename, BusdeviceOpen busOpenCallback, BusdeviceClose busCloseCallback , BusdeviceReadBuffer busReadCallback, BusdeviceWriteBuffer busWriteCallback, BusdeviceMiscOperation busMiscOperationCallback )
 {
     int handle;
-    smbool success;
+    bool success;
 
     //true on first call
-    if(bdInitialized==smfalse)
+    if(!bdInitialized)
         smBDinit();
 
     //find free handle
     for(handle=0;handle<SM_MAX_BUSES;handle++)
     {
-        if(BusDevice[handle].opened==smfalse) break;//choose this
+        if(!BusDevice[handle].opened) break;//choose this
     }
 
     //all handles in use
@@ -106,17 +106,17 @@ smbusdevicehandle smBDOpenWithCallbacks(const char *devicename, BusdeviceOpen bu
 
     //try opening
     BusDevice[handle].busDevicePointer=BusDevice[handle].busOpenCallback( devicename, SMBusBaudrate, &success );
-    if( success==smfalse )
+    if(!success)
     {
         return -1; //failed to open
     }
 
-    BusDevice[handle].opened=smtrue;
+    BusDevice[handle].opened=true;
     BusDevice[handle].txBufferUsed=0;
     BusDevice[handle].cumulativeSmStatus=0;
 
     //purge
-    if(smBDMiscOperation(handle,MiscOperationPurgeRX)==smfalse)
+    if(!smBDMiscOperation(handle,MiscOperationPurgeRX))
     {
         smBDClose(handle);
         return -1; //failed to purge
@@ -126,22 +126,22 @@ smbusdevicehandle smBDOpenWithCallbacks(const char *devicename, BusdeviceOpen bu
     return handle;
 }
 
-smbool smIsBDHandleOpen( const smbusdevicehandle handle )
+bool smIsBDHandleOpen( const smbusdevicehandle handle )
 {
-	if(handle<0) return smfalse;
-	if(handle>=SM_MAX_BUSES) return smfalse;
+	if(handle<0) return false;
+	if(handle>=SM_MAX_BUSES) return false;
 	return BusDevice[handle].opened;
 }
 
 //return true if ok
-smbool smBDClose( const smbusdevicehandle handle )
+bool smBDClose( const smbusdevicehandle handle )
 {
 	//check if handle valid & open
-	if( smIsBDHandleOpen(handle)==smfalse ) return smfalse;
+	if(!smIsBDHandleOpen(handle)) return false;
 
     BusDevice[handle].busCloseCallback(BusDevice[handle].busDevicePointer );
-    BusDevice[handle].opened=smfalse;
-    return smtrue;
+    BusDevice[handle].opened=false;
+    return true;
 }
 
 
@@ -149,10 +149,10 @@ smbool smBDClose( const smbusdevicehandle handle )
 
 //write one byte to buffer and send later with smBDTransmit()
 //returns true on success
-smbool smBDWrite(const smbusdevicehandle handle, const smuint8 byte )
+bool smBDWrite(const smbusdevicehandle handle, const uint8_t byte )
 {
 	//check if handle valid & open
-	if( smIsBDHandleOpen(handle)==smfalse ) return smfalse;
+	if(!smIsBDHandleOpen(handle)) return false;
 
     if(BusDevice[handle].txBufferUsed<TANSMIT_BUFFER_LENGTH)
     {
@@ -160,56 +160,56 @@ smbool smBDWrite(const smbusdevicehandle handle, const smuint8 byte )
         BusDevice[handle].txBuffer[BusDevice[handle].txBufferUsed]=byte;
         BusDevice[handle].txBufferUsed++;
         smDebug(handle, SMDebugTrace, "  Sending byte %02x\n",byte);
-        return smtrue;
+        return true;
     }
 
     smDebug(handle, SMDebugMid, "  Sending byte %02x failed, TX buffer overflown\n",byte);
-    return smfalse;
+    return false;
 }
 
-smbool smBDTransmit(const smbusdevicehandle handle)
+bool smBDTransmit(const smbusdevicehandle handle)
 {
     //check if handle valid & open
-    if( smIsBDHandleOpen(handle)==smfalse ) return smfalse;
+    if(!smIsBDHandleOpen(handle)) return false;
 
     if(BusDevice[handle].busWriteCallback(BusDevice[handle].busDevicePointer,BusDevice[handle].txBuffer, BusDevice[handle].txBufferUsed)==BusDevice[handle].txBufferUsed)
     {
         BusDevice[handle].txBufferUsed=0;
-        return smtrue;
+        return true;
     }
     else
     {
         BusDevice[handle].txBufferUsed=0;
-        return smfalse;
+        return false;
     }
 }
 
 //read one byte from bus. if byte not immediately available, block return up to SM_READ_TIMEOUT millisecs to wait data
 //returns true if byte read sucessfully
-smbool smBDRead( const smbusdevicehandle handle, smuint8 *byte )
+bool smBDRead( const smbusdevicehandle handle, uint8_t *byte )
 {
 	//check if handle valid & open
-	if( smIsBDHandleOpen(handle)==smfalse ) return smfalse;
+	if(!smIsBDHandleOpen(handle)) return false;
 
     int n;
     n=BusDevice[handle].busReadCallback(BusDevice[handle].busDevicePointer, byte, 1);
     if( n!=1 )
     {
         smDebug(handle, SMDebugMid, "  Reading a byte from bus failed\n");
-        return smfalse;
+        return false;
     }
     else
     {
         smDebug(handle, SMDebugTrace, "  Got byte %02x \n",*byte);
-        return smtrue;
+        return true;
     }
 }
 
 //returns true if sucessfully
-smbool smBDMiscOperation(const smbusdevicehandle handle , BusDeviceMiscOperationType operation)
+bool smBDMiscOperation(const smbusdevicehandle handle , BusDeviceMiscOperationType operation)
 {
     //check if handle valid & open
-    if( smIsBDHandleOpen(handle)==smfalse ) return smfalse;
+    if(!smIsBDHandleOpen(handle)) return false;
 
     BusDevice[handle].txBufferUsed=0;
 
@@ -220,21 +220,25 @@ smbool smBDMiscOperation(const smbusdevicehandle handle , BusDeviceMiscOperation
 //BUS DEVICE INFO FETCH FUNCTIONS:
 
 //Return number of bus devices found. details of each device may be consequently fetched by smGetBusDeviceDetails()
-smint smBDGetNumberOfDetectedBuses()
+int smBDGetNumberOfDetectedBuses()
 {
     //only supports FTDI D2XX at the moment
 #ifdef FTDI_D2XX_SUPPORT
     return d2xxGetNumberOfDetectedBuses();
-#endif
+#else
     return 0;
+#endif
 }
 
-smbool smBDGetBusDeviceDetails( smint index, SM_BUS_DEVICE_INFO *info )
+bool smBDGetBusDeviceDetails( int index, SM_BUS_DEVICE_INFO *info )
 {
     //only supports FTDI D2XX at the moment
 #ifdef FTDI_D2XX_SUPPORT
     return d2xxGetBusDeviceDetails(index,info);
+#else
+    (void)index;
+    (void)info;
+    return false;
 #endif
-    return smfalse;
 
 }

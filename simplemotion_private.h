@@ -25,11 +25,11 @@ extern unsigned long SMBusBaudrate; //the next opened port (with smOpenBus) will
 #define SM_READ_TIMEOUT 500
 
 
-extern const smuint8 table_crc16_hi[];
-extern const smuint8 table_crc16_lo[];
-extern const smuint8 table_crc8[];
+extern const uint8_t table_crc16_hi[];
+extern const uint8_t table_crc16_lo[];
+extern const uint8_t table_crc8[];
 extern FILE *smDebugOut; //such as stderr or file handle. if NULL, debug info disbled
-extern smuint16 readTimeoutMs;
+extern uint16_t readTimeoutMs;
 
 #define DEBUG_PRINT_RAW 0x524157
 //smDebug: prints debug info to smDebugOut stream. If no handle available, set it to -1, or if wish to print as raw text, set handle to DEBUG_PRINT_RAW.
@@ -44,7 +44,7 @@ void smDebug( smbus handle, smVerbosityLevel verbositylevel, char *format, ...);
 //accumulates status to internal variable by ORing the bits. returns same value that is fed as paramter
 SM_STATUS recordStatus( const smbus handle, const SM_STATUS stat );
 
-SM_STATUS smRawCmd( const char *axisname, smuint8 cmd, smuint16 val, smuint32 *retdata );
+SM_STATUS smRawCmd( const char *axisname, uint8_t cmd, uint16_t val, uint32_t *retdata );
 
 /*Workaround to have packed structs that compile on GCC and MSVC*/
 #ifdef __GNUC__
@@ -130,9 +130,9 @@ typedef struct {
 
 typedef union
 {
-    smuint8 U8[4];
-    smuint16 U16[2];
-    smuint32 U32;
+    uint8_t U8[4];
+    uint16_t U16[2];
+    uint32_t U32;
 } UnionOf4Bytes;
 
 /*Workaround to have packed structs that compile on GCC and MSVC*/
