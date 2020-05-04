@@ -6,6 +6,10 @@
 #include <string.h>
 #include "buffer.h"
 
+#ifndef SOCKET_ERROR
+#define SOCKET_ERROR    (-1)
+#endif
+
 #if defined(_WIN32)
 #if defined(CM_NONE)
 #undef CM_NONE
@@ -458,7 +462,7 @@ static int TCPConnectionOpen(const char *IP, unsigned short port, smbool *succes
     // Set OFF NAGLE algorithm to disable stack buffering of small packets
     {
         int one = 1;
-        setsockopt((SOCKET)sockfd, IPPROTO_TCP, TCP_NODELAY, (void *)&one, sizeof(one));
+        setsockopt(sockfd, IPPROTO_TCP, TCP_NODELAY, (void *)&one, sizeof(one));
     }
 
     // Set non-blocking when trying to establish the connection
@@ -470,7 +474,7 @@ static int TCPConnectionOpen(const char *IP, unsigned short port, smbool *succes
         fcntl(sockfd, F_SETFL, arg);
 #else
         arg = 1;
-        ioctlsocket((SOCKET)sockfd, (long)FIONBIO, &arg);
+        ioctlsocket(sockfd, (long)FIONBIO, &arg);
 #endif
     }
 
@@ -480,7 +484,7 @@ static int TCPConnectionOpen(const char *IP, unsigned short port, smbool *succes
         server.sin_addr.s_addr = inet_addr(IP);
         server.sin_family = AF_INET;
         server.sin_port = htons(port);
-        int res = connect((SOCKET)sockfd, (struct sockaddr *)&server, sizeof(server));
+        int res = connect(sockfd, (struct sockaddr *)&server, sizeof(server));
 
         if (res < 0) //connection not established (at least yet)
         {
@@ -497,7 +501,7 @@ static int TCPConnectionOpen(const char *IP, unsigned short port, smbool *succes
                 {
                     socklen_t lon = sizeof(int);
                     int valopt;
-                    getsockopt((SOCKET)sockfd, SOL_SOCKET, SO_ERROR, (void *)(&valopt), &lon);
+                    getsockopt(sockfd, SOL_SOCKET, SO_ERROR, (void *)(&valopt), &lon);
                     if (valopt) //if valopt!=0, then there was an error. if it's 0, then connection established successfully (will return here from smtrue eventually)
                     {
                         printf("Err1\r\n");
@@ -529,7 +533,7 @@ static int TCPConnectionOpen(const char *IP, unsigned short port, smbool *succes
         fcntl(sockfd, F_SETFL, arg);
 #else
         arg = 0;
-        ioctlsocket((SOCKET)sockfd, (long)FIONBIO, &arg);
+        ioctlsocket(sockfd, (long)FIONBIO, &arg);
 #endif
     }
     printf("Return bus device pointer: %d \r\n", sockfd);
@@ -543,7 +547,7 @@ static int TCPConnectionOpen(const char *IP, unsigned short port, smbool *succes
 static void TCPConnectionClose(smBusdevicePointer busdevicePointer)
 {
     int sockfd = (int)busdevicePointer; //compiler warning expected here on 64 bit compilation but it's ok
-    close((SOCKET)sockfd);
+    close(sockfd);
 #if defined(_WIN32)
     WSACleanup();
 #endif
@@ -552,7 +556,7 @@ static void TCPConnectionClose(smBusdevicePointer busdevicePointer)
 // Close given bytes to the TCP connection
 static int TCPWriteBytes(smBusdevicePointer busdevicePointer, char *buf, unsigned int size)
 {
-    int sent = write((SOCKET)busdevicePointer, buf, (int)size);
+    int sent = write(busdevicePointer, buf, (int)size);
     return sent;
 }
 
@@ -560,7 +564,7 @@ static int TCPWriteBytes(smBusdevicePointer busdevicePointer, char *buf, unsigne
 static int TCPReadBytes(smBusdevicePointer busdevicePointer, char *buf, unsigned int dataMaxLength)
 {
 
-    SOCKET sockfd = (SOCKET)busdevicePointer;
+    int sockfd = busdevicePointer;
     fd_set input;
     FD_ZERO(&input);
     FD_SET((unsigned int)sockfd, &input);

@@ -232,7 +232,7 @@ smint32 serialPortWrite(smBusdevicePointer busdevicePointer, unsigned char *buf,
     return(write((int)serialport_handle, buf, size));
 }
 
-smbool serialPortMiscOperation(smBusdevicePointer busdevicePointer, BusDeviceMiscOperationType operation)
+smbool serialPortMiscOperation(smBusdevicePointer busdevicePointer, BusDeviceMiscOperationType operation, smint32 value)
 {
     int serialport_handle=(int)busdevicePointer;
     switch(operation)
