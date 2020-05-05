@@ -143,7 +143,7 @@ smBusdevicePointer ETHSMPortOpen(const char *devicename, smint32 baudrate_bps, s
     printf("ETHSM Adapter Software Feature Flags: %d \r\n", features);
 
     // Read ETHSM software version number
-    char version[10] = {0};
+    char version[SM_PACKET_LENGTH_GET_DEVICE_VERSION_NUMBERS_LENGTH] = {0};
     if (!ETHSMGetVersionNumbers((smBusdevicePointer)sockfd, version))
     {
         ETHSMPortClose((smBusdevicePointer)sockfd);
@@ -771,7 +771,7 @@ static int ETHSMGetVersionNumbers(smBusdevicePointer busdevicePointer, char *buf
     {
         int response = 0;
 
-        const int responseLength = 10;
+        const int responseLength = SM_PACKET_LENGTH_GET_DEVICE_VERSION_NUMBERS_LENGTH;
 
         response = TCPReadBytes(busdevicePointer, buf, responseLength);
 
@@ -813,8 +813,8 @@ static int ETHSMGetFeatures(smBusdevicePointer busdevicePointer, unsigned int *f
     {
         int response = 0;
 
-        const int responseLength = 4;
-        char responseData[4] = {0};
+        const int responseLength = SM_PACKET_LENGTH_GET_FEATURE_FLAGS_LENGTH;
+        char responseData[SM_PACKET_LENGTH_GET_FEATURE_FLAGS_LENGTH] = {0};
 
         response = TCPReadBytes(busdevicePointer, responseData, responseLength);
 
