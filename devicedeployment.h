@@ -69,6 +69,9 @@ const FirmwareUploadStatusToStringType FirmwareUploadStatusToString[]=
     {FWAlreadyInstalled,"Given firmware already installed in the target device"},
 };
 
+#define FW_UPLOAD_OPTION_NOP 0  //does nothing
+#define FW_UPLOAD_OPTION_ERASE_SETTINGS 1 //erases saved settings to factory defaults. note: this option might have issues if target device have non-zero value saved in Granity's [SMO] parameter.
+
 /**
  * @brief smFirmwareUpload Sets drive in firmware upgrade mode if necessary and uploads a new firmware. Call this many until it returns value 100 (complete) or a negative value (error).
  * @param smhandle SM bus handle, must be opened before call
@@ -77,6 +80,16 @@ const FirmwareUploadStatusToStringType FirmwareUploadStatusToString[]=
  * @return Enum FirmwareUploadStatus that indicates errors or Complete status. Typecast to integer to get progress value 0-100.
  */
 LIB FirmwareUploadStatus smFirmwareUpload(const smbus smhandle, const int smaddress, const char *firmware_filename );
+
+/**
+ * @brief smFirmwareUploadWithOptions Sets drive in firmware upgrade mode if necessary and uploads a new firmware. Call this many until it returns value 100 (complete) or a negative value (error).
+ * @param smhandle SM bus handle, must be opened before call
+ * @param smaddress Target SM device address
+ * @param filename .gdf file name
+ * @param option_bits may contain binary ORed bits defined as FW_UPLOAD_OPTION_*
+ * @return Enum FirmwareUploadStatus that indicates errors or Complete status. Typecast to integer to get progress value 0-100.
+ */
+LIB FirmwareUploadStatus smFirmwareUploadWithOptions(const smbus smhandle, const int smaddress, const char *firmware_filename, const uint32_t option_bits );
 
 
 /**
@@ -94,7 +107,18 @@ LIB void smFirmwareUploadStatusToString(const FirmwareUploadStatus FWUploadStatu
  * @param fwDataLenght number of bytes in fwData
  * @return Enum FirmwareUploadStatus that indicates errors or Complete status. Typecast to integer to get progress value 0-100.
  */
-FirmwareUploadStatus smFirmwareUploadFromBuffer( const smbus smhandle, const int smaddress, smuint8 *fwData, const int fwDataLength );
+LIB FirmwareUploadStatus smFirmwareUploadFromBuffer( const smbus smhandle, const int smaddress, smuint8 *fwData, const int fwDataLength );
+
+/**
+ * @brief smFirmwareUpload Sets drive in firmware upgrade mode if necessary and uploads a new firmware. Call this many until it returns value 100 (complete) or a negative value (error).
+ * @param smhandle SM bus handle, must be opened before call
+ * @param smaddress Target SM device address. Can be device in DFU mode or main operating mode. For Argon, one device in a bus must be started into DFU mode by DIP switches and smaddress must be set to 255.
+ * @param fwData pointer to memory address where .gdf file contents are loaded. Note: on some architectures (such as ARM Cortex M) fwData must be aligned to nearest 4 byte boundary to avoid illegal machine instructions.
+ * @param fwDataLenght number of bytes in fwData
+ * @param option_bits may contain binary ORed bits defined as FW_UPLOAD_OPTION_*
+ * @return Enum FirmwareUploadStatus that indicates errors or Complete status. Typecast to integer to get progress value 0-100.
+ */
+LIB FirmwareUploadStatus smFirmwareUploadFromBufferWithOptions( const smbus smhandle, const int smaddress, smuint8 *fwData, const int fwDataLength, const uint32_t option_bits );
 
 typedef enum
 {
