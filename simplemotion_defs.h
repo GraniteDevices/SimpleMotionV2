@@ -1156,8 +1156,13 @@
 #define SMP_CAPTURE_BUF_LENGHT 5013
 //SMP_CAPTURE_BEFORE_TRIGGER_PERCENTS sets how much samples will be preserved before trigger event. Value 0 is traditional, +n starts capture n percents before trigger (relative to whole capture length), -n after trigger. Value range -1000000%..+100%.
 #define SMP_CAPTURE_BEFORE_TRIGGER_PERCENTS 5014
-//SMP_CAPTURE_STATE, states: 0=idle (capture complete or not started), 1=waiting for trigger, 2=capturing. to start capture, write value 1 here starting from IONI FW V1110
 #define SMP_CAPTURE_STATE 5015
+	//note this parameter works differently in write and read directions. observer READ and WRITE tags below:
+	#define CAPTURE_STATE_READ_IDLE 0 //scope doing nothing, ready for new capture
+	#define CAPTURE_STATE_WRITE_START 1 //write 1 to start capturing with present settings
+	#define CAPTURE_STATE_READ_WAITING_TRIGGER 1 //when reads 1, scope is waiting for trigger to occur
+	#define CAPTURE_STATE_READ_BUSY 2 //scope capturing in progress
+	#define CAPTURE_STATE_WRITE_START_WITH_SAMPLE_AVERAGING 3 //start capturing with sampling with averaging of samples  (useful with low sample rates, check if this feature is supported by capability bit DEVICE_CAPABILITY2_SUPPORT_SCOPE_SAMPLE_AVERAGING)
 //this is looped 0-n to make samples 0-n readable from SMP_CAPTURE_BUFFER_GET_VALUE
 #define SMP_CAPTURE_BUFFER_GET_ADDR 5333
 #define SMP_CAPTURE_BUFFER_GET_VALUE 5334
@@ -1228,6 +1233,7 @@
 	#define DEVICE_CAPABILITY2_TORQUE_BIQUAD_FILTERS_V1 BV(20) /* if this is set, then params 260-269 are supported */
 	#define DEVICE_CAPABILITY2_SUPPORT_TRIGGER_PENDING_PARAMETER_ACTIVATION BV(21) /* if true, SMP_SYSTEM_CONTROL_TRIGGER_PENDING_PARAMETER_ACTIVATION is available */
 	#define DEVICE_CAPABILITY2_HAS_STANDBY BV(22) // true if device enters in STAT_STANDBY automatically after idling
+	#define DEVICE_CAPABILITY2_SUPPORT_SCOPE_SAMPLE_AVERAGING BV(23)
 
 #define SMP_FIRMWARE_VERSION 6010
 #define SMP_FIRMWARE_BACKWARDS_COMP_VERSION 6011
