@@ -1177,8 +1177,8 @@ FirmwareUploadStatus smFirmwareUploadFromBufferWithOptions( const smbus smhandle
         state=StatFirstConnectAttempt;
         FW_already_installed=smfalse;
 
-        //check if that FW is already installed
-        if(GDFFileUID!=0)//check only if GDF has provided this value
+        //determine if installing FW is necessary to the target device
+        if(GDFFileUID!=0 && !(option_bits&FW_UPLOAD_OPTION_ERASE_SETTINGS))//check only if GDF has provided this value AND if erase settings is not requested
         {
             smuint32 targetFWUID;
             if(smGetDeviceFirmwareUniqueID( smhandle, smaddress, &targetFWUID )==smtrue)
