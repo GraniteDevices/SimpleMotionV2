@@ -330,6 +330,7 @@
 	#define FAST_UPDATE_CYCLE_FORMAT_ALT1 1
 	#define FAST_UPDATE_CYCLE_FORMAT_ALT2 2
 	#define FAST_UPDATE_CYCLE_FORMAT_ALT3 3
+	#define FAST_UPDATE_CYCLE_FORMAT_ALT4 4
 
 /* Intro: SMP_BINARY_DATA and SMP_INIT_BINARY_DATA parameters allow reading & writing binary data from pre-defined buffers. i.e. text strings or calibration data blob.
  *
@@ -366,6 +367,7 @@
 #define SMP_BINARY_DATA_MODE 19
 	//data blocks:
 	#define BINARY_DATA_MODE_BLOCK_CALIBRATION 0 //id 0 = motor calibration data block. note that starting offset must be multiple of 2 for this block.
+	#define BINARY_DATA_MODE_BLOCK_POWER_HISTOGRAM 1 //id 1 = power consumption histogram data
 	//...more blocks to be defined here
 	//flags:
 	#define BINARY_DATA_MODE_FLAG_ERASE BV(8) //if true, then the defined block will be erased immediately by writing this bit to SMP_BINARY_DATA_MODE. not all blocks support this.
@@ -549,6 +551,7 @@
 	#define STAT_STANDING_STILL BV(16)
 	#define STAT_QUICK_STOP_ACTIVE BV(17)
 	#define STAT_SAFE_TORQUE_MODE_ACTIVE BV(18)
+	#define STAT_STANDBY BV(19) //automatic standby in simucube
 
 #define SMP_SYSTEM_CONTROL 554 //writing 1 initiates settings save to flash, writing 2=device restart, 4=abort buffered motion
 	//possible values listed
@@ -592,6 +595,7 @@
 	//write SM bus SM_CRCINIT constant modifier. special purposes only, don't use if unsure because
 	//it is one time programmable variable (permanently irreversible operation, can't be ever reset to default by provided methods)
 	#define SMP_SYSTEM_CONTROL_MODIFY_CRCINIT 262144
+	#define SMP_SYSTEM_CONTROL_EXIT_STANDBY 32768 //exit simucube standby mode
 	//following three commands execute FW version specific functions (i.e. debugging or customized FW functions)
 	#define SMP_SYSTEM_CONTROL_TRIGGER_FW_SPECIFIC_FUNC1 10000000
 	#define SMP_SYSTEM_CONTROL_TRIGGER_FW_SPECIFIC_FUNC2 10000001
@@ -768,8 +772,11 @@
 #define SMP_TORQUE_EFFECT_CENTER_DAMPING_ANGLE_SPAN 249
 //slew rate limit, value in Nm/s. requires that motor torque constant SMP_MOTOR_TORQUE_OR_FORCE_CONSTANT has been set. value 0 disables the limiter (default).
 #define SMP_TORQUE_SLEW_RATE_LIMIT 250
-//center offset of encoder count for torque effects that depend on absolute position information, i.e. center damping. value of this parameter will be substracted from encoder position before effect calculation.
-#define SMP_TORQUE_EFFECTS_CENTER_POSITION 251
+/* Center offset of wheel in in scale of unsigned 24 bits.
+ * Writing -1 here will automatically set this value so that current position becomes center.
+ * Value of this will affect the value output in fast update command ALT4 format and various simucube specific functions (like center damping and wheel safety rotation limit). */
+#define SMP_SIMUCUBE_WHEEL_CENTER_OFFSET 251
+
 //various Simucube option flags
 #define SMP_SIMCUBE_OPTIONS 252
 	// two lowest bits of flags define hands off the wheel detection sensitivity (automatically activates temporary safe mode). do not binary OR multiple HANDS_OFF_SENSITIVITY_ values, pick just one.
@@ -780,6 +787,9 @@
 	#define MASK_SMP_SIMCUBE_OPTIONS_HANDS_OFF_SENSITIVITY 3 // binary and SMP_SIMCUBE_OPTION_FLAGS and MASK_SMP_SIMCUBE_OPTION_FLAGS_HANDS_OFF_SENSITIVITY to identify which HANDS_OFF_SENSITIVITY setting is set.
 	#define SMP_SIMCUBE_OPTIONS_ENABLE_TORQUE_SATURATION_INDICATION_SOUND BV(2)
 	#define SMP_SIMCUBE_OPTIONS_REDUCE_RESONANCE BV(3)
+	#define SMP_SIMCUBE_OPTIONS_TRACKING_CENTER_DAMPING_POSITION BV(4) // if 1, then fixed center angle offset SMP_TORQUE_EFFECTS_CENTER_POSITION has is superseded by tracking center position
+//friction effect stiffness variable for SC2U. Value 100=normal, 50=low, 200=high.
+#define SMP_TORQUE_EFFECT_FRICTION_STIFFNESS 253
 
 /* Torque setpoint biquad filters that run at full torque controller update frequency.
  * - Scale of values is 10 000 000=1.0.
@@ -1068,6 +1078,7 @@
 #define SMP_SCOPE_CHANNEL_VALUE 904
 #define SMP_SCOPE_CHANNEL_SELECT 905
 #define SMP_ACTUAL_POSITION_FB_NEVER_RESETTING 906 /*this is same than SMP_ACTUAL_POSITION_FB but does not reset to 0 on homing or init (it is always the original counter value at power-on)*/
+#define SMP_RAW_QUADRATURE_ENCODER_POSITION_FB 907 /*This is always readable main quadrature encoder counter value, this is updated in all [FBD] settings, even when [FBD]=None. Useful for open loop stepper monitoring. */
 
 #define SMP_MECH_BRAKE_RELEASE_DELAY 910
 #define SMP_MECH_BRAKE_ENGAGE_DELAY 911
@@ -1145,8 +1156,13 @@
 #define SMP_CAPTURE_BUF_LENGHT 5013
 //SMP_CAPTURE_BEFORE_TRIGGER_PERCENTS sets how much samples will be preserved before trigger event. Value 0 is traditional, +n starts capture n percents before trigger (relative to whole capture length), -n after trigger. Value range -1000000%..+100%.
 #define SMP_CAPTURE_BEFORE_TRIGGER_PERCENTS 5014
-//SMP_CAPTURE_STATE, states: 0=idle (capture complete or not started), 1=waiting for trigger, 2=capturing. to start capture, write value 1 here starting from IONI FW V1110
 #define SMP_CAPTURE_STATE 5015
+	//note this parameter works differently in write and read directions. observer READ and WRITE tags below:
+	#define CAPTURE_STATE_READ_IDLE 0 //scope doing nothing, ready for new capture
+	#define CAPTURE_STATE_WRITE_START 1 //write 1 to start capturing with present settings
+	#define CAPTURE_STATE_READ_WAITING_TRIGGER 1 //when reads 1, scope is waiting for trigger to occur
+	#define CAPTURE_STATE_READ_BUSY 2 //scope capturing in progress
+	#define CAPTURE_STATE_WRITE_START_WITH_SAMPLE_AVERAGING 3 //start capturing with sampling with averaging of samples  (useful with low sample rates, check if this feature is supported by capability bit DEVICE_CAPABILITY2_SUPPORT_SCOPE_SAMPLE_AVERAGING)
 //this is looped 0-n to make samples 0-n readable from SMP_CAPTURE_BUFFER_GET_VALUE
 #define SMP_CAPTURE_BUFFER_GET_ADDR 5333
 #define SMP_CAPTURE_BUFFER_GET_VALUE 5334
@@ -1216,6 +1232,8 @@
 	#define DEVICE_CAPABILITY2_SUPPORT_SCOPE_STATUSBITS_CHANGE_AND_DEBUG12_TRIGGERS BV(19) /* if this is set, scope supports TRIG_STATUSBITS_CHANGE and TRIG_DEBUG1 and TRIG_DEBUG2 */
 	#define DEVICE_CAPABILITY2_TORQUE_BIQUAD_FILTERS_V1 BV(20) /* if this is set, then params 260-269 are supported */
 	#define DEVICE_CAPABILITY2_SUPPORT_TRIGGER_PENDING_PARAMETER_ACTIVATION BV(21) /* if true, SMP_SYSTEM_CONTROL_TRIGGER_PENDING_PARAMETER_ACTIVATION is available */
+	#define DEVICE_CAPABILITY2_HAS_STANDBY BV(22) // true if device enters in STAT_STANDBY automatically after idling
+	#define DEVICE_CAPABILITY2_SUPPORT_SCOPE_SAMPLE_AVERAGING BV(23)
 
 #define SMP_FIRMWARE_VERSION 6010
 #define SMP_FIRMWARE_BACKWARDS_COMP_VERSION 6011

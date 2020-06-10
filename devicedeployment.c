@@ -12,7 +12,8 @@
 #define SM_DEVICE_POWER_UP_WAIT_MS 1500
 //waiting time after save config command
 #define SM_DEVICE_SAVE_CONFIG_WAIT_MS 200
-
+//wait time for chip erase. 2600-2700ms was found to be threshold of timeouting vs not-timeouting value with SC2D BL version 20010 with 320kb app size support, and with 100ms smSetTimeout() value
+#define SM_DEVICE_FLASH_ERASE_WAIT_MS 3000
 
 
 /* DRC file format versions:
@@ -867,9 +868,9 @@ smbool loadBinaryFile(const char *filename, smuint8 **data, int *numbytes , smbo
 
     //allocate buffer
     if(addNullTermination==smtrue)
-        *data=malloc(length+1);//+1 for 0 termination char
+        *data=(smuint8*)malloc(length+1);//+1 for 0 termination char
     else
-        *data=malloc(length);
+        *data=(smuint8*)malloc(length);
 
     if(*data==NULL)
     {
@@ -897,7 +898,7 @@ smbool loadBinaryFile(const char *filename, smuint8 **data, int *numbytes , smbo
 
 
 //flashing STM32 (host side mcu)
-smbool flashFirmwarePrimaryMCU( smbus smhandle, int deviceaddress, const smuint8 *data, smint32 size, int *progress )
+smbool flashFirmwarePrimaryMCU( smbus smhandle, int deviceaddress, const smuint8 *data, smint32 size, int *progress, const uint32_t option_bits )
 {
     smint32 ret;
     static smint32 deviceType, fwVersion;
@@ -919,15 +920,25 @@ smbool flashFirmwarePrimaryMCU( smbus smhandle, int deviceaddress, const smuint8
             return smfalse;
         }
 
-/*      kommentoitu pois koska ei haluta erasoida parskuja koska parametri SMO ei saisi nollautua mielellään
-
-        if(deviceType!=4000)//argon does not support BL function 11
-            smSetParameter(smhandle,deviceaddress,SMP_BOOTLOADER_FUNCTION,11);//BL func on ioni 11 = do mass erase on STM32, also confifuration
-        else//does not reset on ioni and drives that support preserving settings. but resets on argon
-*/
+        if( option_bits & FW_UPLOAD_OPTION_ERASE_SETTINGS ) //note this option might have issues because it resets SMO parameter, so address will not be same after install. TODO perhaps read SMO first and warn user about this issue?
+        {
+            if(deviceType!=4000)//argon (type 4000) does not support BL function 11
+            {
+                smDebug( smhandle, SMDebugMid, "flashFirmwarePrimaryMCU: erasing flash and parameters\n");
+                smSetParameter(smhandle,deviceaddress,SMP_BOOTLOADER_FUNCTION,11);//BL func on ioni 11 = do mass erase on STM32, also confifuration
+            }
+            else
+            {
+                smDebug( smhandle, SMDebugLow, "Target device type does not support option FW_UPLOAD_OPTION_ERASE_SETTINGS\n");
+                return smfalse;
+            }
+        }
+        else {
+            smDebug( smhandle, SMDebugMid, "flashFirmwarePrimaryMCU: erasing flash\n");
             smSetParameter(smhandle,deviceaddress,SMP_BOOTLOADER_FUNCTION,1);//BL func 1 = do mass erase on STM32. On Non-Argon devices it doesn't reset confifuration
+        }
 
-        smSleepMs(SM_DEVICE_POWER_UP_WAIT_MS+2);
+        smSleepMs(SM_DEVICE_FLASH_ERASE_WAIT_MS);
 
         //flash
         smSetParameter(smhandle,deviceaddress,SMP_RETURN_PARAM_LEN, SMPRET_CMD_STATUS);
@@ -1060,6 +1071,19 @@ FirmwareUploadStatus abortFWUpload( FirmwareUploadStatus stat, UploadState *stat
  */
 FirmwareUploadStatus smFirmwareUpload( const smbus smhandle, const int smaddress, const char *firmware_filename )
 {
+    return smFirmwareUploadWithOptions( smhandle, smaddress, firmware_filename, FW_UPLOAD_OPTION_NOP );
+}
+
+/**
+ * @brief smFirmwareUploadWithOptions Sets drive in firmware upgrade mode if necessary and uploads a new firmware. Call this many until it returns value 100 (complete) or a negative value (error).
+ * @param smhandle SM bus handle, must be opened before call
+ * @param smaddress Target SM device address
+ * @param filename .gdf file name
+ * @param option_bits may contain binary ORed bits defined as FW_UPLOAD_OPTION_*
+ * @return Enum FirmwareUploadStatus that indicates errors or Complete status. Typecast to integer to get progress value 0-100.
+ */
+FirmwareUploadStatus smFirmwareUploadWithOptions(const smbus smhandle, const int smaddress, const char *firmware_filename, const uint32_t option_bits )
+{
     static smuint8 *fwData=NULL;
     static int fwDataLength;
     static smbool fileLoaded=smfalse;
@@ -1074,7 +1098,7 @@ FirmwareUploadStatus smFirmwareUpload( const smbus smhandle, const int smaddress
     }
 
     //update FW, called multiple times per upgrade
-    state=smFirmwareUploadFromBuffer( smhandle, smaddress, fwData, fwDataLength );
+    state=smFirmwareUploadFromBufferWithOptions( smhandle, smaddress, fwData, fwDataLength, option_bits );
 
     //if process complete, due to finish or error -> unload file.
     if(((int)state<0 || state==FWComplete) && fileLoaded==smtrue)
@@ -1096,6 +1120,21 @@ FirmwareUploadStatus smFirmwareUpload( const smbus smhandle, const int smaddress
  * @return Enum FirmwareUploadStatus that indicates errors or Complete status. Typecast to integer to get progress value 0-100.
  */
 FirmwareUploadStatus smFirmwareUploadFromBuffer( const smbus smhandle, const int smaddress, smuint8 *fwData, const int fwDataLength )
+{
+    return smFirmwareUploadFromBufferWithOptions( smhandle, smaddress, fwData, fwDataLength, FW_UPLOAD_OPTION_NOP);
+}
+
+
+/**
+ * @brief smFirmwareUpload Sets drive in firmware upgrade mode if necessary and uploads a new firmware. Call this many until it returns value 100 (complete) or a negative value (error).
+ * @param smhandle SM bus handle, must be opened before call
+ * @param smaddress Target SM device address. Can be device in DFU mode or main operating mode. For Argon, one device in a bus must be started into DFU mode by DIP switches and smaddress must be set to 255.
+ * @param fwData pointer to memory address where .gdf file contents are loaded. Note: on some architectures (such as ARM Cortex M) fwData must be aligned to nearest 4 byte boundary to avoid illegal machine instructions.
+ * @param fwDataLenght number of bytes in fwData
+ * @param option_bits may contain binary ORed bits defined as FW_UPLOAD_OPTION_*
+ * @return Enum FirmwareUploadStatus that indicates errors or Complete status. Typecast to integer to get progress value 0-100.
+ */
+FirmwareUploadStatus smFirmwareUploadFromBufferWithOptions( const smbus smhandle, const int smaddress, smuint8 *fwData, const int fwDataLength, const uint32_t option_bits )
 {
     static smuint32 primaryMCUDataOffset, primaryMCUDataLenth;
     static smuint32 secondaryMCUDataOffset,secondaryMCUDataLength;
@@ -1124,14 +1163,14 @@ FirmwareUploadStatus smFirmwareUploadFromBuffer( const smbus smhandle, const int
         smDebug(smhandle,SMDebugLow,"smFirmwareUploadFromBuffer: target device type of %d successfully read\n",deviceType);
 
         smuint32 GDFFileUID;
-        FirmwareUploadStatus stat=parseFirmwareFile(fwData, fwDataLength, deviceType,
+        FirmwareUploadStatus parsestat=parseFirmwareFile(fwData, fwDataLength, deviceType,
                                   &primaryMCUDataOffset, &primaryMCUDataLenth,
                                   &secondaryMCUDataOffset, &secondaryMCUDataLength,
                                   &GDFFileUID);
-        if(stat!=FWComplete)//error in verify
+        if(parsestat!=FWComplete)//error in verify
         {
             smDebug(smhandle,SMDebugLow,"smFirmwareUploadFromBuffer: FW file verify failed\n");
-            return abortFWUpload(stat,&state,100);
+            return abortFWUpload(parsestat,&state,100);
         }
 
 
@@ -1139,8 +1178,8 @@ FirmwareUploadStatus smFirmwareUploadFromBuffer( const smbus smhandle, const int
         state=StatFirstConnectAttempt;
         FW_already_installed=smfalse;
 
-        //check if that FW is already installed
-        if(GDFFileUID!=0)//check only if GDF has provided this value
+        //determine if installing FW is necessary to the target device
+        if(GDFFileUID!=0 && !(option_bits&FW_UPLOAD_OPTION_ERASE_SETTINGS))//check only if GDF has provided this value AND if erase settings is not requested
         {
             smuint32 targetFWUID;
             if(smGetDeviceFirmwareUniqueID( smhandle, smaddress, &targetFWUID )==smtrue)
@@ -1269,7 +1308,7 @@ FirmwareUploadStatus smFirmwareUploadFromBuffer( const smbus smhandle, const int
     {
         smDebug(smhandle,SMDebugMid,"smFirmwareUploadFromBuffer: StatUpload\n");
 
-        smbool ret=flashFirmwarePrimaryMCU(smhandle,DFUAddress,fwData+primaryMCUDataOffset,primaryMCUDataLenth,&progress);
+        smbool ret=flashFirmwarePrimaryMCU(smhandle,DFUAddress,fwData+primaryMCUDataOffset,primaryMCUDataLenth,&progress,option_bits);
         if(ret==smfalse)//failed
         {
             smDebug(smhandle,SMDebugLow,"smFirmwareUploadFromBuffer: StatUpload failed\n");
@@ -1297,6 +1336,7 @@ FirmwareUploadStatus smFirmwareUploadFromBuffer( const smbus smhandle, const int
 
     return (FirmwareUploadStatus)progress;
 }
+
 
 
 static const struct

@@ -112,6 +112,15 @@ typedef union
         smuint32 CB1_Enable:1;
         smuint32 CB1_Clearfaults:1;
     } ALT3_Write;
+
+	//use this when SMP_FAST_UPDATE_CYCLE_FORMAT = FAST_UPDATE_CYCLE_FORMAT_ALT4
+	struct
+	{
+		smint32 SetpointMainTorque:15;
+		smint32 SetpointEffectTorque:15;
+		smuint32 CB1_Enable:1;
+		smuint32 CB1_Clearfaults:1;
+	} ALT4_Write;
 } FastUpdateCycleWriteData;
 
 // output parameter type for smFastUpdateCycleWithStructs
@@ -145,6 +154,15 @@ typedef union
         smuint32 Stat_FaultStop:1;
         smuint32 Stat_ServoReady:1;
     } ALT3_Read;
+
+	//use this when SMP_FAST_UPDATE_CYCLE_FORMAT = FAST_UPDATE_CYCLE_FORMAT_ALT1 or FAST_UPDATE_CYCLE_FORMAT_ALT4
+	struct
+	{
+		smuint32 PositionFeedback:24; // scale is full 24 bits per motor revolution. is not hard absolute like it's in ALT3, and will reset to 0 in centering and with offset SMP.
+		smuint32 PositionFeedbackSamplingTimestamp:6; //encoder sampling cycle, 400 us periods
+		smuint32 Stat_FaultStop:1;
+		smuint32 Stat_ServoReady:1;
+	} ALT4_Read;
 } FastUpdateCycleReadData;
 
 #pragma pack(pop)
