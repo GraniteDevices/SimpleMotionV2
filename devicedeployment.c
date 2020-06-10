@@ -12,7 +12,8 @@
 #define SM_DEVICE_POWER_UP_WAIT_MS 1500
 //waiting time after save config command
 #define SM_DEVICE_SAVE_CONFIG_WAIT_MS 200
-
+//wait time for chip erase. 2600-2700ms was found to be threshold of timeouting vs not-timeouting value with SC2D BL version 20010 with 320kb app size support, and with 100ms smSetTimeout() value
+#define SM_DEVICE_FLASH_ERASE_WAIT_MS 3000
 
 
 /* DRC file format versions:
@@ -937,7 +938,7 @@ smbool flashFirmwarePrimaryMCU( smbus smhandle, int deviceaddress, const smuint8
             smSetParameter(smhandle,deviceaddress,SMP_BOOTLOADER_FUNCTION,1);//BL func 1 = do mass erase on STM32. On Non-Argon devices it doesn't reset confifuration
         }
 
-        smSleepMs(SM_DEVICE_POWER_UP_WAIT_MS+2);
+        smSleepMs(SM_DEVICE_FLASH_ERASE_WAIT_MS);
 
         //flash
         smSetParameter(smhandle,deviceaddress,SMP_RETURN_PARAM_LEN, SMPRET_CMD_STATUS);
