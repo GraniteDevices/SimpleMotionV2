@@ -1071,10 +1071,10 @@
 #define SMP_ABSPOSITION_LO_LIMIT 836
 
 //readouts
-#define SMP_ACTUAL_BUS_VOLTAGE 900
-#define SMP_ACTUAL_TORQUE 901
-#define SMP_ACTUAL_VELOCITY_FB 902
-#define SMP_ACTUAL_POSITION_FB 903
+#define SMP_ACTUAL_BUS_VOLTAGE 900 // scale: 10mV/count
+#define SMP_ACTUAL_TORQUE 901 // scale: torque is in legacy HW scale, 560 counts per Amp
+#define SMP_ACTUAL_VELOCITY_FB 902 // scale: number of encoder counts traveled in one position/velocity control cycle period (typ 400 us, to be sure, it's 1/SMP_PID_FREQUENCY)
+#define SMP_ACTUAL_POSITION_FB 903 // scale: encoder counts
 #define SMP_SCOPE_CHANNEL_VALUE 904
 #define SMP_SCOPE_CHANNEL_SELECT 905
 #define SMP_ACTUAL_POSITION_FB_NEVER_RESETTING 906 /*this is same than SMP_ACTUAL_POSITION_FB but does not reset to 0 on homing or init (it is always the original counter value at power-on)*/
@@ -1113,22 +1113,22 @@
 
 #define SMP_CAPTURE_SOURCE 5020
 	//bitfield values (shift these with BV())
-	#define CAPTURE_TORQUE_TARGET 1
-	#define CAPTURE_TORQUE_ACTUAL 2
-	#define CAPTURE_VELOCITY_TARGET 3
-	#define CAPTURE_VELOCITY_ACTUAL 4
-	#define CAPTURE_POSITION_TARGET 5
-	#define CAPTURE_POSITION_ACTUAL 6
+	#define CAPTURE_TORQUE_TARGET 1 // scale: torque is in legacy HW scale, 560 counts per Amp
+	#define CAPTURE_TORQUE_ACTUAL 2 // scale: torque is in legacy HW scale, 560 counts per Amp
+	#define CAPTURE_VELOCITY_TARGET 3 // scale: number of encoder counts traveled in one position/velocity control cycle period (typ 400 us)
+	#define CAPTURE_VELOCITY_ACTUAL 4 // scale: number of encoder counts traveled in one position/velocity control cycle period (typ 400 us)
+	#define CAPTURE_POSITION_TARGET 5 // scale: encoder counts
+	#define CAPTURE_POSITION_ACTUAL 6 // scale: encoder counts
 	#define CAPTURE_FOLLOW_ERROR 7
-	#define CAPTURE_OUTPUT_VOLTAGE 8
+	#define CAPTURE_OUTPUT_VOLTAGE 8 // scale: 16384=100% of voltage supply
 	#define CAPTURE_BUS_VOLTAGE 9
 	#define CAPTURE_STATUSBITS 10
 	#define CAPTURE_FAULTBITS 11
 
 	//rest are availalbe in debug/development firmware only:
-	#define CAPTURE_PWM1 16
-	#define CAPTURE_PWM2 17
-	#define CAPTURE_PWM3 18
+	#define CAPTURE_PWM1 16 // scale: +/-16384=+/-100% duty cycle range
+	#define CAPTURE_PWM2 17 // scale: +/-16384=+/-100% duty cycle range
+	#define CAPTURE_PWM3 18 // scale: +/-16384=+/-100% duty cycle range
 	#define CAPTURE_DEBUG1 19
 	#define CAPTURE_DEBUG2 20
 	#define CAPTURE_CURRENT1 21
@@ -1151,7 +1151,7 @@
 	#define TRIG_DEBUG1 7
 	#define TRIG_DEBUG2 8
 
-#define SMP_CAPTURE_SAMPLERATE 5012
+#define SMP_CAPTURE_SAMPLERATE 5012 // scale: sample rate frequency in Hz = torque control update rate / (SMP_CAPTURE_SAMPLERATE+1). torque control update rate typically 20 kHz
 //rdonly
 #define SMP_CAPTURE_BUF_LENGHT 5013
 //SMP_CAPTURE_BEFORE_TRIGGER_PERCENTS sets how much samples will be preserved before trigger event. Value 0 is traditional, +n starts capture n percents before trigger (relative to whole capture length), -n after trigger. Value range -1000000%..+100%.
