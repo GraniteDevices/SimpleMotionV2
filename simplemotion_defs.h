@@ -385,6 +385,7 @@
 
 //choose input from SMP_DIGITAL_IN_VALUES_1 to be used as home switch.
 //note: this might not have effect depending on other parameters (i.e. if output is consumed by some built-in functionality)
+//written value: the index of digital input pin (i.e. GPI1=0, GPI2=1, GPI3=2, ... HSIN1=5 etc)
 #define SMP_HOME_SWITCH_SOURCE_SELECT 100
 
 //choose signal to be forwarded into aux output of drive (on IONI it is GPO5)
