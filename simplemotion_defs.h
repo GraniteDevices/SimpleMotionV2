@@ -792,6 +792,16 @@
 //friction effect stiffness variable for SC2U. Value 100=normal, 50=low, 200=high.
 #define SMP_TORQUE_EFFECT_FRICTION_STIFFNESS 253
 
+/* Experimental simucube filters.
+ * All values 0-100, 0=off.
+ * If experimental feature some day becomes non-experimental, it will be just renamed and left in place with same address.
+ */
+#define SMP_SIMUCUBE_EXPERIMENTAL_FEATURE_1 254
+#define SMP_SIMUCUBE_EXPERIMENTAL_FEATURE_2 255
+#define SMP_SIMUCUBE_EXPERIMENTAL_FEATURE_3 256
+#define SMP_SIMUCUBE_EXPERIMENTAL_FEATURE_4 257
+#define SMP_SIMUCUBE_EXPERIMENTAL_FEATURE_5 258
+
 /* Torque setpoint biquad filters that run at full torque controller update frequency.
  * - Scale of values is 10 000 000=1.0.
          	b0=1;
