@@ -385,6 +385,7 @@
 
 //choose input from SMP_DIGITAL_IN_VALUES_1 to be used as home switch.
 //note: this might not have effect depending on other parameters (i.e. if output is consumed by some built-in functionality)
+//written value: the index of digital input pin (i.e. GPI1=0, GPI2=1, GPI3=2, ... HSIN1=5 etc)
 #define SMP_HOME_SWITCH_SOURCE_SELECT 100
 
 //choose signal to be forwarded into aux output of drive (on IONI it is GPO5)
@@ -790,6 +791,16 @@
 	#define SMP_SIMCUBE_OPTIONS_TRACKING_CENTER_DAMPING_POSITION BV(4) // if 1, then fixed center angle offset SMP_TORQUE_EFFECTS_CENTER_POSITION has is superseded by tracking center position
 //friction effect stiffness variable for SC2U. Value 100=normal, 50=low, 200=high.
 #define SMP_TORQUE_EFFECT_FRICTION_STIFFNESS 253
+
+/* Experimental simucube filters.
+ * All values 0-100, 0=off.
+ * If experimental feature some day becomes non-experimental, it will be just renamed and left in place with same address.
+ */
+#define SMP_SIMUCUBE_EXPERIMENTAL_FEATURE_1 254
+#define SMP_SIMUCUBE_EXPERIMENTAL_FEATURE_2 255
+#define SMP_SIMUCUBE_EXPERIMENTAL_FEATURE_3 256
+#define SMP_SIMUCUBE_EXPERIMENTAL_FEATURE_4 257
+#define SMP_SIMUCUBE_EXPERIMENTAL_FEATURE_5 258
 
 /* Torque setpoint biquad filters that run at full torque controller update frequency.
  * - Scale of values is 10 000 000=1.0.

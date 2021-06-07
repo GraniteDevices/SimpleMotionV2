@@ -1,20 +1,18 @@
-//VSD SM485 bus definitions
-
+/*
+ * SimpleMotion V2 subpacket frame format constants
+ */
 #ifndef SM485_H
 #define SM485_H
 
-//SERIAL COMMANDS
+#define SM485_MAX_PAYLOAD_BYTES 120
 #define SM485_CRCINIT 0x0
 #define SM485_BUFSIZE 128
 #define SM485_RSBUFSIZE 128
-#define SM485_CMDBUFSIZE 4096
 
 //cmd number must be 0-31
 
 #define SM485_VERSION 90
-#define SM485_VERSION_COMPAT 85
-
-#define SM485_MAX_PAYLOAD_BYTES 120
+#define SM485_VERSION_COMPAT
 
 //00xb
 #define SMCMD_MASK_0_PARAMS 0
@@ -30,7 +28,17 @@
 #define SMCMD_MASK_PARAMS_BITS 6
 
 
+//cmdnumber must be 0-31
 #define SMCMD_ID(cmdnumber, flags) (((cmdnumber)<<3)|flags)
+
+
+//returned subpacket if error occurred. payload is two bytes where second byte is one of SMERR_ values (below)
+#define SMCMD_ERROR_RET SMCMD_ID(3,SMCMD_MASK_2_PARAMS|SMCMD_MASK_RETURN)
+#define SMERR_CRC 1
+#define SMERR_INVALID_CMD 2
+#define SMERR_BUF_OVERFLOW 4
+#define SMERR_INVALID_PARAMETER 8
+#define SMERR_PAYLOAD_SIZE 16
 
 //format 5, u8 bytesfollowing,u8 toaddr,cmddata,u16 crc
 //return, 6, u8 bytesfollowing,u8 fromaddr, returndata,u16 crc
@@ -59,21 +67,8 @@
 #define SMCMD_FAST_UPDATE_CYCLE SMCMD_ID(2,SMCMD_MASK_0_PARAMS)
 #define SMCMD_FAST_UPDATE_CYCLE_RET SMCMD_ID(2,SMCMD_MASK_0_PARAMS|SMCMD_MASK_RETURN)
 
-
-#ifdef PROCESS_IMAGE_SUPPORT
-
-//PROCESS_IMAGE communication not supported by SM V2.0.0. placeholders here
-
-//upload process data to bus devices. each device knows it's data offset in payload
-//(set by SMREGISTER_PDATA_IN_OFFSET, which is 0xffff if not accepting anything)
-#define SMCMD_PROCESS_IMAGE SMCMD_ID(5,SMCMD_MASK_N_PARAMS)
-
-//retrun of feedback process data is the tricky part
-//the device that has process data address of 0 answers first including SMCMD header (3bytes) and then its own return process data
-//SMREGISTER_PDATA_OUT_OFFSET is location of device's return processdata
-#define SMCMD_PROCESS_IMAGE_RET SMCMD_ID(5,SMCMD_MASK_N_PARAMS|SMCMD_MASK_RETURN)
-
-#endif
+//payload data is sent to the bus unmodified, no other return data
+#define SMCMD_ECHO SMCMD_ID(12,SMCMD_MASK_N_PARAMS)
 
 
 #endif

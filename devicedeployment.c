@@ -627,7 +627,18 @@ smuint32 bufferGet32( smuint8 **buf )
     return ret;
 }
 
-
+///
+/// \brief parseFirmwareFile will extract information from file that has been loaded to buffer. note: primary and secondary MCU means the chip of the board (some boards have multiple MCU's such as Argon, but most of devices have just one MCU, which is the pimary).
+/// \param data pointer to file contents in RAM
+/// \param numbytes number of bytes of data
+/// \param connectedDeviceTypeId device type id which is connected prior calling this
+/// \param primaryMCUDataOffset offset in data where primary MCU FW data begins.
+/// \param primaryMCUDataLenth length of FW primary MCU data. primaryMCUDataLenth=primaryMCUDataOffset=0 if no such data is available.
+/// \param secondaryMCUDataOffset offset in data where secondary MCU FW data begins.
+/// \param secondaryMCUDataLength length of FW secondary MCU data. secondaryMCUDataLenth=secondaryMCUDataOffset=0 if no such data is available.
+/// \param FWUniqueID returns FW checksum number stored in GDF file header. 0 if not available.
+/// \return enum value indicating errors or success
+///
 FirmwareUploadStatus parseFirmwareFile(smuint8 *data, smuint32 numbytes, smuint32 connectedDeviceTypeId,
                                         smuint32 *primaryMCUDataOffset, smuint32 *primaryMCUDataLenth,
                                         smuint32 *secondaryMCUDataOffset,smuint32 *secondaryMCUDataLength,
@@ -643,7 +654,13 @@ FirmwareUploadStatus parseFirmwareFile(smuint8 *data, smuint32 numbytes, smuint3
         return FWInvalidFile;
 
     smuint32 filever, deviceid;
-    *FWUniqueID=0;//updated later if available
+
+    //initialize return values by safe defaults, these will get updated later in this func if such info is available
+    *FWUniqueID=0;
+    *primaryMCUDataOffset=0;
+    *primaryMCUDataLenth=0;
+    *secondaryMCUDataOffset=0;
+    *secondaryMCUDataLength=0;
 
     filever=((smuint16*)data)[2];
 
@@ -1162,7 +1179,7 @@ FirmwareUploadStatus smFirmwareUploadFromBufferWithOptions( const smbus smhandle
 
         smDebug(smhandle,SMDebugLow,"smFirmwareUploadFromBuffer: target device type of %d successfully read\n",deviceType);
 
-        smuint32 GDFFileUID;
+        smuint32 GDFFileUID=0;
         FirmwareUploadStatus parsestat=parseFirmwareFile(fwData, fwDataLength, deviceType,
                                   &primaryMCUDataOffset, &primaryMCUDataLenth,
                                   &secondaryMCUDataOffset, &secondaryMCUDataLength,
