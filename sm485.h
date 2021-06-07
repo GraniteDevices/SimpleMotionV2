@@ -5,6 +5,14 @@
 #define SM485_H
 
 #define SM485_MAX_PAYLOAD_BYTES 120
+#define SM485_CRCINIT 0x0
+#define SM485_BUFSIZE 128
+#define SM485_RSBUFSIZE 128
+
+//cmd number must be 0-31
+
+#define SM485_VERSION 90
+#define SM485_VERSION_COMPAT
 
 //00xb
 #define SMCMD_MASK_0_PARAMS 0
