@@ -29,7 +29,7 @@ LIB_OBJECTS = $(patsubst %.c,$(LIB_OUTDIR)/%.o,$(notdir $(LIB_SOURCES)))
 TEST_CASES_SRC = $(wildcard *.c)
 TEST_CASES = $(patsubst %.c,%,$(notdir $(TEST_CASES_SRC)))
 
-test: $(LIB_OUTDIR) test_all
+test: test_all
 
 test_all: $(TEST_CASES)
 	@for test in $(TEST_CASES); do retval=0; ./$$test || retval=$?; if [ "$$retval" -ne 0 ]; then echo $$test: failed; exit 1; fi; echo $$test: ok; done
@@ -37,15 +37,13 @@ test_all: $(TEST_CASES)
 $(TEST_CASES): %: %.c libsimplemotionv2.a
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $< libsimplemotionv2.a
 
-$(LIB_OUTDIR):
-	mkdir -p $(LIB_OUTDIR)
-
 libsimplemotionv2.a: $(LIB_OBJECTS)
 	ar rcs $@ $^
 
 $(LIB_OUTDIR)/%.o: ../%.c
+	@mkdir -p $(@D)
 	$(CC) $(LIB_CFLAGS) -c -o $@ $<
 
 clean:
-	rm -f $(OBJ) $(LIB_OBJECTS) $(TEST_CASES) libsimplemotionv2.a
-	rmdir $(LIB_OUTDIR)
+	$(RM) $(LIB_OBJECTS) $(TEST_CASES) libsimplemotionv2.a
+	$(RM) -r $(LIB_OUTDIR)
